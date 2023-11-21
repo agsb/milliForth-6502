@@ -42,6 +42,10 @@ _**still not operational, using lib6502 for emulation and tests**_
 
 A crude small script for compile with ca65 is included.
 
+## Note
+
+the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
+
 ## References
 [^1]: the original milliForth: https://github.com/fuzzballcat/milliForth 
 [^2]: The inspirational sectorForth: https://github.com/cesarblum/sectorforth/.
