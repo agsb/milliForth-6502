@@ -1,6 +1,6 @@
 # milliForth for 6502
 
-A Forth in 380 bytes — the smallest real programming language ever, as of yet.
+_"A Forth in 380 bytes — the smallest real programming language ever, as of yet."_
 
 The milliForth[^1] is very similar to sectorForth[^2], and smaller than sector Lisp[^3]
 
@@ -8,7 +8,7 @@ The milliForth[^1] is very similar to sectorForth[^2], and smaller than sector L
 
 Yes, bytes. But the code is for a x86 CPU. 
 
-How minimal could be for a classic 6502 CPU ?
+How minimal could be it for a classic 6502 CPU ?
 
 Two essentially different CPUs, a 16-bit x86 based on complex registers and opcodes, and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
