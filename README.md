@@ -22,7 +22,7 @@ _16/11/2023_ code for 6502 sized to 555 bytes. (wrong count !!!! )
 
 _20/11/2023 rebuild the github repo without fork from original milliForth[^1]
 
-_20/11/2023 code for 6502 sized to 595 bytes, some good tips from Peter Ferrie <peter.ferrie@gmail.com>
+_20/11/2023 code for 6502 sized to 590 bytes, some good tips from Peter Ferrie <peter.ferrie@gmail.com>
 
 ## Language
 
