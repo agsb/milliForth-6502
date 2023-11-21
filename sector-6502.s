@@ -215,11 +215,12 @@ find:
 
 ;---------------------------------------------------------------------
 getline_:
-    ldy #0
+    ; leave a space
+    ldy #1
 @loop:  
 	jsr getchar
 	cmp #10         ; lf ?
-	beq @ends
+	beq @endline
     ;	cmp #13     ; cr ?
 	;   beq @ends
     ;   cmp #8      ; bs ?
@@ -233,12 +234,13 @@ getline_:
     ;   cpy #254
     ;   beq @ends   ; leave ' \0'
 	bne @loop
-@ends:
-    ; grace ends
+@endline:
+    ; grace 
     lda #32
-    sta tib, y
+    sta tib + 0 ; start with space
+    sta tib, y  ; ends with space
     iny
-    lda #0
+    lda #0      ; mark end of line
     sta tib, y
     ; reset line
     sta toin + 1
@@ -247,10 +249,13 @@ getline_:
 ;---------------------------------------------------------------------
 try_:
     lda tib, y
-    beq getline_    ; if \0 
+    beq newline    ; if \0 
     iny
     cmp #32
     rts
+
+newline:
+    jsr getline_
 
 tok_:
     ; last position on tib
@@ -538,11 +543,11 @@ def_word ":", "colon", 0
 @loop:    
     lda (nos), y
     cmp #32     ; stops at space
-    beq @ends
+    beq @endname
     sta (here), y
     iny
     bne @loop
-@ends:
+@endname:
 
     ; update here
     tya

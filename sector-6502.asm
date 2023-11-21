@@ -7,15 +7,20 @@
 ;   https://github.com/agsb 
 ;   see the disclaimer file in this repo for more information.
 ;
-;   SectorForth wnd MilliForth was made for x86 arch 
+;   SectorForth and MilliForth was made for x86 arch 
 ;   and uses full 16-bit registers 
 ;
 ;   The way at 6502 is use a page zero and lots of lda/sta bytes
+;
 ;   Focus in size not performance.
 ;
 ;   Changes:
 ;   data and return stacks and tib are 256 bytes 
-;   only immediate flag used as $80, no hide, no compile
+;   only immediate flag used as $80, no hide, no compile, no extras
+;
+;   Forth-1994:
+;   FALSE is $0000
+;   TRUE  is $FFFF
 ;
 ;----------------------------------------------------------------------
 ; for ca65 
@@ -58,15 +63,19 @@ FLAG_IMM  =  1<<7
 .segment "ZERO"
 
 * = $E0
+; default pseudo registers
 nil:    .word $0 ; reference, do not touch ! 
 lnk:    .word $0 ; link, do not touch !
 dta:    .word $0 ; holds data stack base,
 ret:    .word $0 ; holds return stack base,
 
+; default Forth pseudo registers
 tos:    .word $0 ; top
 nos:    .word $0 ; nos
 wrk:    .word $0 ; work
+tmp:    .word $0 ; temp
 
+; default Forth variables
 state:  .word $0 ; state
 toin:   .word $0 ; toin
 last:   .word $0 ; last link cell
@@ -84,11 +93,13 @@ here:   .word $0 ; next free cell
 ;---------------------------------------------------------------------
 main:
 
+    ; latest link
     lda #<semis
     sta last + 0
     lda #>semis
     sta last + 1
 
+    ; next free meory cell
     lda #<init
     sta here + 0
     lda #>init
@@ -105,34 +116,38 @@ error:
 	lda #13
 	jsr putchar
 
+;---------------------------------------------------------------------
 quit:
 
+    ; reset data stack
     lda #<dsb
     sta dta + 0
     lda #>dsb
     sta dta + 1
 
+    ; reset return stack
     lda #<rsb
     sta ret + 0
     lda #>rsb
     sta ret + 1
     
     ; clear tib stuff
-    lda #0
-    sta toin + 0
-    sta toin + 1
-    sta tib + 0
+    ldy #0
+    sty toin + 0
+    sty toin + 1
+    sty tib + 0
 
     ; state interpret
-    lda #1
-    sta state + 0
+    iny   
+    sty state + 0
 
+;---------------------------------------------------------------------
 find:
 
     ; get a token, (nos)
     jsr tok_
   
-    ; load last link
+    ; load lastest link
     lda #<last
     sta wrk + 0
     lda #>last
@@ -153,7 +168,7 @@ find:
     ; verify is zero
     lda wrk + 0
     ora wrk + 1
-    beq error ; no more words
+    beq error ; end of dictionary, no more words
 
     ; bypass link
     ldx #(tos - nil)
@@ -161,7 +176,7 @@ find:
     jsr incw
 
     ; compare words
-    ; must mask the flags
+    ; must mask the flags at size byte
     ldy #0
     lda (tos), y
     and #$80
@@ -169,11 +184,13 @@ find:
 
 @equal:
     lda (nos), y
-    cmp #32
+    cmp #32     
     beq @done
+    ; verify 
     sbc (tos), y
-    and #$7F    ; 7-bit ascii
+    and #$7F    ; 7-bit ascii, also mask flag
     bne @loop
+    ; next
     iny
     bne @equal
 @done:
@@ -186,22 +203,24 @@ find:
     ; compile or execute
     lda wrk + 0     ; immediate ? 
     bne @execw
+
     lda state + 0   ; executing ?
     bne @execw
 
     jmp compile
 
 @execw:
-    jmp (tos)
 
+    jmp next_
+
+;---------------------------------------------------------------------
 getline_:
-    ldy #0
-
+    ; leave a space
+    ldy #1
 @loop:  
 	jsr getchar
-    ;   and #$7F    ; 7-bit ascii
 	cmp #10         ; lf ?
-	beq @ends
+	beq @endline
     ;	cmp #13     ; cr ?
 	;   beq @ends
     ;   cmp #8      ; bs ?
@@ -209,34 +228,41 @@ getline_:
     ;   dey
     ;   jmp @loop
 @puts:
+    and #$7F        ; 7-bit ascii
     sta tib, y
     iny
     ;   cpy #254
     ;   beq @ends   ; leave ' \0'
 	bne @loop
-@ends:
-    ; grace ends
+@endline:
+    ; grace 
     lda #32
-    sta tib, y
+    sta tib + 0 ; start with space
+    sta tib, y  ; ends with space
     iny
-    lda #0
+    lda #0      ; mark end of line
     sta tib, y
+    ; reset line
     sta toin + 1
     rts
 
+;---------------------------------------------------------------------
 try_:
     lda tib, y
-    beq getline_    ; if \0 
+    beq newline    ; if \0 
     iny
     cmp #32
     rts
+
+newline:
+    jsr getline_
 
 tok_:
     ; last position on tib
 	ldy toin + 1
 
 @skip:
-    ; skip space
+    ; skip spaces
     jsr try_
     beq @skip
 
@@ -245,7 +271,7 @@ tok_:
     sty toin + 0    
 
 @scan:
-    ; scan space
+    ; scan spaces
     jsr try_
     bne @scan
 
@@ -259,11 +285,11 @@ tok_:
     sbc toin + 0
 
     ; place strlen
-    ldy toin + 0
+    dec toin + 0
     dey
-    sty toin + 0
     sta tib, y    ; store size ahead 
 
+    ; update
     sty nos + 0
     lda #>tib
     sta nos + 1
@@ -355,8 +381,19 @@ putchar:
 
 ;---------------------------------------------------------------------
 ; primitives ends with jmp link_
+;
 ;def_word "emit", "emit", 0
+;   jsr spull
+;   lda tos + 0
+;   jsr putchar
+;   jmp link_
+;
 ;def_word "key", "key", 0
+;   jsr getchar
+;   sta tos + 0
+;   jsr spush
+;   jmp link_
+;
 ;---------------------------------------------------------------------
 def_word "!", "store", 0
 storew:
@@ -366,6 +403,7 @@ storew:
     jsr push
     jmp link_
 
+;---------------------------------------------------------------------
 def_word "@", "fetch", 0
 fetchw:
     jsr dta2nos
@@ -374,6 +412,7 @@ fetchw:
     jsr pull
     jmp topsh
 
+;---------------------------------------------------------------------
 def_word "s@", "statevar", 0 
     lda #<state
     sta tos + 0
@@ -384,18 +423,21 @@ topsh:
     jsr spush
     jmp link_
 
+;---------------------------------------------------------------------
 def_word "rp@", "rpfetch", 0
     lda ret + 0
     sta tos + 0
     lda ret + 1
     jmp back
 
+;---------------------------------------------------------------------
 def_word "sp@", "spfetch", 0
     lda dta + 0
     sta tos + 0
     lda dta + 1
     jmp back
 
+;---------------------------------------------------------------------
 def_word "+", "plus", 0
     jsr spull2
     clc
@@ -406,6 +448,7 @@ def_word "+", "plus", 0
     adc tos + 1
     jmp back
 
+;---------------------------------------------------------------------
 def_word "nand", "nand", 0
     jsr spull2
     lda nos + 0
@@ -417,6 +460,7 @@ def_word "nand", "nand", 0
     eor #$FF
     jmp back
 
+;---------------------------------------------------------------------
 def_word "0=", "zeroq", 0
     jsr spull
     lda tos + 0
@@ -437,6 +481,7 @@ rest:
 ;    ror tos + 0
 ;    jmp spush
 
+;---------------------------------------------------------------------
 ; minimal indirect thread code
 ; lnk must be preserved, as IP
 ;
@@ -454,7 +499,7 @@ next_:
 
     ; is a primitive ? 
     lda lnk + 1
-    cmp #$08    ; magic high byte of init:
+    cmp #$08    ; magic high byte of init: not generic!
     bcc jump_
 
 nest_:
@@ -476,10 +521,9 @@ jump_:
     jsr pull
     jmp (tos)
 
+;---------------------------------------------------------------------
 def_word ":", "colon", 0
     ; save here, for update last later
-
-;jsr okey
 
     ldx #(dta - nil)
     ldy #(here - nil)
@@ -499,11 +543,11 @@ def_word ":", "colon", 0
 @loop:    
     lda (nos), y
     cmp #32     ; stops at space
-    beq @ends
+    beq @endname
     sta (here), y
     iny
     bne @loop
-@ends:
+@endname:
 
     ; update here
     tya
@@ -517,6 +561,7 @@ def_word ":", "colon", 0
     
     jmp link_
 
+;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
 
     ; update last
@@ -529,7 +574,7 @@ def_word ";", "semis", FLAG_IMM
 	lda #1
     sta state + 0
 
-    ; compounds ends with pointer to 'unnest'
+    ; compounds ends with 'unnest'
     lda #<unnest_
     sta tos + 0
     lda #>unnest_
@@ -542,8 +587,10 @@ compile:
     jsr push
     jmp link_
 
+;---------------------------------------------------------------------
 ends:
 
+; debug stuff
 .if 0
 
 erro:
@@ -586,6 +633,6 @@ rsb:
 dsb:            
 
 ; for anything above is not a primitive
-* = $800
+; * = $800
 init:   
 
