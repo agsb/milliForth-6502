@@ -45,7 +45,7 @@ hcount .set 0
 ;this = *
 makelabel "is_", label
     .ident(.sprintf("H%04X", hcount + 1)) = *
-	.word .ident (.sprintf ("H%04X", hcount))
+    .word .ident (.sprintf ("H%04X", hcount))
     hcount .set hcount + 1
     .byte .strlen(name) + flag + 0
     .byte name
@@ -113,8 +113,8 @@ main:
 
 error:
 
-	lda #13
-	jsr putchar
+    lda #13
+    jsr putchar
 
 ;---------------------------------------------------------------------
 quit:
@@ -137,7 +137,7 @@ quit:
     sty toin + 1
     sty tib + 0
 
-    ; state interpret
+    ; state is interpret
     iny   
     sty state + 0
 
@@ -155,39 +155,40 @@ find:
 
 @loop:
 
+    ; verify is zero
+    lda wrk + 0
+    ora wrk + 1
+    beq error ; end of dictionary, no more words
+
     ; linked list
     lda wrk + 0
     sta tos + 0
     lda wrk + 1
     sta tos + 1
     
+    ; wrk = [tos]
     ldx #(tos - nil)
     ldy #(wrk - nil)
     jsr pull
 
-    ; verify is zero
-    lda wrk + 0
-    ora wrk + 1
-    beq error ; end of dictionary, no more words
-
     ; bypass link
     ldx #(tos - nil)
-    jsr incw
-    jsr incw
+    lda #2
+    jsr add2w
 
-    ; compare words
-    ; must mask the flags at size byte
-    ldy #0
-    lda (tos), y
+    ; save the flag at size byte
+    lda tos + 0
     and #$80
     sta wrk + 0
 
+    ; compare words
+    ldy #0
 @equal:
     lda (nos), y
-    cmp #32     
+    cmp #32         ; space ends name
     beq @done
     ; verify 
-    sbc (tos), y
+    sbc (tos), y    ; 
     and #$7F    ; 7-bit ascii, also mask flag
     bne @loop
     ; next
@@ -218,11 +219,11 @@ getline_:
     ; leave a space
     ldy #1
 @loop:  
-	jsr getchar
-	cmp #10         ; lf ?
-	beq @endline
-    ;	cmp #13     ; cr ?
-	;   beq @ends
+    jsr getchar
+    cmp #10         ; lf ?
+    beq @endline
+    ;    cmp #13     ; cr ?
+    ;   beq @ends
     ;   cmp #8      ; bs ?
     ;   bne @puts
     ;   dey
@@ -233,7 +234,7 @@ getline_:
     iny
     ;   cpy #254
     ;   beq @ends   ; leave ' \0'
-	bne @loop
+    bne @loop
 @endline:
     ; grace 
     lda #32
@@ -259,7 +260,7 @@ newline:
 
 tok_:
     ; last position on tib
-	ldy toin + 1
+    ldy toin + 1
 
 @skip:
     ; skip spaces
@@ -286,7 +287,7 @@ tok_:
 
     ; place strlen
     dec toin + 0
-    dey
+    ldy toin + 0
     sta tib, y    ; store size ahead 
 
     ; update
@@ -457,13 +458,13 @@ def_word "nand", "nand", 0
     jmp back
 
 ;---------------------------------------------------------------------
-def_word "0=", "zeroq", 0
+def_word "0#", "zeroq", 0
     jsr spull
     lda tos + 0
     ora tos + 1
-    beq istrue
+    beq istrue  ; is \0
 isfalse:
-    lda #$0
+    lda #$00
     beq rest
 istrue:
     lda #$FF
@@ -519,7 +520,7 @@ jump_:
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
-    ; save here, for update last later
+    ; save here, to update last
 
     ldx #(dta - nil)
     ldy #(here - nil)
@@ -532,7 +533,7 @@ def_word ":", "colon", 0
     jsr push
 
     ; get the token, at nos
-	jsr tok_
+    jsr tok_
 
     ;copy size and name ????
     ldy #0
@@ -550,9 +551,9 @@ def_word ":", "colon", 0
     ldx #(here - nil)
     jsr add2w
 
-    ; update state as 'compile'
+    ; state is 'compile'
 
-	lda #0
+    lda #0
     sta state + 0
     
     jmp link_
@@ -566,8 +567,8 @@ def_word ";", "semis", FLAG_IMM
     ldy #(last - nil)
     jsr pull
 
-    ; update state as 'interpret'
-	lda #1
+    ; state is 'interpret'
+    lda #1
     sta state + 0
 
     ; compounds ends with 'unnest'
@@ -581,6 +582,7 @@ compile:
     ldx #(here - nil)
     ldy #(tos - nil)
     jsr push
+
     jmp link_
 
 ;---------------------------------------------------------------------
@@ -594,10 +596,10 @@ erro:
     jsr putchar
     lda #'?'
     jsr putchar
-	lda #10
-	jsr putchar
-	lda #13
-	jsr putchar
+    lda #10
+    jsr putchar
+    lda #13
+    jsr putchar
     rts
 
 okey:
@@ -605,10 +607,10 @@ okey:
     jsr putchar
     lda #'K'
     jsr putchar
-	lda #10
-	jsr putchar
-	lda #13
-	jsr putchar
+    lda #10
+    jsr putchar
+    lda #13
+    jsr putchar
     rts
 
 .endif
