@@ -442,7 +442,6 @@ rest:
 ;
 def_word "exit", "exit", 0
 unnest_:
-
     ; pull from return stack
     ldx #(ret - nil)
     ldy #(tos - nil)
@@ -459,7 +458,6 @@ next_:
     bcc jump_
 
 nest_:
-
 ; push into return stack
     ldx #(ret - nil)
     ldy #(tos - nil)

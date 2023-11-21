@@ -18,7 +18,7 @@ Coding for minimal size, not for best performance.
 
 _14/11/2023_ code for 6502 sized to 624 bytes.
 
-_16/11/2023_ code for 6502 sized to 555 bytes. (wrong count)
+_16/11/2023_ code for 6502 sized to 555 bytes. (wrong count !!!! )
 
 _20/11/2023 rebuild the github repo without fork from original milliForth[^1]
 
@@ -47,6 +47,14 @@ The milliForth for 6502 have some changes:
 _**still not operational, using lib6502 for emulation and tests**_
 
 A crude small script for compile with ca65 is included.
+
+    ; for make it
+    sh mk a sector-6502
+
+    ; for clear it
+    sh mk x sector-6502
+
+the size is take from main: to ends: using the sector-6502.lbl file
 
 ## Note
 

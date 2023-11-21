@@ -118,13 +118,13 @@ quit:
     sta ret + 1
     
     ; clear tib stuff
-    lda #0
-    sta toin + 0
-    sta toin + 1
-    sta tib + 0
+    ldy #0
+    sty toin + 0
+    sty toin + 1
+    sty tib + 0
 
     ; state interpret
-    lda #1
+    iny   
     sta state + 0
 
 find:
@@ -186,6 +186,7 @@ find:
     ; compile or execute
     lda wrk + 0     ; immediate ? 
     bne @execw
+
     lda state + 0   ; executing ?
     bne @execw
 
@@ -259,9 +260,8 @@ tok_:
     sbc toin + 0
 
     ; place strlen
-    ldy toin + 0
+    dec toin + 0
     dey
-    sty toin + 0
     sta tib, y    ; store size ahead 
 
     sty nos + 0
@@ -442,7 +442,6 @@ rest:
 ;
 def_word "exit", "exit", 0
 unnest_:
-
     ; pull from return stack
     ldx #(ret - nil)
     ldy #(tos - nil)
@@ -459,7 +458,6 @@ next_:
     bcc jump_
 
 nest_:
-
 ; push into return stack
     ldx #(ret - nil)
     ldy #(tos - nil)
