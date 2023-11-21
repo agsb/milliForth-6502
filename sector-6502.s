@@ -299,31 +299,27 @@ tok_:
 ;---------------------------------------------------------------------
 
 ; add a byte to a word in page zero. offset by X
+; increment a word in page zero, offset by X
+incw:
+    lda #1
+; add a byte to a word in page zero. offset by X
 add2w:
     clc
     adc nil + 0, x
     sta nil + 0, x
-    bcc @incc
+    bcc @noinc
     inc nil + 1, x
-@incc:
+@noinc:
     rts
 
 ; decrement a word in page zero. offset by X
 decw:
     lda nil + 0, x
-    bne @none
+    bne @nodec
     dec nil + 1, x
-@none:
+@nodec:
     dec nil + 0, x
     rts
-
-; increment a word in page zero, offset by X
-incw:
-    inc nil + 0, x
-    bne @none
-    inc nil + 1, x
-@none:
-    rts 
 
 ; pull a word 
 ; from a page zero address indexed by X
