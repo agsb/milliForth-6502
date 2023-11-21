@@ -36,7 +36,7 @@ The milliForth for 6502 have some changes:
 - Only _IMMEDIATE_ flag used;
 - Only update _latest_ at end of word definition, so the word is hidden while defined;
 - Uses _Minimal Thread Indirect Code_ as inner dispatcher[^4];
-- sizes of _tib, data stack, return stack_ are 256 bytes. By standarts 1979/1983/1994, minimum are 80, 64, 48;
+- sizes of _tib, data stack, return stack_ are 256 bytes. By Forth standart 1994, minimum are 80, 64, 48;
 - uses 32 bytes of _page zero_;
 - depends on spaces before and after a word in tib; 
 - still no include a classic _'OK '_;
