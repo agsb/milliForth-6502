@@ -12,11 +12,17 @@ How minimal could be for a classic 6502 CPU ?
 
 Two essentially different CPUs, a 16-bit x86 based on complex registers and opcodes, and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
-Coding for minimal size, not for best performance:
+## Coding
+
+Coding for minimal size, not for best performance.
 
 _14/11/2023_ code for 6502 sized to 624 bytes.
 
-_16/11/2023_ code for 6502 sized to 555 bytes.
+_16/11/2023_ code for 6502 sized to 555 bytes. (wrong count)
+
+_20/11/2023 rebuild the github repo without fork from original milliForth[^1]
+
+_20/11/2023 code for 6502 sized to 595 bytes, some good tips from Peter Ferrie <peter.ferrie@gmail.com>
 
 ## Language
 
