@@ -38,7 +38,8 @@ The milliForth for 6502 have some changes:
 - Uses _Minimal Thread Indirect Code_ as inner dispatcher[^4];
 - sizes of _tib, data stack, return stack_ are 256 bytes. By Forth standart 1994, minimum are 80, 64, 48;
 - uses 32 bytes of _page zero_;
-- depends on spaces before and after a word in tib; 
+- depends on spaces before and after a word in tib;
+- uses 7-bit ASCII characters;
 - still no include a classic _'OK '_;
 - still no include a destructive backspace routine; 
 
