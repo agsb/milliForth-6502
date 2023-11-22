@@ -137,7 +137,7 @@ quit:
     sty toin + 1
     sty tib + 0
 
-    ; state is interpret
+    ; state is 'interpret'
     iny   
     sty state + 0
 
@@ -462,15 +462,15 @@ def_word "0#", "zeroq", 0
     jsr spull
     lda tos + 0
     ora tos + 1
-    beq istrue  ; is \0
-isfalse:
-    lda #$00
-    beq rest
+    bne isfalse  ; is \0
 istrue:
     lda #$FF
 rest:    
     sta tos + 0
     jmp back
+isfalse:
+    lda #$00
+    beq rest
 
 ;def_word "shr", "shr", 0
 ;    jsr spull
@@ -535,7 +535,7 @@ def_word ":", "colon", 0
     ; get the token, at nos
     jsr tok_
 
-    ;copy size and name ????
+    ;copy size and name
     ldy #0
 @loop:    
     lda (nos), y
