@@ -54,7 +54,9 @@ makelabel "", label
 
 ;----------------------------------------------------------------------
 ; alias
+
 CELL   =  2     ; 16 bits
+
 SIZES  = $100
 
 FLAG_IMM  =  1<<7
@@ -82,10 +84,10 @@ last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 
 ;----------------------------------------------------------------------
-.segment "ONCE" 
+;.segment "ONCE" 
 
 ;----------------------------------------------------------------------
-.segment "VECTORS" 
+;.segment "VECTORS" 
 
 ;----------------------------------------------------------------------
 .segment "CODE" 
@@ -120,19 +122,19 @@ error:
 quit:
 
     ; reset data stack
-    lda #<dsb
-    sta dta + 0
-    lda #>dsb
-    sta dta + 1
+    ldx #<dsb
+    stx dta + 0
 
     ; reset return stack
-    lda #<rsb
-    sta ret + 0
-    lda #>rsb
-    sta ret + 1
+    ldx #<rsb
+    stx ret + 0
+
+    ; page zero
+    ldy #0
+    sty dta + 1
+    sty ret + 1
     
     ; clear tib stuff
-    ldy #0
     sty toin + 0
     sty toin + 1
     sty tib + 0
@@ -150,19 +152,21 @@ find:
     ; load lastest link
     lda #<last
     sta wrk + 0
+
     lda #>last
     sta wrk + 1
 
 @loop:
 
-    ; verify is zero
+    ; update link list
     lda wrk + 0
+    sta tos + 0
+
+    ; verify is zero
     ora wrk + 1
     beq error ; end of dictionary, no more words
 
-    ; linked list
-    lda wrk + 0
-    sta tos + 0
+    ; update link list
     lda wrk + 1
     sta tos + 1
     
@@ -178,7 +182,6 @@ find:
 
     ; save the flag at size byte
     lda tos + 0
-    and #$80
     sta wrk + 0
 
     ; compare words
@@ -203,7 +206,7 @@ find:
 
     ; compile or execute
     lda wrk + 0     ; immediate ? 
-    bne @execw
+    bmi @execw      ; flag ($80 + size) is negative
 
     lda state + 0   ; executing ?
     bne @execw
@@ -252,7 +255,7 @@ try_:
     lda tib, y
     beq newline    ; if \0 
     iny
-    cmp #32
+    eor #32
     rts
 
 newline:
@@ -275,6 +278,7 @@ tok_:
     ; scan spaces
     jsr try_
     bne @scan
+    ; tax
 
     ; keep stop 
     dey
@@ -282,7 +286,7 @@ tok_:
 
     ; strlen
     sec
-    lda toin + 1
+    tya
     sbc toin + 0
 
     ; place strlen
@@ -308,9 +312,10 @@ add2w:
     clc
     adc nil + 0, x
     sta nil + 0, x
-    bcc @noinc
+    bcc noinc
+incnil:
     inc nil + 1, x
-@noinc:
+noinc:
     rts
 
 ; decrement a word in page zero. offset by X
@@ -325,6 +330,15 @@ decw:
 ; pull a word 
 ; from a page zero address indexed by X
 ; into a absolute page zero address indexed by y
+spull2:
+    jsr spull 
+dta2nos:
+    ldy #(nos - nil)
+    .byte $2c   ; mask ldy
+; pull from data stack
+spull:
+    ldy #(tos - nil)
+    ldx #(dta - nil)
 pull:
     lda (nil, x)    
     sta nil + 0, y   
@@ -336,6 +350,11 @@ pull:
 ; push a word 
 ; from an absolute page zero address indexed by Y
 ; into a page zero address indexed by X
+; push into data stack
+spush:
+    ldx #(dta - nil)
+tospush:
+    ldy #(tos - nil)
 push:
     jsr decw
     lda nil + 1, y
@@ -344,28 +363,6 @@ push:
     lda nil + 0, y
     sta (nil, x)
     rts
-
-; push into data stack
-spush:
-    ldx #(dta - nil)
-    ldy #(tos - nil)
-    bne push
-
-; pull from data stack
-spull:
-    ldx #(dta - nil)
-    ldy #(tos - nil)
-    bne pull
-
-spull2:
-    jsr spull 
-dta2nos:
-    ; ldx #(dta - nil)
-    ldy #(nos - nil)
-    bne pull
-
-; fetch from
-; store into
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
@@ -460,17 +457,17 @@ def_word "nand", "nand", 0
 ;---------------------------------------------------------------------
 def_word "0#", "zeroq", 0
     jsr spull
-    lda tos + 0
-    ora tos + 1
-    bne isfalse  ; is \0
-istrue:
-    lda #$FF
-rest:    
-    sta tos + 0
-    jmp back
+    ; lda tos + 1
+    ora tos + 0
+    beq istrue  ; is \0
 isfalse:
     lda #$00
-    beq rest
+rest:
+    sta tos + 0
+    beq back
+istrue:
+    lda #$FF
+    bne rest 
 
 ;def_word "shr", "shr", 0
 ;    jsr spull
@@ -502,8 +499,7 @@ next_:
 nest_:
 ; push into return stack
     ldx #(ret - nil)
-    ldy #(tos - nil)
-    jsr push
+    jsr tospush
 
 link_:
     lda lnk + 0
@@ -580,8 +576,7 @@ def_word ";", "semis", FLAG_IMM
 compile:
     
     ldx #(here - nil)
-    ldy #(tos - nil)
-    jsr push
+    jsr tospush
 
     jmp link_
 
