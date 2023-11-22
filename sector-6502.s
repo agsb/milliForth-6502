@@ -152,7 +152,6 @@ find:
     ; load lastest link
     lda #<last
     sta wrk + 0
-
     lda #>last
     sta wrk + 1
 
@@ -206,7 +205,7 @@ find:
 
     ; compile or execute
     lda wrk + 0     ; immediate ? 
-    bmi @execw      ; flag ($80 + size) is negative
+    bmi @execw      ; if < 0
 
     lda state + 0   ; executing ?
     bne @execw
@@ -310,10 +309,9 @@ add2w:
     clc
     adc nil + 0, x
     sta nil + 0, x
-    bcc noinc
-incnil:
+    bcc @noinc
     inc nil + 1, x
-noinc:
+@noinc:
     rts
 
 ; decrement a word in page zero. offset by X
@@ -491,7 +489,7 @@ next_:
 
     ; is a primitive ? 
     lda lnk + 1
-    cmp #<init    ; magic high byte of init: not generic!
+    cmp #>init    ; magic high byte of init:
     bcc jump_
 
 nest_:
