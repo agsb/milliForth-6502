@@ -120,19 +120,19 @@ error:
 quit:
 
     ; reset data stack
-    lda #<dsb
-    sta dta + 0
-    lda #>dsb
-    sta dta + 1
+    ldy #<dsb
+    sty dta + 0
+    ldx #>dsb
+    stx dta + 1
 
     ; reset return stack
-    lda #<rsb
-    sta ret + 0
-    lda #>rsb
-    sta ret + 1
+;;    ldy #<rsb
+    sty ret + 0
+    dex ;;ldx #>rsb
+    stx ret + 1
     
     ; clear tib stuff
-    ldy #0
+;;    ldy #0
     sty toin + 0
     sty toin + 1
     sty tib + 0
@@ -150,19 +150,18 @@ find:
     ; load lastest link
     lda #<last
     sta wrk + 0
-    lda #>last
-    sta wrk + 1
+    ;;ldx #>last
+    stx wrk + 1
 
 @loop:
 
     ; verify is zero
     lda wrk + 0
+    sta tos + 0
     ora wrk + 1
     beq error ; end of dictionary, no more words
 
     ; linked list
-    lda wrk + 0
-    sta tos + 0
     lda wrk + 1
     sta tos + 1
     
@@ -178,7 +177,6 @@ find:
 
     ; save the flag at size byte
     lda tos + 0
-    and #$80
     sta wrk + 0
 
     ; compare words
@@ -203,7 +201,7 @@ find:
 
     ; compile or execute
     lda wrk + 0     ; immediate ? 
-    bne @execw
+    bmi @execw
 
     lda state + 0   ; executing ?
     bne @execw
@@ -252,7 +250,7 @@ try_:
     lda tib, y
     beq newline    ; if \0 
     iny
-    cmp #32
+    eor #32
     rts
 
 newline:
@@ -275,6 +273,7 @@ tok_:
     ; scan spaces
     jsr try_
     bne @scan
+    tax             ; zero
 
     ; keep stop 
     dey
@@ -282,7 +281,7 @@ tok_:
 
     ; strlen
     sec
-    lda toin + 1
+    tya
     sbc toin + 0
 
     ; place strlen
@@ -299,6 +298,30 @@ tok_:
 
 ;---------------------------------------------------------------------
 
+spull2:
+    jsr spull 
+dta2nos:
+    ; ldx #(dta - nil)
+    ldy #(nos - nil)
+    .byte $2c ;mask ldy
+
+; pull from data stack
+spull:
+    ldy #(tos - nil)
+    ldx #(dta - nil)
+;;    bne pull
+
+; pull a word 
+; from a page zero address indexed by X
+; into a absolute page zero address indexed by y
+pull:
+    lda (nil, x)    
+    sta nil + 0, y   
+    jsr incw        
+    lda (nil, x)    
+    sta nil + 1, y  
+;;    jmp incw
+
 ; add a byte to a word in page zero. offset by X
 ; increment a word in page zero, offset by X
 incw:
@@ -308,9 +331,10 @@ add2w:
     clc
     adc nil + 0, x
     sta nil + 0, x
-    bcc @noinc
+    bcc noinc
+incnil:
     inc nil + 1, x
-@noinc:
+noinc:
     rts
 
 ; decrement a word in page zero. offset by X
@@ -322,16 +346,12 @@ decw:
     dec nil + 0, x
     rts
 
-; pull a word 
-; from a page zero address indexed by X
-; into a absolute page zero address indexed by y
-pull:
-    lda (nil, x)    
-    sta nil + 0, y   
-    jsr incw        
-    lda (nil, x)    
-    sta nil + 1, y  
-    jmp incw
+; push into data stack
+spush:
+    ldx #(dta - nil)
+tospush:
+    ldy #(tos - nil)
+;;    bne push
 
 ; push a word 
 ; from an absolute page zero address indexed by Y
@@ -344,25 +364,6 @@ push:
     lda nil + 0, y
     sta (nil, x)
     rts
-
-; push into data stack
-spush:
-    ldx #(dta - nil)
-    ldy #(tos - nil)
-    bne push
-
-; pull from data stack
-spull:
-    ldx #(dta - nil)
-    ldy #(tos - nil)
-    bne pull
-
-spull2:
-    jsr spull 
-dta2nos:
-    ; ldx #(dta - nil)
-    ldy #(nos - nil)
-    bne pull
 
 ; fetch from
 ; store into
@@ -448,6 +449,7 @@ def_word "+", "plus", 0
 ;---------------------------------------------------------------------
 def_word "nand", "nand", 0
     jsr spull2
+istrue:
     lda nos + 0
     and tos + 0
     eor #$FF
@@ -460,17 +462,13 @@ def_word "nand", "nand", 0
 ;---------------------------------------------------------------------
 def_word "0#", "zeroq", 0
     jsr spull
-    lda tos + 0
-    ora tos + 1
+    ;;lda tos + 1
+    ora tos + 0
     beq istrue  ; is \0
 isfalse:
     lda #$00
-    beq rest
-istrue:
-    lda #$FF
-rest:    
     sta tos + 0
-    jmp back
+    beq back
 
 ;def_word "shr", "shr", 0
 ;    jsr spull
@@ -502,8 +500,7 @@ next_:
 nest_:
 ; push into return stack
     ldx #(ret - nil)
-    ldy #(tos - nil)
-    jsr push
+    jsr tospush
 
 link_:
     lda lnk + 0
@@ -580,8 +577,7 @@ def_word ";", "semis", FLAG_IMM
 compile:
     
     ldx #(here - nil)
-    ldy #(tos - nil)
-    jsr push
+    jsr tospush
 
     jmp link_
 
