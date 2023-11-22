@@ -16,6 +16,8 @@ Two essentially different CPUs, a 16-bit x86 based on complex registers and opco
 
 Coding for minimal size, not for best performance.
 
+_22/11/2023 code for 6502 sized to 566 bytes, more good tips from Peter Ferrie <peter.ferrie@gmail.com>
+
 _20/11/2023_ code for 6502 sized to 590 bytes, some good tips from Peter Ferrie <peter.ferrie@gmail.com>
 
 _20/11/2023_ rebuild the github repo without fork from original milliForth[^1]
