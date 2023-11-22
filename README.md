@@ -38,7 +38,7 @@ The milliForth for 6502 have some changes:
 - Only _IMMEDIATE_ flag used;
 - Only update _latest_ at end of word definition, so the word is hidden while defined;
 - Uses _Minimal Thread Indirect Code_ as inner dispatcher[^4];
-- sizes of _tib, data stack, return stack_ are 256 bytes. By Forth standart 1994, minimum are 80, 64, 48;
+- sizes of _tib, data stack, return stack_ are 256 bytes [^5];
 - uses 32 bytes of _page zero_;
 - depends on spaces before and after a word in tib;
 - uses 7-bit ASCII characters;
@@ -68,3 +68,4 @@ the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 [^2]: The inspirational sectorForth: https://github.com/cesarblum/sectorforth/.
 [^3]: Mind-blowing sectorLISP: https://justine.lol/sectorlisp2/, https://github.com/jart/sectorlisp.
 [^4]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
+[^5]: Minimum are 80, 64, 48, from ANSI X3.215-1994, http://www.forth.org/svfig/Win32Forth/DPANS94.txt;
