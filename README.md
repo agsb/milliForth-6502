@@ -47,7 +47,7 @@ The milliForth for 6502 have some changes:
 
 ## Use
 
-_**still not operational, using lib6502 for emulation and tests**_
+_** Still not operational, using lib6502 for emulation and tests, Any sugestions ? **_
 
 A crude small script for compile with ca65 is included.
 
