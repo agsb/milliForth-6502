@@ -14,7 +14,7 @@ Two essentially different CPUs, a 16-bit x86 based on complex registers and opco
 
 ## Coding
 
-Coding for minimal size, not for best performance.
+Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
 _27/11/2023_ code for 6502 sized to 572 bytes, some errors and ascii-7 checks
 
