@@ -147,7 +147,7 @@ quit:
 find:
 
     ; get a token, (nos)
-    jsr tok_
+    jsr token
   
     ; load lastest link
     lda #<last
@@ -260,7 +260,7 @@ try_:
 newline:
     jsr getline_
 
-tok_:
+token:
     ; last position on tib
     ldy toin + 1
 
@@ -469,11 +469,12 @@ istrue:
     lda #$FF
     bne rest 
 
-;def_word "shr", "shr", 0
-;    jsr spull
-;    lsr tos + 1
-;    ror tos + 0
-;    jmp spush
+;---------------------------------------------------------------------
+def_word "2/", "asr", 0
+    jsr spull
+    lsr tos + 1
+    ror tos + 0
+    jmp spush
 
 ;---------------------------------------------------------------------
 ; minimal indirect thread code
@@ -529,7 +530,7 @@ def_word ":", "colon", 0
     jsr push
 
     ; get the token, at nos
-    jsr tok_
+    jsr token
 
     ;copy size and name
     ldy #0
