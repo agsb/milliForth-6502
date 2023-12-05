@@ -187,11 +187,11 @@ find:
     ldy #0
 @equal:
     lda (nos), y
-    cmp #32         ; space ends name
+    cmp #32         ; space ends token
     beq @done
     ; verify 
     sbc (tos), y    ; 
-    and #$7F    ; 7-bit ascii, also mask flag
+    and #$7F        ; 7-bit ascii, also mask flag
     bne @loop
     ; next
     iny
@@ -287,12 +287,12 @@ tok_:
     tya
     sbc toin + 0
 
-    ; place strlen
+    ; place size
     dec toin + 0
     ldy toin + 0
     sta tib, y    ; store size ahead 
 
-    ; update
+    ; setup token
     sty nos + 0
     lda #>tib
     sta nos + 1
@@ -330,7 +330,7 @@ spull2:
     jsr spull 
 spullnos:
     ldy #(nos - nil)
-    .byte $2c   ; mask ldy
+    .byte $2c   ; mask ldy, nice trick !
 ; pull from data stack
 spull:
     ldy #(tos - nil)
@@ -385,6 +385,7 @@ putchar:
 ;   jmp link_
 ;
 ;---------------------------------------------------------------------
+; [tos] = nos
 def_word "!", "store", 0
 storew:
     jsr spull2
@@ -394,6 +395,7 @@ storew:
     jmp link_
 
 ;---------------------------------------------------------------------
+; tos = [nos]
 def_word "@", "fetch", 0
 fetchw:
     jsr spullnos
@@ -428,6 +430,7 @@ def_word "sp@", "spfetch", 0
     jmp back
 
 ;---------------------------------------------------------------------
+; ( nos tos -- nos + tos )
 def_word "+", "plus", 0
     jsr spull2
     clc
@@ -439,6 +442,7 @@ def_word "+", "plus", 0
     jmp back
 
 ;---------------------------------------------------------------------
+; ( nos tos -- NOT(nos AND tos) )
 def_word "nand", "nand", 0
     jsr spull2
     lda nos + 0
@@ -483,6 +487,7 @@ unnest_:
     jsr pull
 
 next_:
+    ; lnk = [tos]
     ldx #(tos - nil)
     ldy #(lnk - nil)
     jsr pull
@@ -493,7 +498,7 @@ next_:
     bcc jump_
 
 nest_:
-; push into return stack
+    ; push into return stack
     ldx #(ret - nil)
     jsr tospush
 
@@ -505,6 +510,7 @@ link_:
     jmp next_
 
 jump_:
+    ; pull from return stack
     ldx #(ret - nil)
     ldy #(lnk - nil)
     jsr pull
@@ -513,13 +519,11 @@ jump_:
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
     ; save here, to update last
-
     ldx #(dta - nil)
     ldy #(here - nil)
     jsr push
 
     ; update the link field with last
-
     ldx #(here - nil)
     ldy #(last - nil)
     jsr push
