@@ -14,9 +14,21 @@ Two essentially different CPUs, a 16-bit x86 based on complex registers and opco
 
 ## Coding
 
-Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
+This version includes: 
+primitives:
+    @sp, @rp, s@, +, nand, @, !, :, ;, _shr_,
+internals: 
+    spush, spull, rpull, rpush, etc (register mimics)
+    exit, unnest, next, nest, link, jump, (inner interpreter) 
+    compile, find, skip, scan, token, getline, (outer interpreter)
+    _getchar_, _putchar_ (depends on system)
 
-_27/11/2023_ code for 6502 sized to 572 bytes, some errors and ascii-7 checks
+
+### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
+
+_05/12/2023_ code for 6502 sized to 588 bytes, with ascii-7 and shift right.
+
+_27/11/2023_ code for 6502 sized to 572 bytes, correct some errors and include ascii-7 checks
 
 _22/11/2023_ code for 6502 sized to 566 bytes, more good tips from Peter Ferrie <peter.ferrie@gmail.com>
 
