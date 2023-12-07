@@ -122,12 +122,12 @@ error:
 quit:
 
     ; reset data stack
-    ldx #>dsb
-    stx dta + 1
+    ldy #>dsb
+    sty dta + 1
 
     ; reset return stack
-    ldx #>rsb
-    stx ret + 1
+    ldy #>rsb
+    sty ret + 1
 
     ; start at page
     ldy #0
@@ -144,11 +144,18 @@ quit:
     sty state + 0
 
 ;---------------------------------------------------------------------
-find:
+outer:
+
+    ; magic loop
+    lda #<outer
+    sta lnk + 0
+    lda #>outer
+    sta lnk + 1
 
     ; get a token, (nos)
     jsr token
   
+find:
     ; load lastest link
     lda #<last
     sta wrk + 0
@@ -175,7 +182,7 @@ find:
     jsr pull
 
     ; bypass link
-    ldx #(tos - nil)
+    ; ldx #(tos - nil)
     lda #2
     jsr add2w
 
@@ -190,17 +197,18 @@ find:
     cmp #32         ; space ends token
     beq @done
     ; verify 
+    sec
     sbc (tos), y    ; 
     and #$7F        ; 7-bit ascii, also mask flag
     bne @loop
-    ; next
+    ; next char
     iny
     bne @equal
 @done:
     
     ; update 
     tya
-    ldx #(tos - nil)
+    ; ldx #(tos - nil)
     jsr add2w
 
     ; compile or execute
@@ -402,7 +410,7 @@ fetchw:
     ldx #(nos - nil)
     ldy #(tos - nil)
     jsr pull
-    jmp topsh
+    jmp used
 
 ;---------------------------------------------------------------------
 def_word "s@", "statevar", 0 
@@ -411,7 +419,7 @@ def_word "s@", "statevar", 0
     lda #>state
 back:
     sta tos + 1
-topsh:
+used:
     jsr spush
     jmp link_
 
@@ -474,7 +482,7 @@ def_word "2/", "asr", 0
     jsr spull
     lsr tos + 1
     ror tos + 0
-    jmp spush
+    jmp used
 
 ;---------------------------------------------------------------------
 ; minimal indirect thread code
@@ -486,6 +494,8 @@ unnest_:
     ldx #(ret - nil)
     ldy #(tos - nil)
     jsr pull
+
+inner:
 
 next_:
     ; lnk = [tos]
