@@ -127,12 +127,12 @@ quit:
 
     ; reset return stack
     ldy #>rsb
-    sty rte + 1
+    sty ret + 1
 
     ; start at page
-    ldy #FF
+    ldy #0
     sty dta + 0
-    sty rte + 0
+    sty ret + 0
     
     ; clear tib stuff
     sty toin + 0
@@ -146,7 +146,6 @@ quit:
 ;---------------------------------------------------------------------
 outer:
 
-    ; ????
     ; magic loop
     lda #<outer
     sta lnk + 0
@@ -430,9 +429,9 @@ used:
 
 ;---------------------------------------------------------------------
 def_word "rp@", "rpfetch", 0
-    lda rte + 0
+    lda ret + 0
     sta tos + 0
-    lda rte + 1
+    lda ret + 1
     jmp back
 
 ;---------------------------------------------------------------------
