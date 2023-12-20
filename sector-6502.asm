@@ -69,7 +69,7 @@ FLAG_IMM  =  1<<7
 nil:    .word $0 ; reference, do not touch ! 
 lnk:    .word $0 ; link, do not touch !
 dta:    .word $0 ; holds data stack base,
-ret:    .word $0 ; holds return stack base,
+rte:    .word $0 ; holds return stack base
 
 ; default Forth pseudo registers
 tos:    .word $0 ; top
@@ -127,12 +127,12 @@ quit:
 
     ; reset return stack
     ldy #>rsb
-    sty ret + 1
+    sty rte + 1
 
     ; start at page
-    ldy #0
+    ldy #$FF
     sty dta + 0
-    sty ret + 0
+    sty rte + 0
     
     ; clear tib stuff
     sty toin + 0
@@ -146,6 +146,7 @@ quit:
 ;---------------------------------------------------------------------
 outer:
 
+    ; ????
     ; magic loop
     lda #<outer
     sta lnk + 0
@@ -384,18 +385,21 @@ putchar:
 ;---------------------------------------------------------------------
 ; primitives ends with jmp link_
 ;
-;def_word "emit", "emit", 0
-;   jsr spull
-;   lda tos + 0
-;   jsr putchar
-;   jmp link_
-;
-;def_word "key", "key", 0
-;   jsr getchar
-;   sta tos + 0
-;   jsr spush
-;   jmp link_
-;
+
+;---------------------------------------------------------------------
+def_word "emit", "emit", 0
+   jsr spull
+   lda tos + 0
+   jsr putchar
+   jmp link_
+
+;---------------------------------------------------------------------
+def_word "key", "key", 0
+   jsr getchar
+   sta tos + 0
+   jsr spush
+   jmp link_
+
 ;---------------------------------------------------------------------
 ; [tos] = nos
 def_word "!", "store", 0
@@ -429,9 +433,9 @@ used:
 
 ;---------------------------------------------------------------------
 def_word "rp@", "rpfetch", 0
-    lda ret + 0
+    lda rte + 0
     sta tos + 0
-    lda ret + 1
+    lda rte + 1
     jmp back
 
 ;---------------------------------------------------------------------
@@ -495,7 +499,7 @@ def_word "2/", "asr", 0
 def_word "exit", "exit", 0
 unnest_:
     ; pull from return stack
-    ldx #(ret - nil)
+    ldx #(rte - nil)
     ldy #(tos - nil)
     jsr pull
 
@@ -514,7 +518,7 @@ next_:
 
 nest_:
     ; push into return stack
-    ldx #(ret - nil)
+    ldx #(rte - nil)
     jsr tospush
 
 link_:
@@ -526,7 +530,7 @@ link_:
 
 jump_:
     ; pull from return stack
-    ldx #(ret - nil)
+    ldx #(rte - nil)
     ldy #(lnk - nil)
     jsr pull
     jmp (tos)

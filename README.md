@@ -28,7 +28,7 @@ This version includes:
 
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
-_19/12/2023_ code for 6502 sized to 594 bytes, clear some rts errors.
+_19/12/2023_ code for 6502 sized to 692 bytes, include key and emit, clean rts.
 
 _05/12/2023_ code for 6502 sized to 588 bytes, with ascii-7 and aritmetic shift right (2/).
 
