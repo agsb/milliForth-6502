@@ -21,18 +21,18 @@ This version includes:
 
         internals: 
             spush, spull, rpull, rpush, incr, decr, add, etc (register mimics)
-            exit, unnest, next, nest, link, jump, (inner interpreter) 
-            compile, find, token, skip, scan, getline, (outer interpreter)
+            unnest, next, nest, link, jump, (inner interpreter) 
+            compile, find, token, skip, scan, getline, exit (outer interpreter)
             _getchar_, _putchar_ (depends on system, used minimal for emulator )
 ```
 
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
-_19/12/2023_ code for 6502 sized to 692 bytes, include key and emit, clean wrong rts.
+_19/12/2023_ code for 6502 sized to 629 bytes, include key and emit, clean wrong rts.
 
-_05/12/2023_ code for 6502 sized to 588 bytes, include ascii-7 and aritmetic shift right (2/).
+_05/12/2023_ code for 6502 sized to 588 bytes, include names in ascii-7 and aritmetic shift right (2/).
 
-_27/11/2023_ code for 6502 sized to 572 bytes, clear some errors and include ascii-7 checks
+_27/11/2023_ code for 6502 sized to 572 bytes, clear some errors and ascii-7 checks
 
 _22/11/2023_ code for 6502 sized to 566 bytes, more good tips from Peter Ferrie <peter.ferrie@gmail.com>
 
@@ -42,7 +42,7 @@ _20/11/2023_ rebuild the github repo without fork from original milliForth[^1]
 
 _16/11/2023_ code for 6502 sized to 555 bytes. (wrong count !!!! )
 
-_14/11/2023_ code for 6502 sized to 624 bytes.
+_14/11/2023_ code for 6502 sized to 624 bytes, no ascii-7, no key, no emit, no 2/, many errors
 
 ## Language
 
