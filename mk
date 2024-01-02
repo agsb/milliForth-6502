@@ -16,6 +16,8 @@ a)
 
     cp $2.s $2.asm
 
+    sort -k 2 < $2.lbl > $2.lbs
+
     mv rom.bin $2.rom
     mv ram.bin $2.ram
     od --endian=big -x < $2.ram > $2.bhx
@@ -27,8 +29,8 @@ a)
 
 
 x)
-    rm $2.obj $2.dep $2.map $2.lbl $2.lst 
-    rm $2.ram $2.rom $2.out $2.bhx
+    rm $2.obj $2.dep $2.map $2.lbl $2.lbs $2.lst 
+    rm $2.ram $2.rom $2.out $2.bhx $2.asm
     rm out err lst 
     
     ;;

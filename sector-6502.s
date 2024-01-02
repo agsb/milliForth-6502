@@ -1,4 +1,3 @@
-
 ;----------------------------------------------------------------------
 ;   MilliForth for 6502 
 ;
@@ -75,7 +74,7 @@ rte:    .word $0 ; holds return stack base
 tos:    .word $0 ; top
 nos:    .word $0 ; nos
 wrk:    .word $0 ; work
-tmp:    .word $0 ; temp
+tmp:    .word $0 ; temp for hold here while in compile state
 
 ; default Forth variables
 state:  .word $0 ; state
@@ -121,20 +120,22 @@ error:
 ;---------------------------------------------------------------------
 quit:
 
-    ; reset data stack
+    ; stacks grows backwards
+
     ldy #>dsb
+    dey
     sty dta + 1
 
-    ; reset return stack
     ldy #>rsb
+    dey
     sty rte + 1
 
-    ; start at page
     ldy #$FF
     sty dta + 0
     sty rte + 0
     
     ; clear tib stuff
+    ldy #$0
     sty toin + 0
     sty toin + 1
     sty tib + 0
@@ -226,7 +227,22 @@ find:
     jmp next_
 
 ;---------------------------------------------------------------------
-getline_:
+try_:
+    lda tib, y
+    beq newline_    ; if \0 
+    iny
+    eor #32
+    rts
+
+;---------------------------------------------------------------------
+; a page of 254 for buffer, but reserve 3 bytes. (but 72 is enough)
+; no edits, no colapse spcs, no continue between lines
+
+newline_:
+    ; drop rts of try_
+    pla
+    pla
+
     ; leave a space
     ldy #1
 @loop:  
@@ -246,6 +262,9 @@ getline_:
     ;   cpy #254
     ;   beq @ends   ; leave ' \0'
     bne @loop
+;
+; must panic if y eq \0
+; or
 @endline:
     ; grace 
     lda #32
@@ -256,22 +275,6 @@ getline_:
     sta tib, y
     ; reset line
     sta toin + 1
-    rts
-
-;---------------------------------------------------------------------
-try_:
-    lda tib, y
-    beq newline    ; if \0 
-    iny
-    eor #32
-    rts
-
-newline:
-    ; drop skip scan
-    pla
-    pla
-    ; load a line
-    jsr getline_
 
 token:
     ; last position on tib
@@ -313,6 +316,13 @@ token:
     rts
 
 ;---------------------------------------------------------------------
+; copy a word from abs+x into abs+y
+cpyw:
+    lda nil + 0, x
+    sta nil + 0, y
+    lda nil + 1, x
+    sta nil + 1, y
+    rts
 
 ; increment a word in page zero, offset by X
 incw:
@@ -435,6 +445,7 @@ used:
 def_word "rp@", "rpfetch", 0
     lda rte + 0
     sta tos + 0
+    ;
     lda rte + 1
     jmp back
 
@@ -442,6 +453,7 @@ def_word "rp@", "rpfetch", 0
 def_word "sp@", "spfetch", 0
     lda dta + 0
     sta tos + 0
+    ;
     lda dta + 1
     jmp back
 
@@ -453,6 +465,7 @@ def_word "+", "plus", 0
     lda nos + 0
     adc tos + 0
     sta tos + 0
+    ;
     lda nos + 1
     adc tos + 1
     jmp back
@@ -465,6 +478,7 @@ def_word "nand", "nand", 0
     and tos + 0
     eor #$FF
     sta tos + 0
+    ;
     lda nos + 1
     and tos + 1
     eor #$FF
@@ -513,7 +527,7 @@ next_:
 
     ; is a primitive ? 
     lda lnk + 1
-    cmp #>init    ; magic high byte of init:
+    cmp #>init    ; magic high byte page of init:
     bcc jump_
 
 nest_:
@@ -537,15 +551,20 @@ jump_:
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
-    ; save here, to update last
-    ldx #(dta - nil)
-    ldy #(here - nil)
-    jsr push
+    ; save here
+    ldx #(here - nil)
+    ldy #(tmp - nil)
+    jsr cpyw
 
     ; update the link field with last
+    ldx #(last - nil)
+    ldy #(here - nil)
+    jsr cpyw
+
+    ; update here
+    lda #$2
     ldx #(here - nil)
-    ldy #(last - nil)
-    jsr push
+    jsr add2w
 
     ; get the token, at nos
     jsr token
@@ -561,7 +580,7 @@ def_word ":", "colon", 0
     bne @loop
 @endname:
 
-    ; update here
+    ; update here 
     tya
     ldx #(here - nil)
     jsr add2w
@@ -578,9 +597,9 @@ def_word ";", "semis", FLAG_IMM
 
     ; update last
 
-    ldx #(dta - nil)
+    ldx #(tmp - nil)
     ldy #(last - nil)
-    jsr pull
+    jsr cpyw
 
     ; state is 'interpret'
     lda #1
@@ -644,7 +663,6 @@ rsb:
 .res SIZES, $0
 dsb:            
 
-void: .word $0
 ; for anything above is not a primitive
 init:   
 

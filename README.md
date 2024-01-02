@@ -22,11 +22,13 @@ This version includes:
         internals: 
             spush, spull, rpull, rpush, incr, decr, add, etc (register mimics)
             unnest, next, nest, link, jump, (inner interpreter) 
-            compile, find, token, skip, scan, getline, exit (outer interpreter)
+            quit, token, skip, scan, newline, find, compile, execute, exit (outer interpreter)
             _getchar_, _putchar_ (depends on system, used minimal for emulator )
 ```
 
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
+
+_02/01/2024_ code for 6502 sized to 647 bytes, still crashes by wrong jsr/jmp.
 
 _19/12/2023_ code for 6502 sized to 629 bytes, include key and emit, clean wrong rts.
 
@@ -39,8 +41,6 @@ _22/11/2023_ code for 6502 sized to 566 bytes, more good tips from Peter Ferrie 
 _20/11/2023_ code for 6502 sized to 590 bytes, some good tips from Peter Ferrie <peter.ferrie@gmail.com>
 
 _20/11/2023_ rebuild the github repo without fork from original milliForth[^1]
-
-_16/11/2023_ code for 6502 sized to 555 bytes. (wrong count !!!! )
 
 _14/11/2023_ code for 6502 sized to 624 bytes, no ascii-7, no key, no emit, no 2/, many errors
 
@@ -60,8 +60,8 @@ The milliForth for 6502 have some changes:
 - uses 32 bytes of _page zero_;
 - depends on spaces before and after a word in tib;
 - uses 7-bit ASCII characters;
-- still no include a classic _'OK '_;
-- still no include a destructive backspace routine; 
+- still no include a _'OK '_;
+- still no include a backspace routine; 
 
 ## Use
 
