@@ -17,7 +17,7 @@ Two essentially different CPUs, a 16-bit x86 based on complex registers and opco
 This version includes: 
 ```
         primitives:
-            sp@, rp@, s@, +, nand, @, !, :, ;, 0#, key, emit, 2/,
+            sp@, rp@, s@, +, nand, @, !, :, ;, 0=, key, emit, 2/,
 
         internals: 
             spush, spull, rpull, rpush, incr, decr, add, etc (register mimics)
@@ -27,6 +27,8 @@ This version includes:
 ```
 
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
+
+_09/01/2024_ code for 6502 sized to 654 bytes, stack goes forward, still crashes.
 
 _02/01/2024_ code for 6502 sized to 647 bytes, still crashes by wrong jsr/jmp.
 
@@ -56,7 +58,8 @@ The milliForth for 6502 have some changes:
 - Only _IMMEDIATE_ flag used;
 - Only update _latest_ at end of word definition, so the word is hidden while defined;
 - Uses _Minimal Thread Indirect Code_ as inner dispatcher[^4];
-- sizes of _tib, data stack, return stack_ are 256 bytes [^5];
+- sizes of _tib, data stack, return stack_ are 256 bytes [^5], code start at
+  $500 bytes;
 - uses 32 bytes of _page zero_;
 - depends on spaces before and after a word in tib;
 - uses 7-bit ASCII characters;
