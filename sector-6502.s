@@ -17,6 +17,9 @@
 ;   data and return stacks and tib are 256 bytes 
 ;   only immediate flag used as $80, no hide, no compile, no extras
 ;
+;   the stacks grows FORWARD, push increments, pull decrements
+;   why ? because dictionary goes forward, saves bytes.
+;
 ;   Forth-1994:
 ;   FALSE is $0000
 ;   TRUE  is $FFFF
@@ -360,12 +363,13 @@ spull:
     ldy #(tos - nil)
     ldx #(dta - nil)
 pull:
+    jsr decw
     lda (nil, x)    
     sta nil + 0, y   
-    jsr incw        
+    jsr decw        
     lda (nil, x)    
     sta nil + 1, y  
-    jmp incw
+    jmp decw 
 
 ;---------------------------------------------------------------------
 ; push a word 
@@ -377,13 +381,12 @@ spush:
 tospush:
     ldy #(tos - nil)
 push:
-    jsr decw
-    lda nil + 1, y
-    sta (nil, x)
-    jsr decw
     lda nil + 0, y
     sta (nil, x)
-    rts
+    jsr incw
+    lda nil + 1, y
+    sta (nil, x)
+    jmp incw
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
@@ -516,13 +519,13 @@ def_word "exit", "exit", 0
 inner:
 
 unnest_:
-    ; pull from return stack
+    ; pull tos = [rte], rte+2
     ldx #(rte - nil)
     ldy #(tos - nil)
     jsr pull
 
 next_:
-    ; lnk = [tos]
+    ; lnk = [tos], tos+2
     ldx #(tos - nil)
     ldy #(lnk - nil)
     jsr pull
@@ -613,6 +616,9 @@ def_word ";", "semis", FLAG_IMM
     lda #>unnest_
     sta tos + 1
 
+    jmp compile
+
+def_word ",", "comma",
 compile:
     
     ldx #(here - nil)
