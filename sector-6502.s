@@ -18,7 +18,8 @@
 ;   only immediate flag used as $80, no hide, no compile, no extras
 ;
 ;   the stacks grows FORWARD, push increments, pull decrements
-;   why ? because dictionary goes forward, saves bytes.
+;   why ? because dictionary goes forward, 
+;   and could use same code to save bytes.
 ;
 ;   Forth-1994:
 ;   FALSE is $0000
@@ -94,6 +95,20 @@ here:   .word $0 ; next free cell
 ;----------------------------------------------------------------------
 .segment "CODE" 
 
+* = $200
+
+; terminal input buffer, 256 bytes
+tib:
+.res SIZES, $0   
+
+; return stack base, 128 words deep
+rsb:            
+.res SIZES, $0
+
+; data stack base, 128 words deep
+dsb:            
+.res SIZES, $0
+
 ;---------------------------------------------------------------------
 main:
 
@@ -123,22 +138,18 @@ error:
 ;---------------------------------------------------------------------
 quit:
 
-    ; stacks grows backwards
+    ; stacks grows forwards
 
     ldy #>dsb
-    dey
     sty dta + 1
 
     ldy #>rsb
-    dey
     sty rte + 1
 
-    ldy #$FF
-    sty dta + 0
-    sty rte + 0
-    
     ; clear tib stuff
     ldy #$0
+    sty dta + 0
+    sty rte + 0
     sty toin + 0
     sty toin + 1
     sty tib + 0
@@ -148,9 +159,9 @@ quit:
     sty state + 0
 
 ;---------------------------------------------------------------------
+; the outer loop
 outer:
 
-    ; ????
     ; magic loop
     lda #<outer
     sta lnk + 0
@@ -223,6 +234,10 @@ find:
     lda state + 0   ; executing ?
     bne @execw
 
+; zzzz how does return ? need a branch or jump to outer
+
+@compw:
+
     jmp compile
 
 @execw:
@@ -266,7 +281,7 @@ newline_:
     ;   beq @ends   ; leave ' \0'
     bne @loop
 ;
-; must panic if y eq \0
+; must panic if y eq \0 ?
 ; or
 @endline:
     ; grace 
@@ -279,6 +294,7 @@ newline_:
     ; reset line
     sta toin + 1
 
+;---------------------------------------------------------------------
 token:
     ; last position on tib
     ldy toin + 1
@@ -311,7 +327,7 @@ token:
     ldy toin + 0
     sta tib, y    ; store size ahead 
 
-    ; setup token
+    ; setup token, pass pointer
     sty nos + 0
     lda #>tib
     sta nos + 1
@@ -490,7 +506,7 @@ def_word "nand", "nand", 0
     jmp back
 
 ;---------------------------------------------------------------------
-def_word "0#", "zeroq", 0
+def_word "0=", "zeroq", 0
     jsr spull
     ; lda tos + 1
     ora tos + 0
@@ -616,11 +632,16 @@ def_word ";", "semis", FLAG_IMM
     lda #>unnest_
     sta tos + 1
 
-    jmp compile
+    ; jsr spush
 
-def_word ",", "comma",
+    ; jmp compile
+
+    ; def_word ",", "comma",
+
 compile:
     
+    ; jsr spull
+
     ldx #(here - nil)
     jsr tospush
 
@@ -656,21 +677,8 @@ okey:
 
 .endif
 
-
 .align $100
-
-; terminal input buffer, 256 bytes
-tib:
-.res SIZES, $0   
-
-; return stack base, 128 words deep
-.res SIZES, $0
-rsb:            
-
-; data stack base, 128 words deep
-.res SIZES, $0
-dsb:            
-
 ; for anything above is not a primitive
 init:   
+
 
