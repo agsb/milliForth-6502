@@ -67,8 +67,9 @@ FLAG_IMM  =  1<<7
 ; default pseudo registers
 nil:    .word $0 ; reference, do not touch ! 
 lnk:    .word $0 ; link, do not touch !
-dta:    .word $0 ; holds data stack base,
-rte:    .word $0 ; holds return stack base
+
+dta:    .byte $7F ; holds data stack base 64 words
+rte:    .byte $FF ; holds return stack base 64 words
 
 ; default Forth pseudo registers
 tos:    .word $0 ; top
@@ -91,6 +92,94 @@ here:   .word $0 ; next free cell
 ;----------------------------------------------------------------------
 .segment "CODE" 
 
+* = $200
+
+; terminal input buffer, 256 bytes
+tib:
+.res SIZES, $0   
+
+; stack base, 128 words deep, half data, half return
+.res SIZES, $0
+stk:            
+
+;----------------------------------------------------------------------
+
+opush:
+    dey
+    lda tos + 0
+    sta stk, y
+    dey
+    lda tos + 1
+    sta stk, y
+    rts
+
+opull:
+    lda stk, y
+    sta tos + 0
+    iny
+    lda stk, y
+    sta tos + 1
+    iny
+    rts
+
+rpush:
+    ldy rte
+    jsr opush
+    sty rte
+    rts
+
+rpull:    
+    ldy rte
+    jsr opull
+    sty rte
+    rts
+    
+spush:
+    ldy dta
+    jsr opush
+    sty dta
+    rts
+
+spull:    
+    ldy dta
+    jsr opull
+    sty dta
+    rts
+    
+copys:
+    lda tos
+    sta nos
+    lda tos + 1
+    sta nos + 1
+    rts
+
+spull2:
+    ldy dta
+    jsr opull
+    jsr copys
+    jsr opull
+    sty dta
+    rts
+
+; add a byte to a word in page zero. offset by X
+add2w:
+    clc
+    adc nil + 0, x
+    sta nil + 0, x
+    bcc @noinc
+    inc nil + 1, x
+@noinc:
+    rts
+
+;---------------------------------------------------------------------
+; for lib6502  emulator
+getchar:
+    lda $E000
+
+putchar:
+    sta $E000
+    rts
+
 ;---------------------------------------------------------------------
 main:
 
@@ -106,12 +195,6 @@ main:
     lda #>init
     sta here + 1
     
-    ; that does the trick
-    lda #<nil
-    sta nil + 0
-    lda #>nil
-    sta nil + 1
-
 error:
 
     lda #13
@@ -122,18 +205,12 @@ quit:
 
     ; stacks grows backwards
 
-    ldy #>dsb
-    dey
-    sty dta + 1
-
-    ldy #>rsb
-    dey
-    sty rte + 1
+    ldy #$7F
+    sty dta 
 
     ldy #$FF
-    sty dta + 0
-    sty rte + 0
-    
+    sty rte 
+
     ; clear tib stuff
     ldy #$0
     sty toin + 0
@@ -178,15 +255,18 @@ find:
     lda wrk + 1
     sta tos + 1
     
-    ; wrk = [tos]
-    ldx #(tos - nil) ; from 
-    ldy #(wrk - nil) ; into
-    jsr pull
+    ; wrk = [tos] ?
+    ldy #$0
+    lda (tos), y
+    sta wrk
+    iny
+    lda (tos), y
+    sta wrk + 1
 
     ; bypass link
-    ; ldx #(tos - nil)
+    ldx #(tos - nil)
     lda #2
-    jsr addw
+    jsr add2w
 
     ; save the flag at size byte
     lda tos + 0
@@ -210,8 +290,8 @@ find:
     
     ; update 
     tya
-    ; ldx #(tos - nil)
-    jsr addw
+    ldx #(tos - nil)
+    jsr add2w
 
     ; compile or execute
     lda wrk + 0     ; immediate ? 
@@ -316,85 +396,6 @@ token:
     rts
 
 ;---------------------------------------------------------------------
-; copy a word from pgz+x into pgz+y
-cpyw:
-    lda nil + 0, x
-    sta nil + 0, y
-    lda nil + 1, x
-    sta nil + 1, y
-    rts
-
-; increment a word in page zero, offset by X
-incw:
-    lda #1
-; add a byte to a word in page zero. offset by X
-addw:
-    clc
-    adc nil + 0, x
-    sta nil + 0, x
-    bcc @noinc
-    inc nil + 1, x
-@noinc:
-    rts
-
-; decrement a word in page zero. offset by X
-decw:
-    lda nil + 0, x
-    bne @nodec
-    dec nil + 1, x
-@nodec:
-    dec nil + 0, x
-    rts
-
-;---------------------------------------------------------------------
-; pull a word 
-; from a page zero address indexed by X
-; into a absolute page zero address indexed by y
-spull2:
-    jsr spull 
-spullnos:
-    ldy #(nos - nil)
-    .byte $2c   ; mask ldy, nice trick !
-; pull from data stack
-spull:
-    ldy #(tos - nil)
-    ldx #(dta - nil)
-pull:
-    lda (nil, x)    
-    sta nil + 0, y   
-    jsr incw        
-    lda (nil, x)    
-    sta nil + 1, y  
-    jmp incw
-
-;---------------------------------------------------------------------
-; push a word 
-; from an absolute page zero address indexed by Y
-; into a page zero address indexed by X
-; push into data stack
-spush:
-    ldx #(dta - nil)
-tospush:
-    ldy #(tos - nil)
-push:
-    jsr decw
-    lda nil + 1, y
-    sta (nil, x)
-    jsr decw
-    lda nil + 0, y
-    sta (nil, x)
-    rts
-
-;---------------------------------------------------------------------
-; for lib6502  emulator
-getchar:
-    lda $E000
-
-putchar:
-    sta $E000
-    rts
-
-;---------------------------------------------------------------------
 ; primitives ends with jmp link_
 ;
 
@@ -417,19 +418,25 @@ def_word "key", "key", 0
 def_word "!", "store", 0
 storew:
     jsr spull2
-    ldx #(tos - nil)
-    ldy #(nos - nil)
-    jsr push
+    lda tos
+    ldy #$0
+    sta (nos), y
+    lda tos + 1
+    iny
+    sta (nos), y
     jmp link_
 
 ;---------------------------------------------------------------------
 ; tos = [nos]
 def_word "@", "fetch", 0
 fetchw:
-    jsr spullnos
-    ldx #(nos - nil)
-    ldy #(tos - nil)
-    jsr pull
+    jsr spull2
+    ldy #$0
+    lda (nos), y
+    sta tos
+    iny
+    lda (nos), y
+    sta tos + 1
     jmp used
 
 ;---------------------------------------------------------------------
@@ -517,15 +524,20 @@ inner:
 
 unnest_:
     ; pull from return stack
-    ldx #(rte - nil)
-    ldy #(tos - nil)
-    jsr pull
+    jsr rpull
 
 next_:
     ; lnk = [tos]
-    ldx #(tos - nil)
-    ldy #(lnk - nil)
-    jsr pull
+    ldy #0
+    lda (tos), y
+    sta lnk
+    iny
+    lda (tos), y
+    sta lnk + 1
+
+    ; tos + 2
+    lda #2
+    jsr add2w
 
     ; is a primitive ? 
     lda lnk + 1
@@ -533,9 +545,7 @@ next_:
     bcc jump_
 
 nest_:
-    ; push into return stack
-    ldx #(rte - nil)
-    jsr tospush
+    jsr rpush
 
 link_:
     lda lnk + 0
@@ -546,27 +556,31 @@ link_:
 
 jump_:
     ; pull from return stack
+    jsr copys
+    ; zzzz
     ldx #(rte - nil)
     ldy #(lnk - nil)
-    jsr pull
+    jsr spull
     jmp (tos)
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
     ; save here
-    ldx #(here - nil)
-    ldy #(tmp - nil)
-    jsr cpyw
+    ldy here
+    sty tmp
+    ldy here + 1
+    sty tmp + 1
 
     ; update the link field with last
-    ldx #(last - nil)
-    ldy #(here - nil)
-    jsr cpyw
+    ldy last
+    sty here
+    ldy last + 1
+    sty here + 1
 
     ; update here
     lda #$2
     ldx #(here - nil)
-    jsr addw
+    jsr add2w
 
     ; get the token, at nos
     jsr token
@@ -585,7 +599,7 @@ def_word ":", "colon", 0
     ; update here 
     tya
     ldx #(here - nil)
-    jsr addw
+    jsr add2w
 
     ; state is 'compile'
 
@@ -599,9 +613,10 @@ def_word ";", "semis", FLAG_IMM
 
     ; update last
 
-    ldx #(tmp - nil)
-    ldy #(last - nil)
-    jsr cpyw
+    ldy tmp
+    sty last
+    ldy tmp + 1
+    sty last + 1
 
     ; state is 'interpret'
     lda #1
@@ -613,16 +628,25 @@ def_word ";", "semis", FLAG_IMM
     lda #>unnest_
     sta tos + 1
 
+    jsr spush
+
+    jmp compile
+
+def_word ",", "comma",
 compile:
     
-    ldx #(here - nil)
-    jsr tospush
+    jsr spull
+    lda tos
+    ldy #0
+    sta (here), y
+    lda tos + 1
+    iny 
+    sta (here), y
 
+    ; zzz here + 2
     jmp link_
 
 ;---------------------------------------------------------------------
-ends:
-
 ; debug stuff
 .if 0
 
@@ -650,21 +674,6 @@ okey:
 
 .endif
 
-
-.align $100
-
-; terminal input buffer, 256 bytes
-tib:
-.res SIZES, $0   
-
-; return stack base, 128 words deep
-.res SIZES, $0
-rsb:            
-
-; data stack base, 128 words deep
-.res SIZES, $0
-dsb:            
-
-; for anything above is not a primitive
-init:   
+;---------------------------------------------------------------------
+init:
 
