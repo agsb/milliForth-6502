@@ -14,15 +14,10 @@
 ;   Focus in size not performance.
 ;
 ;   Changes:
+
 ;   data and return stacks and tib are 256 bytes 
+
 ;   only immediate flag used as $80, no hide, no compile, no extras
-;
-;   2024@
-;   the stacks now grows FORWARD, 
-;   push increments, pull decrements
-;
-;   why ? because dictionary goes forward, 
-;   and could use same code to save bytes.
 ;
 ;   6502 is a byte processor, no need 'pad' at end of even names
 ;
@@ -62,11 +57,26 @@ makelabel "", label
 ;----------------------------------------------------------------------
 ; alias
 
+; cell size
 CELL   =  2     ; 16 bits
 
+; highlander
+FLAG_IMM  =  1<<7
+
+; stack size
 SIZES  = $100
 
-FLAG_IMM  =  1<<7
+; terminal input buffer, 256 bytes
+tib = $0200
+; .res SIZES, $0   
+
+; return stack base, 128 words deep
+rsb = $03FF
+; .res SIZES, $0
+
+; data stack base, 128 words deep
+dsb = $04FF 
+; .res SIZES, $0
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
@@ -82,7 +92,7 @@ rte:    .word $0 ; holds return stack base
 tos:    .word $0 ; top
 nos:    .word $0 ; nos
 wrk:    .word $0 ; work
-temp:    .word $0 ; temp for hold here while in compile state
+temp:   .word $0 ; temp for hold here while in compile state
 
 ; default Forth variables
 state:  .word $0 ; state
@@ -98,25 +108,10 @@ here:   .word $0 ; next free cell
 ;.segment "VECTORS" 
 ; no boot code
 
-
-;---------------------------------------------------------------------
-; 
-; terminal input buffer, 256 bytes
-tib = $0200
-; .res SIZES, $0   
-
-; return stack base, 128 words deep
-rsb = $0300
-; .res SIZES, $0
-
-; data stack base, 128 words deep
-dsb = $0400 
-; .res SIZES, $0
-
 ;----------------------------------------------------------------------
 .segment "CODE" 
 ;
-; leave page zero, stacks and buffer
+; leave space for page zero, hard stack, buffer and forth stacks
 ;
 * = $500
 
@@ -134,7 +129,7 @@ main:
     lda #>init
     sta here + 1
     
-    ; a self pointer
+    ; self pointer
     lda #<nil
     sta nil + 0
     lda #>nil
@@ -149,18 +144,19 @@ error:
 ;---------------------------------------------------------------------
 quit:
 
-    ; stacks grows forwards
+    ; stacks grows downwards
     ldy #>dsb
     sty dta + 1
     ldy #>rsb
     sty rte + 1
 
     ; start stacks forward
-    ldy #$0
+    ldy #$FF
     sty dta + 0
     sty rte + 0
 
     ; clear tib stuff
+    ldy #$0
     sty toin + 0
     sty toin + 1
     sty tib + 0
@@ -204,14 +200,10 @@ find:
     sta tos + 1
     
     ; get that link, wrk = [tos]
+    ; bypass this link tos+2
     ldx #(tos - nil) ; from 
     ldy #(wrk - nil) ; into
     jsr pull
-
-    ; bypass this link
-    ; ldx #(tos - nil)
-    lda #2
-    jsr addw
 
     ; save the flag at size byte
     lda tos + 0
@@ -237,7 +229,7 @@ find:
     
     ; update 
     tya
-    ; ldx #(tos - nil)
+    ; implict ldx #(tos - nil)
     jsr addw
 
     ; compile or execute
@@ -301,9 +293,10 @@ newline_:
     lda #32
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
+
     ; reset line
     ldy #0      
-    sta toin + 1
+    sty toin + 1
     ; mark end of line
     ; iny
     ; sta tib, y
@@ -331,14 +324,14 @@ token:
     dey
     sty toin + 1 
 
-    ; strlen
+    ; what size
     sec
     tya
     sbc toin + 0
 
-    ; place size
-    dec toin + 0
+    ; keep size
     ldy toin + 0
+    dey
     sta tib, y    ; store size ahead 
 
     ; setup token, pass pointer
@@ -392,13 +385,12 @@ spull:
     ldx #(dta - nil)
 
 pull:
-    jsr decw
     lda (nil, x)    
-    sta nil + 1, y   
-    jsr decw        
+    sta nil + 0, y   
+    jsr incw        
     lda (nil, x)    
-    sta nil + 0, y  
-    jmp decw 
+    sta nil + 1, y  
+    jmp incw 
 
 ; pull from return stack
 rpull:
@@ -419,12 +411,13 @@ tpush:
     ldy #(tos - nil)
 
 push:
-    lda nil + 0, y
-    sta (nil, x)
-    jsr incw
+    jsr decw
     lda nil + 1, y
     sta (nil, x)
-    jmp incw
+    jsr decw
+    lda nil + 0, y
+    sta (nil, x)
+    rts 
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
@@ -433,10 +426,11 @@ getchar:
 
 putchar:
     sta $E000
+
     rts
 
 ;---------------------------------------------------------------------
-; primitives ends with jmp link_
+; all primitives ends with jmp link_
 ;
 
 ;---------------------------------------------------------------------
@@ -456,6 +450,7 @@ def_word "key", "key", 0
 ; [tos] = nos
 def_word "!", "store", 0
 storew:
+; zzzz WRONG by push decw
     jsr spull2
     ldx #(tos - nil)
     ldy #(nos - nil)
@@ -518,13 +513,13 @@ def_word "nand", "nand", 0
     and tos + 0
     eor #$FF
     sta tos + 0
-    ;
     lda nos + 1
     and tos + 1
     eor #$FF
     jmp back
 
 ;---------------------------------------------------------------------
+; test if tos == \0
 def_word "0=", "zeroq", 0
     jsr tspull
     ; lda tos + 1, implicit
@@ -540,6 +535,7 @@ istrue:
     bne rest 
 
 ;---------------------------------------------------------------------
+; shift right
 def_word "2/", "asr", 0
     jsr tspull
     lsr tos + 1
@@ -560,8 +556,8 @@ unnest_:
 
 next_:
     ; lnk = [tos], tos+2
-    ldx #(tos - nil)
     ldy #(lnk - nil)
+    ldx #(tos - nil)
     jsr pull
 
     ; is a primitive ? 
