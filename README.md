@@ -28,6 +28,8 @@ This version includes:
 
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
+_10/01/2024_ code for 6502 sized to 627 bytes, turn explicit copy from into, still crashes.
+
 _09/01/2024_ code for 6502 sized to 654 bytes, stack goes forward, still crashes.
 
 _02/01/2024_ code for 6502 sized to 647 bytes, still crashes by wrong jsr/jmp.
