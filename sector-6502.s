@@ -135,6 +135,12 @@ main:
     lda #>nil
     sta nil + 1
 
+    ; stacks grows downwards
+    ldy #>dsb
+    sty dta + 1
+    ldy #>rsb
+    sty rte + 1
+
 ;---------------------------------------------------------------------
 error:
 
@@ -144,19 +150,13 @@ error:
 ;---------------------------------------------------------------------
 quit:
 
-    ; stacks grows downwards
-    ldy #>dsb
-    sty dta + 1
-    ldy #>rsb
-    sty rte + 1
-
     ; start stacks forward
     ldy #$FF
     sty dta + 0
     sty rte + 0
 
     ; clear tib stuff
-    ldy #$0
+    iny
     sty toin + 0
     sty toin + 1
     sty tib + 0
@@ -200,14 +200,14 @@ find:
     sta tos + 1
     
     ; get that link, wrk = [tos]
-    ; bypass this link tos+2
+    ; bypass the link tos+2
     ldx #(tos - nil) ; from 
     ldy #(wrk - nil) ; into
     jsr pull
 
     ; save the flag at size byte
     lda tos + 0
-    sta wrk + 0
+    pha
 
     ; compare words
     ldy #0
@@ -227,14 +227,14 @@ find:
     bne @equal
 @done:
     
-    ; update 
+    ; update tos
     tya
     ; implict ldx #(tos - nil)
     jsr addw
 
     ; compile or execute
-    lda wrk + 0     ; immediate ? 
-    bmi @execw      ; if < 0
+    pla             ; immediate ? 
+    bmi @execw      ; if < 0 bit 7 set
 
     lda state + 0   ; executing ?
     bne @execw
@@ -265,41 +265,38 @@ newline_:
     ; drop rts of try_
     pla
     pla
-
     ; leave a space
     ldy #1
 @loop:  
     jsr getchar
     cmp #10         ; \n ?
     beq @endline
+    ;
+    ;   cmp #13     ; \r ?
+    ;   beq @endline
+    ;
+    ; clear to start of line
     ;   cmp #15     ; \u ?
     ;   beq 
-    ;   cmp #13     ; \r ?
-    ;   beq 
-    ;   cmp #8      ; \b ?
-    ;   bne @puts
-    ;   dey
-    ;   jmp @loop
+    ;   jmp @fill
+    ;
 @puts:
     and #$7F        ; 7-bit ascii
     sta tib, y
     iny
     bne @loop
 ; must panic if y eq \0 ?
-@fill:
 ; or
 @endline:
     ; grace 
     lda #32
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
-
-    ; reset line
-    ldy #0      
-    sty toin + 1
     ; mark end of line
-    ; iny
-    ; sta tib, y
+    lda #0
+    iny
+    sta tib, y
+    sta toin + 1
 
 ;---------------------------------------------------------------------
 token:
@@ -324,7 +321,7 @@ token:
     dey
     sty toin + 1 
 
-    ; what size
+    ; strlen
     sec
     tya
     sbc toin + 0
@@ -421,6 +418,7 @@ push:
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
+; does echo
 getchar:
     lda $E000
 
@@ -450,11 +448,14 @@ def_word "key", "key", 0
 ; [tos] = nos
 def_word "!", "store", 0
 storew:
-; zzzz WRONG by push decw
     jsr spull2
     ldx #(tos - nil)
     ldy #(nos - nil)
-    jsr push
+    lda nil + 0, y
+    sta (nil, x)
+    jsr incw
+    lda nil + 1, y
+    sta (nil, x)
     jmp link_
 
 ;---------------------------------------------------------------------
@@ -584,7 +585,7 @@ jump_:
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
-    ; save here
+    ; save here 
     lda here + 0
     sta temp + 0
     lda here + 1
@@ -619,7 +620,7 @@ def_word ":", "colon", 0
 
     ; update here 
     tya
-    ; ldx #(here - nil)
+    ; implicit ldx #(here - nil)
     jsr addw
 
     ; state is 'compile'
@@ -643,7 +644,7 @@ def_word ";", "semis", FLAG_IMM
     lda #1
     sta state + 0
 
-    ; compounds ends with 'unnest'
+    ; compounds words must ends with 'unnest'
     lda #<unnest_
     sta tos + 0
     lda #>unnest_
