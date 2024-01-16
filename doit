@@ -1,10 +1,12 @@
 #!/usr/bin/bash
 
-DEFAULT=300
+# load address
+
+LOADT=300
 
 sh mk x $1
 
 sh mk a $1
 
-run6502 -l $DEFAULT $1.out -R $DEFAULT -M E000 -X 0 -c -d $DEFAULT +1000 | tee a
+run6502 -l $LOADT $1.out -R $LOADT -M E000 -X 0 -c -d $LOADT +300 | tee a
 

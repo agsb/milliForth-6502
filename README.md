@@ -26,9 +26,11 @@ This version includes:
             _getchar_, _putchar_ (depends on system, used minimal for emulator )
 ```
 
+
+
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
-_16/01/2024_ code for 6502 sized to 615 bytes, review state and use hard stack, still crashes.
+_16/01/2024_ code for 6502 sized to 612 bytes, review and reorder, need loop end-of-find.
 
 _11/01/2024_ code for 6502 sized to 632 bytes, refine ( pull, push, copy ), still crashes.
 
@@ -60,17 +62,31 @@ For Forth language primer see [Starting Forth](https://www.forth.com/starting-fo
 
 The milliForth for 6502 have some changes:
 
-- Does not use _hardware stack_ as Forth stack;
-- Only _IMMEDIATE_ flag used;
-- Only update _latest_ at end of word definition, so the word is hidden while defined;
-- Uses _Minimal Thread Indirect Code_ as inner dispatcher[^4];
-- sizes of _tib, data stack, return stack_ are 256 bytes [^5], code start at
-  $500 bytes;
+- does not use _hardware stack_ as Forth stack;
+- only _IMMEDIATE_ flag used;
+- only update _latest_ at end of word definition, so the word is hidden while defined;
+- redefine a word does not changes at previous uses;
+- uses _Minimal Thread Indirect Code_ as inner dispatcher[^4];
+- the _tib, locals, data stack, return stack_ at same page ($200) [^5];
 - uses 32 bytes of _page zero_;
 - depends on spaces before and after a word in tib;
 - uses 7-bit ASCII characters;
 - still no include a _'OK '_;
 - still no include a backspace routine; 
+- still no include a empty line routine; 
+
+### Memory
+
+```
+    $000    page zero       ; cpu reserved
+    $100    hardware stack  ; cpu reserved
+    $200    TIB             ; terminal input buffer, 80 bytes
+    $250    Locals          ; reserved for locals, 16 cells
+    $2DC    data stack      ; data stack, 36 cells
+    $2FF    return stack    ; return stack, 36 cells
+    $300    _main_          ; start of Forth
+    $500    _init_          ; start of compose dictionary
+```
 
 ## Use
 

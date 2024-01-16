@@ -1,0 +1,824 @@
+ca65 V2.19 - Git 7979f8a41
+Main file   : main.s
+Current file: main.s
+
+000000r 1               ;----------------------------------------------------------------------
+000000r 1               ;   MilliForth for 6502
+000000r 1               ;
+000000r 1               ;   original for the 6502, by Alvaro G. S. Barcellos, 2023
+000000r 1               ;
+000000r 1               ;   https://github.com/agsb
+000000r 1               ;   see the disclaimer file in this repo for more information.
+000000r 1               ;
+000000r 1               ;   SectorForth and MilliForth was made for x86 arch
+000000r 1               ;   and uses full 16-bit registers
+000000r 1               ;
+000000r 1               ;   The way at 6502 is use a page zero and lots of lda/sta bytes
+000000r 1               ;
+000000r 1               ;   Focus in size not performance.
+000000r 1               ;
+000000r 1               ;   Changes:
+000000r 1               
+000000r 1               ;   data and return stacks and tib are 256 bytes
+000000r 1               
+000000r 1               ;   only immediate flag used as $80, no hide, no compile, no extras
+000000r 1               ;
+000000r 1               ;   6502 is a byte processor, no need 'pad' at end of even names
+000000r 1               ;
+000000r 1               ;   As Forth-1994: ; FALSE is $0000 ; TRUE  is $FFFF ;
+000000r 1               ;
+000000r 1               ;----------------------------------------------------------------------
+000000r 1               ; for ca65
+000000r 1               ;
+000000r 1               .p02
+000000r 1               .feature c_comments
+000000r 1               .feature string_escapes
+000000r 1               .feature org_per_seg
+000000r 1               .feature dollar_is_pc
+000000r 1               .feature pc_assignment
+000000r 1               
+000000r 1               ;---------------------------------------------------------------------
+000000r 1               ; label for primitives
+000000r 1               .macro makelabel arg1, arg2
+000000r 1               .ident (.concat (arg1, arg2)):
+000000r 1               .endmacro
+000000r 1               
+000000r 1               H0000 = 0
+000000r 1               hcount .set 0
+000000r 1               
+000000r 1               ; header for primitives
+000000r 1               ; the entry point for dictionary is fs_~name~
+000000r 1               ; the entry point for code is ~name~
+000000r 1               .macro def_word name, label, flag
+000000r 1               ;this = *
+000000r 1               makelabel "fs_", label
+000000r 1                   .ident(.sprintf("H%04X", hcount + 1)) = *
+000000r 1                   .word .ident (.sprintf ("H%04X", hcount))
+000000r 1                   hcount .set hcount + 1
+000000r 1                   .byte .strlen(name) + flag + 0 ; nice trick !
+000000r 1                   .byte name
+000000r 1               makelabel "", label
+000000r 1               .endmacro
+000000r 1               
+000000r 1               debug = 0
+000000r 1               
+000000r 1               ;----------------------------------------------------------------------
+000000r 1               ; alias
+000000r 1               
+000000r 1               ; cell size
+000000r 1               CELL   =  2     ; 16 bits
+000000r 1               
+000000r 1               ; highlander
+000000r 1               FLAG_IMM  =  1<<7
+000000r 1               
+000000r 1               ; stack size
+000000r 1               SIZES  = $100
+000000r 1               
+000000r 1               ; terminal input buffer, 80 bytes forward
+000000r 1               tib = $0200
+000000r 1               ; .res SIZES, $0
+000000r 1               
+000000r 1               ; locals, 16 words forward
+000000r 1               lcs = $0250
+000000r 1               
+000000r 1               ; data stack base, 36 words deep backward
+000000r 1               dsb = $02DC
+000000r 1               ; .res SIZES, $0
+000000r 1               
+000000r 1               ; return stack base, 36 words deep backward
+000000r 1               rsb = $02FF
+000000r 1               ; .res SIZES, $0
+000000r 1               
+000000r 1               ;----------------------------------------------------------------------
+000000r 1               .segment "ZERO"
+000000r 1               
+000000r 1               * = $E0
+0000E0  1               ; default pseudo registers
+0000E0  1  00 00        nil:    .word $0 ; reserved reference offset
+0000E2  1  00 00        dta:    .word $0 ; holds data stack base,
+0000E4  1  00 00        rte:    .word $0 ; holds return stack base
+0000E6  1  00 00        lnk:    .word $0 ; link return
+0000E8  1               
+0000E8  1               ; default Forth pseudo registers
+0000E8  1  00 00        tos:    .word $0 ; tos first at top of stack
+0000EA  1  00 00        nos:    .word $0 ; nos second at top of stack
+0000EC  1  00 00        wrk:    .word $0 ; work holder
+0000EE  1  00 00        tmp:    .word $0 ; temporary holder
+0000F0  1               
+0000F0  1               ; default Forth variables
+0000F0  1  00 00        state:  .word $0 ; state, only lsb used
+0000F2  1  00 00        toin:   .word $0 ; toin, only lsb used
+0000F4  1  00 00        last:   .word $0 ; last link cell
+0000F6  1  00 00        here:   .word $0 ; next free cell
+0000F8  1               
+0000F8  1               ;----------------------------------------------------------------------
+0000F8  1               ;.segment "ONCE"
+0000F8  1               ; no rom code
+0000F8  1               
+0000F8  1               ;----------------------------------------------------------------------
+0000F8  1               ;.segment "VECTORS"
+0000F8  1               ; no boot code
+0000F8  1               
+0000F8  1               ;----------------------------------------------------------------------
+0000F8  1               .segment "CODE"
+000000r 1               ;
+000000r 1               ; leave space for page zero, hard stack, buffer and forth stacks
+000000r 1               ;
+000000r 1               * = $300
+000300  1               
+000300  1               main:
+000300  1               
+000300  1                   ; latest link
+000300  1  A9 46            lda #<fs_semis
+000302  1  85 F4            sta last + 0
+000304  1  A9 05            lda #>fs_semis
+000306  1  85 F5            sta last + 1
+000308  1               
+000308  1                   ; next free memory cell
+000308  1  A9 00            lda #<init
+00030A  1  85 F6            sta here + 0
+00030C  1  A9 06            lda #>init
+00030E  1  85 F7            sta here + 1
+000310  1               
+000310  1                   ; self pointer
+000310  1  A9 E0            lda #<nil
+000312  1  85 E0            sta nil + 0
+000314  1  A9 00            lda #>nil
+000316  1  85 E1            sta nil + 1
+000318  1               
+000318  1                   ; stacks MSBs
+000318  1  A0 00            ldy #>rte
+00031A  1  84 E3            sty dta + 1
+00031C  1  84 E5            sty rte + 1
+00031E  1               
+00031E  1               ;---------------------------------------------------------------------
+00031E  1               error:
+00031E  1               
+00031E  1  A9 0D            lda #13
+000320  1  20 1D 04         jsr putchar
+000323  1               
+000323  1                   .if debug
+000323  1                   jsr erro
+000323  1                   .endif
+000323  1               
+000323  1               ;---------------------------------------------------------------------
+000323  1               quit:
+000323  1               
+000323  1                   ; reset stacks
+000323  1  A0 DC            ldy #$DC
+000325  1  84 E2            sty dta + 0
+000327  1  A0 FF            ldy #$FF
+000329  1  84 E4            sty rte + 0
+00032B  1               
+00032B  1                   ; clear tib stuff
+00032B  1  C8               iny
+00032C  1  84 F2            sty toin + 0
+00032E  1  8C 00 02         sty tib + 0
+000331  1               
+000331  1                   ; state is 'interpret' == 0
+000331  1  84 F0            sty state + 0
+000333  1               
+000333  1               ;---------------------------------------------------------------------
+000333  1               ; the outer loop
+000333  1               outer:
+000333  1               
+000333  1                   .if debug
+000333  1                   jsr showdic
+000333  1                   .endif
+000333  1               
+000333  1                   ; magic loop
+000333  1  A9 33            lda #<outer
+000335  1  85 E6            sta lnk + 0
+000337  1  A9 03            lda #>outer
+000339  1  85 E7            sta lnk + 1
+00033B  1               
+00033B  1                   ; get a token, (nos)
+00033B  1  20 AB 03         jsr token
+00033E  1               
+00033E  1               find:
+00033E  1                   ; load lastest link
+00033E  1  A9 F4            lda #<last
+000340  1  85 EC            sta wrk + 0
+000342  1  A9 00            lda #>last
+000344  1  85 ED            sta wrk + 1
+000346  1               
+000346  1               @loop:
+000346  1               
+000346  1                   ; update link list
+000346  1  A5 EC            lda wrk + 0
+000348  1  85 E8            sta tos + 0
+00034A  1               
+00034A  1                   ; verify is zero
+00034A  1  05 ED            ora wrk + 1
+00034C  1  F0 D0            beq error ; end of dictionary, no more words to search, quit
+00034E  1               
+00034E  1                   ; update link list
+00034E  1  A5 ED            lda wrk + 1
+000350  1  85 E9            sta tos + 1
+000352  1               
+000352  1                   ; get that link, wrk = [tos]
+000352  1                   ; bypass the link tos+2
+000352  1  A2 08            ldx #(tos - nil) ; from
+000354  1  A0 0C            ldy #(wrk - nil) ; into
+000356  1  20 ED 03         jsr pull
+000359  1               
+000359  1                   ; compare words
+000359  1  A0 00            ldy #0
+00035B  1               
+00035B  1                   ; save the flag at size byte
+00035B  1  B1 E8            lda (tos), y
+00035D  1  48               pha
+00035E  1               
+00035E  1               @equal:
+00035E  1  B1 EA            lda (nos), y
+000360  1                   ; space ends token
+000360  1  C9 20            cmp #32
+000362  1  F0 0A            beq @done
+000364  1                   ; verify
+000364  1  38               sec
+000365  1  F1 E8            sbc (tos), y
+000367  1                   ; 7-bit ascii, also mask flag
+000367  1  29 7F            and #$7F
+000369  1  D0 DB            bne @loop
+00036B  1                   ; next char
+00036B  1  C8               iny
+00036C  1  D0 F0            bne @equal
+00036E  1               @done:
+00036E  1               
+00036E  1                   ; update tos
+00036E  1  98               tya
+00036F  1                   ; implict ldx #(tos - nil)
+00036F  1  20 D0 03         jsr addw
+000372  1               
+000372  1                   ; compile or execute
+000372  1  68               pla             ; immediate ?
+000373  1  30 07            bmi @execw      ; if < 0 bit 7 set
+000375  1               
+000375  1  A5 F0            lda state + 0   ; executing ?
+000377  1  D0 03            bne @execw
+000379  1               
+000379  1               ; zzzz how does return ? need a branch or jump to outer
+000379  1               
+000379  1               @compw:
+000379  1               
+000379  1  4C 5C 05         jmp compile
+00037C  1               
+00037C  1               @execw:
+00037C  1               
+00037C  1  4C EF 04         jmp next_
+00037F  1               
+00037F  1               ;---------------------------------------------------------------------
+00037F  1               try_:
+00037F  1  B9 00 02         lda tib, y
+000382  1  F0 04            beq newline_    ; if \0
+000384  1  C8               iny
+000385  1  49 20            eor #32
+000387  1  60               rts
+000388  1               
+000388  1               ;---------------------------------------------------------------------
+000388  1               ; a page of 254 for buffer, but reserve 3 bytes. (but 72 is enough)
+000388  1               ; no edits, no colapse spcs, no continue between lines
+000388  1               
+000388  1               newline_:
+000388  1                   ; drop rts of try_
+000388  1  68               pla
+000389  1  68               pla
+00038A  1                   ; leave a space
+00038A  1  A0 01            ldy #1
+00038C  1               @loop:
+00038C  1  20 1A 04         jsr getchar
+00038F  1                   ;
+00038F  1                   ; unix like
+00038F  1                   ;
+00038F  1  C9 0A            cmp #10         ; \n ?
+000391  1  F0 08            beq @endline
+000393  1                   ;
+000393  1                   ; dos like
+000393  1                   ;
+000393  1                   ;   cmp #13     ; \r ?
+000393  1                   ;   beq @endline
+000393  1                   ;
+000393  1                   ; clear to start of line
+000393  1                   ;   cmp #15     ; \u ?
+000393  1                   ;   beq
+000393  1                   ;   jmp @fill
+000393  1                   ;
+000393  1               @puts:
+000393  1  29 7F            and #$7F        ; 7-bit ascii
+000395  1  99 00 02         sta tib, y
+000398  1  C8               iny
+000399  1  D0 F1            bne @loop
+00039B  1               ; must panic if y eq \0 ?
+00039B  1               ; or
+00039B  1               @endline:
+00039B  1                   ; grace
+00039B  1  A9 20            lda #32
+00039D  1  8D 00 02         sta tib + 0 ; start with space
+0003A0  1  99 00 02         sta tib, y  ; ends with space
+0003A3  1                   ; and end of line
+0003A3  1  A9 00            lda #0
+0003A5  1  C8               iny
+0003A6  1  99 00 02         sta tib, y
+0003A9  1  85 F2            sta toin + 0
+0003AB  1               
+0003AB  1                   .if debug
+0003AB  1                   jsr showtib
+0003AB  1                   .endif
+0003AB  1               
+0003AB  1               ;---------------------------------------------------------------------
+0003AB  1               ;
+0003AB  1               ; toin + 0 effective offset
+0003AB  1               ; toin + 1 scratch for size
+0003AB  1               ;
+0003AB  1               token:
+0003AB  1                   ; last position on tib
+0003AB  1  A4 F2            ldy toin + 0
+0003AD  1               
+0003AD  1               @skip:
+0003AD  1                   ; skip spaces
+0003AD  1  20 7F 03         jsr try_
+0003B0  1  F0 FB            beq @skip
+0003B2  1               
+0003B2  1                   ; keep start
+0003B2  1  88               dey
+0003B3  1  84 F3            sty toin + 1
+0003B5  1               
+0003B5  1               @scan:
+0003B5  1                   ; scan spaces
+0003B5  1  20 7F 03         jsr try_
+0003B8  1  D0 FB            bne @scan
+0003BA  1               
+0003BA  1                   ; keep stop
+0003BA  1  88               dey
+0003BB  1  84 F2            sty toin + 0
+0003BD  1               
+0003BD  1                   ; strlen
+0003BD  1  38               sec
+0003BE  1  98               tya
+0003BF  1  E5 F3            sbc toin + 1
+0003C1  1               
+0003C1  1                   ; keep size
+0003C1  1  A4 F3            ldy toin + 1
+0003C3  1  88               dey
+0003C4  1  99 00 02         sta tib, y  ; store size ahead
+0003C7  1               
+0003C7  1                   ; setup token, pass pointer
+0003C7  1  84 EA            sty nos + 0
+0003C9  1  A9 02            lda #>tib
+0003CB  1  85 EB            sta nos + 1
+0003CD  1               
+0003CD  1  60               rts
+0003CE  1               
+0003CE  1               ;---------------------------------------------------------------------
+0003CE  1               ; increment a word in page zero, offset by X
+0003CE  1               incw:
+0003CE  1  A9 01            lda #1
+0003D0  1               ; add a byte to a word in page zero. offset by X
+0003D0  1               addw:
+0003D0  1  18               clc
+0003D1  1  75 E0            adc nil + 0, x
+0003D3  1  95 E0            sta nil + 0, x
+0003D5  1  90 02            bcc @noinc
+0003D7  1  F6 E1            inc nil + 1, x
+0003D9  1               @noinc:
+0003D9  1  60               rts
+0003DA  1               
+0003DA  1               ;---------------------------------------------------------------------
+0003DA  1               ; decrement a word in page zero. offset by X
+0003DA  1               decw:
+0003DA  1  B5 E0            lda nil + 0, x
+0003DC  1  D0 02            bne @nodec
+0003DE  1  D6 E1            dec nil + 1, x
+0003E0  1               @nodec:
+0003E0  1  D6 E0            dec nil + 0, x
+0003E2  1  60               rts
+0003E3  1               
+0003E3  1               ;---------------------------------------------------------------------
+0003E3  1               ; pull a word
+0003E3  1               ; from a page zero address indexed by X
+0003E3  1               ; into a absolute page zero address indexed by y
+0003E3  1               spull2:
+0003E3  1  20 E9 03         jsr tspull
+0003E6  1               
+0003E6  1               nspull:
+0003E6  1  A0 0A            ldy #(nos - nil)
+0003E8  1  2C               .byte $2c   ; mask ldy, nice trick !
+0003E9  1               
+0003E9  1               ; pull from data stack
+0003E9  1               tspull:
+0003E9  1  A0 08            ldy #(tos - nil)
+0003EB  1               
+0003EB  1               ; pull from data stack
+0003EB  1               spull:
+0003EB  1  A2 02            ldx #(dta - nil)
+0003ED  1               
+0003ED  1               pull:
+0003ED  1  A1 E0            lda (nil, x)
+0003EF  1  99 E0 00         sta nil + 0, y
+0003F2  1  20 CE 03         jsr incw
+0003F5  1  A1 E0            lda (nil, x)
+0003F7  1  99 E1 00         sta nil + 1, y
+0003FA  1  4C CE 03         jmp incw
+0003FD  1               
+0003FD  1               ; pull from return stack
+0003FD  1               rpull:
+0003FD  1  A2 04            ldx #(rte - nil)
+0003FF  1  4C ED 03         jmp pull
+000402  1               
+000402  1               ;---------------------------------------------------------------------
+000402  1               ; push a word
+000402  1               ; from an absolute page zero address indexed by Y
+000402  1               ; into a page zero address indexed by X
+000402  1               rpush:
+000402  1  A2 04            ldx #(rte - nil)
+000404  1  2C               .byte $2c   ; mask ldx, nice trick !
+000405  1               spush:
+000405  1  A2 02            ldx #(dta - nil)
+000407  1               
+000407  1               tpush:
+000407  1  A0 08            ldy #(tos - nil)
+000409  1               
+000409  1               push:
+000409  1  20 DA 03         jsr decw
+00040C  1  B9 E1 00         lda nil + 1, y
+00040F  1  81 E0            sta (nil, x)
+000411  1  20 DA 03         jsr decw
+000414  1  B9 E0 00         lda nil + 0, y
+000417  1  81 E0            sta (nil, x)
+000419  1  60               rts
+00041A  1               
+00041A  1               ;---------------------------------------------------------------------
+00041A  1               ; for lib6502  emulator
+00041A  1               ; does echo
+00041A  1               getchar:
+00041A  1  AD 00 E0         lda $E000
+00041D  1               
+00041D  1               putchar:
+00041D  1  8D 00 E0         sta $E000
+000420  1               
+000420  1  60               rts
+000421  1               
+000421  1               ;---------------------------------------------------------------------
+000421  1               ; all primitives ends with jmp link_
+000421  1               ;
+000421  1               
+000421  1               ;---------------------------------------------------------------------
+000421  1  00 00 03 6B  def_word "key", "key", 0
+000425  1  65 79        
+000427  1  20 1A 04        jsr getchar
+00042A  1  85 E8           sta tos + 0
+00042C  1  4C 88 04        jmp used
+00042F  1               
+00042F  1               ;---------------------------------------------------------------------
+00042F  1  21 04 04 65  def_word "emit", "emit", 0
+000433  1  6D 69 74     
+000436  1  20 E9 03        jsr tspull
+000439  1  A5 E8           lda tos + 0
+00043B  1  20 1D 04        jsr putchar
+00043E  1  4C FF 04        jmp link_
+000441  1               
+000441  1               ;---------------------------------------------------------------------
+000441  1               ; [tos] = nos
+000441  1  2F 04 01 21  def_word "!", "store", 0
+000445  1               storew:
+000445  1  20 E3 03         jsr spull2
+000448  1  A2 0A            ldx #(tos + 2 - nil) ; push starts with decw, then it works
+00044A  1  A0 0A            ldy #(nos - nil)
+00044C  1  20 09 04         jsr push
+00044F  1  4C FF 04         jmp link_
+000452  1               
+000452  1               ;---------------------------------------------------------------------
+000452  1               ; tos = [nos]
+000452  1  41 04 01 40  def_word "@", "fetch", 0
+000456  1               fetchw:
+000456  1  20 E6 03         jsr nspull
+000459  1  A2 0A            ldx #(nos - nil)
+00045B  1  A0 08            ldy #(tos - nil)
+00045D  1  20 ED 03         jsr pull
+000460  1  4C 88 04         jmp used
+000463  1               
+000463  1               ;---------------------------------------------------------------------
+000463  1  52 04 03 72  def_word "rp@", "rpfetch", 0
+000467  1  70 40        
+000469  1  A2 04            ldx #(rte - nil)
+00046B  1  4C 80 04         jmp copy
+00046E  1               
+00046E  1               ;---------------------------------------------------------------------
+00046E  1  63 04 03 73  def_word "sp@", "spfetch", 0
+000472  1  70 40        
+000474  1  A2 02            ldx #(dta - nil)
+000476  1  4C 80 04         jmp copy
+000479  1               
+000479  1               ;---------------------------------------------------------------------
+000479  1  6E 04 02 73  def_word "s@", "statevar", 0
+00047D  1  40           
+00047E  1  A2 10            ldx #(state - nil)
+000480  1                   ; jmp copy
+000480  1               
+000480  1               ;---------------------------------------------------------------------
+000480  1               ; generic
+000480  1               ;
+000480  1               copy:
+000480  1  B5 E0            lda nil + 0, x
+000482  1  85 E8            sta tos + 0
+000484  1  B5 E1            lda nil + 1, x
+000486  1               back:
+000486  1  85 E9            sta tos + 1
+000488  1               used:
+000488  1  20 05 04         jsr spush
+00048B  1  4C FF 04         jmp link_
+00048E  1               
+00048E  1               ;---------------------------------------------------------------------
+00048E  1               ; ( nos tos -- nos + tos )
+00048E  1  79 04 01 2B  def_word "+", "plus", 0
+000492  1  20 E3 03         jsr spull2
+000495  1  18               clc
+000496  1  A5 EA            lda nos + 0
+000498  1  65 E8            adc tos + 0
+00049A  1  85 E8            sta tos + 0
+00049C  1  A5 EB            lda nos + 1
+00049E  1  65 E9            adc tos + 1
+0004A0  1  4C 86 04         jmp back
+0004A3  1               
+0004A3  1               ;---------------------------------------------------------------------
+0004A3  1               ; ( nos tos -- NOT(nos AND tos) )
+0004A3  1  8E 04 04 6E  def_word "nand", "nand", 0
+0004A7  1  61 6E 64     
+0004AA  1  20 E3 03         jsr spull2
+0004AD  1  A5 EA            lda nos + 0
+0004AF  1  25 E8            and tos + 0
+0004B1  1  49 FF            eor #$FF
+0004B3  1  85 E8            sta tos + 0
+0004B5  1  A5 EB            lda nos + 1
+0004B7  1  25 E9            and tos + 1
+0004B9  1  49 FF            eor #$FF
+0004BB  1  4C 86 04         jmp back
+0004BE  1               
+0004BE  1               ;---------------------------------------------------------------------
+0004BE  1               ; test if tos == \0
+0004BE  1  A3 04 02 30  def_word "0=", "zeroq", 0
+0004C2  1  3D           
+0004C3  1  20 E9 03         jsr tspull
+0004C6  1                   ; lda tos + 1, implicit
+0004C6  1  05 E8            ora tos + 0
+0004C8  1  F0 06            beq istrue  ; is \0
+0004CA  1               isfalse:
+0004CA  1  A9 00            lda #$00
+0004CC  1               rest:
+0004CC  1  85 E8            sta tos + 0
+0004CE  1  F0 B6            beq back
+0004D0  1               istrue:
+0004D0  1  A9 FF            lda #$FF
+0004D2  1  D0 F8            bne rest
+0004D4  1               
+0004D4  1               ;---------------------------------------------------------------------
+0004D4  1               ; shift right
+0004D4  1  BE 04 02 32  def_word "2/", "asr", 0
+0004D8  1  2F           
+0004D9  1  20 E9 03         jsr tspull
+0004DC  1  46 E9            lsr tos + 1
+0004DE  1  66 E8            ror tos + 0
+0004E0  1  4C 88 04         jmp used
+0004E3  1               
+0004E3  1               ;---------------------------------------------------------------------
+0004E3  1               ; minimal indirect thread code
+0004E3  1               ; lnk must be preserved, as IP
+0004E3  1               ;
+0004E3  1  D4 04 04 65  def_word "exit", "exit", 0
+0004E7  1  78 69 74     
+0004EA  1               inner:
+0004EA  1               
+0004EA  1               unnest_:
+0004EA  1                   ; pull tos = [rte], rte+2
+0004EA  1  A0 08            ldy #(tos - nil)
+0004EC  1  20 FD 03         jsr rpull
+0004EF  1               
+0004EF  1               next_:
+0004EF  1                   ; lnk = [tos], tos+2
+0004EF  1  A0 06            ldy #(lnk - nil)
+0004F1  1  A2 08            ldx #(tos - nil)
+0004F3  1  20 ED 03         jsr pull
+0004F6  1               
+0004F6  1                   ; is a primitive ?
+0004F6  1  A5 E7            lda lnk + 1
+0004F8  1  C9 06            cmp #>init    ; magic high byte page of init:
+0004FA  1  90 0E            bcc jump_
+0004FC  1               
+0004FC  1               nest_:
+0004FC  1                   ; push into return stack
+0004FC  1  20 02 04         jsr rpush
+0004FF  1               
+0004FF  1               link_:
+0004FF  1  A5 E6            lda lnk + 0
+000501  1  85 E8            sta tos + 0
+000503  1  A5 E7            lda lnk + 1
+000505  1  85 E9            sta tos + 1
+000507  1  4C EF 04         jmp next_
+00050A  1               
+00050A  1               jump_:
+00050A  1                   ; pull from return stack
+00050A  1  A0 06            ldy #(lnk - nil)
+00050C  1  20 FD 03         jsr rpull
+00050F  1  6C E8 00         jmp (tos)
+000512  1               
+000512  1               ;---------------------------------------------------------------------
+000512  1  E3 04 01 3A  def_word ":", "colon", 0
+000516  1                   ; save here
+000516  1  A5 F6            lda here + 0
+000518  1  48               pha
+000519  1  A5 F7            lda here + 1
+00051B  1  48               pha
+00051C  1               
+00051C  1                   ; save link
+00051C  1  A5 F4            lda last + 0
+00051E  1  85 F6            sta here + 0
+000520  1  A5 F5            lda last + 1
+000522  1  85 F7            sta here + 1
+000524  1               
+000524  1                   ; setup here
+000524  1  A2 16            ldx #(here - nil)
+000526  1               
+000526  1                   ; update here
+000526  1  A9 02            lda #$2
+000528  1  20 D0 03         jsr addw
+00052B  1               
+00052B  1                   ; get the token, at nos
+00052B  1  20 AB 03         jsr token
+00052E  1               
+00052E  1                   ;copy size and name
+00052E  1  A0 00            ldy #0
+000530  1               @loop:
+000530  1  B1 EA            lda (nos), y
+000532  1  C9 20            cmp #32     ; stops at space
+000534  1  F0 05            beq @endname
+000536  1  91 F6            sta (here), y
+000538  1  C8               iny
+000539  1  D0 F5            bne @loop
+00053B  1               @endname:
+00053B  1               
+00053B  1                   ; update here
+00053B  1  98               tya
+00053C  1                   ; implicit ldx #(here - nil)
+00053C  1  20 D0 03         jsr addw
+00053F  1               
+00053F  1                   ; state is 'compile'
+00053F  1               
+00053F  1  A9 01            lda #1
+000541  1  85 F0            sta state + 0
+000543  1               
+000543  1  4C FF 04         jmp link_
+000546  1               
+000546  1               ;---------------------------------------------------------------------
+000546  1  12 05 81 3B  def_word ";", "semis", FLAG_IMM
+00054A  1               
+00054A  1                   ; update last
+00054A  1               
+00054A  1  68               pla
+00054B  1  85 F5            sta last + 1
+00054D  1  68               pla
+00054E  1  85 F4            sta last + 0
+000550  1               
+000550  1                   ; state is 'interpret'
+000550  1  A9 00            lda #0
+000552  1  85 F0            sta state + 0
+000554  1               
+000554  1                   ; compounds words must ends with 'unnest'
+000554  1  A9 EA            lda #<unnest_
+000556  1  85 E8            sta tos + 0
+000558  1  A9 04            lda #>unnest_
+00055A  1  85 E9            sta tos + 1
+00055C  1               
+00055C  1                   ; jsr spush
+00055C  1               
+00055C  1                   ; jmp compile
+00055C  1               
+00055C  1                   ; def_word ",", "comma",
+00055C  1               
+00055C  1               compile:
+00055C  1               
+00055C  1                   ; jsr spull
+00055C  1               
+00055C  1  A2 16            ldx #(here - nil)
+00055E  1  20 07 04         jsr tpush
+000561  1               
+000561  1  4C FF 04         jmp link_
+000564  1               
+000564  1               ;---------------------------------------------------------------------
+000564  1               ends:
+000564  1               
+000564  1               ; debug stuff
+000564  1               .if debug
+000564  1               
+000564  1               erro:
+000564  1                   lda #'?'
+000564  1                   jsr putchar
+000564  1                   lda #'?'
+000564  1                   jsr putchar
+000564  1                   lda #10
+000564  1                   jsr putchar
+000564  1                   lda #13
+000564  1                   jsr putchar
+000564  1                   rts
+000564  1               
+000564  1               okey:
+000564  1                   lda #'O'
+000564  1                   jsr putchar
+000564  1                   lda #'K'
+000564  1                   jsr putchar
+000564  1                   lda #10
+000564  1                   jsr putchar
+000564  1                   lda #13
+000564  1                   jsr putchar
+000564  1                   rts
+000564  1               
+000564  1               showdic:
+000564  1               
+000564  1                   php
+000564  1                   pha
+000564  1                   tya
+000564  1                   pha
+000564  1                   txa
+000564  1                   pha
+000564  1               
+000564  1                   ; load lastest link
+000564  1                   lda #<last
+000564  1                   sta wrk + 0
+000564  1                   lda #>last
+000564  1                   sta wrk + 1
+000564  1               
+000564  1               @loop:
+000564  1               
+000564  1                   ; update link list
+000564  1                   lda wrk + 0
+000564  1                   sta tos + 0
+000564  1               
+000564  1                   ; verify is zero
+000564  1                   ora wrk + 1
+000564  1                   beq @ends ; end of dictionary, no more words to search, quit
+000564  1               
+000564  1                   ; update link list
+000564  1                   lda wrk + 1
+000564  1                   sta tos + 1
+000564  1               
+000564  1                   ; get that link, wrk = [tos]
+000564  1                   ; bypass the link tos+2
+000564  1                   ldx #(tos - nil) ; from
+000564  1                   ldy #(wrk - nil) ; into
+000564  1                   jsr pull
+000564  1               
+000564  1                   ldy #0
+000564  1                   lda (tos), y
+000564  1                   and #$7F
+000564  1                   tax
+000564  1               
+000564  1                   adc #' '
+000564  1                   jsr putchar
+000564  1               
+000564  1               @loopa:
+000564  1                   iny
+000564  1                   lda (tos), y
+000564  1                   jsr putchar
+000564  1                   dex
+000564  1                   bne @loopa
+000564  1               
+000564  1                   lda #10
+000564  1                   jsr putchar
+000564  1               
+000564  1                   jmp @loop
+000564  1               
+000564  1               @ends:
+000564  1               
+000564  1                   pla
+000564  1                   tax
+000564  1                   pla
+000564  1                   tay
+000564  1                   pla
+000564  1                   plp
+000564  1               
+000564  1                   rts
+000564  1               
+000564  1               showtib:
+000564  1                   lda #'>'
+000564  1                   jsr putchar
+000564  1                   ldy #0
+000564  1               @loop:
+000564  1                   lda tib, y
+000564  1                   beq @done
+000564  1                   jsr putchar
+000564  1                   iny
+000564  1                   bne @loop
+000564  1               @done:
+000564  1                   lda #'<'
+000564  1                   jsr putchar
+000564  1                   rts
+000564  1               
+000564  1               .endif
+000564  1               
+000564  1  xx xx xx xx  .align $100
+000568  1  xx xx xx xx  
+00056C  1  xx xx xx xx  
+000600  1               ; for anything above is not a primitive
+000600  1               init:
+000600  1               
+000600  1               
+000600  1               

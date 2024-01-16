@@ -43,20 +43,16 @@ H0000 = 0
 hcount .set 0
 
 ; header for primitives
-; the entry point for dictionary is fs_~name~
-; the entry point for code is ~name~
 .macro def_word name, label, flag
 ;this = *
-makelabel "fs_", label
+makelabel "is_", label
     .ident(.sprintf("H%04X", hcount + 1)) = *
     .word .ident (.sprintf ("H%04X", hcount))
     hcount .set hcount + 1
-    .byte .strlen(name) + flag + 0 ; nice trick !
+    .byte .strlen(name) + flag + 0
     .byte name
 makelabel "", label
 .endmacro
-
-debug = 0
 
 ;----------------------------------------------------------------------
 ; alias
@@ -125,9 +121,9 @@ here:   .word $0 ; next free cell
 main:
 
     ; latest link
-    lda #<fs_semis
+    lda #<semis
     sta last + 0
-    lda #>fs_semis
+    lda #>semis
     sta last + 1
 
     ; next free memory cell
@@ -153,10 +149,6 @@ error:
     lda #13
     jsr putchar
 
-    .if debug
-    jsr erro
-    .endif
-
 ;---------------------------------------------------------------------
 quit:
 
@@ -177,10 +169,6 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 outer:
-
-    .if debug 
-    jsr showdic
-    .endif
 
     ; magic loop
     lda #<outer
@@ -218,13 +206,12 @@ find:
     ldy #(wrk - nil) ; into
     jsr pull
 
-    ; compare words
-    ldy #0
-
     ; save the flag at size byte
-    lda (tos), y
+    lda tos + 0
     pha
 
+    ; compare words
+    ldy #0
 @equal:
     lda (nos), y
     ; space ends token
@@ -316,10 +303,6 @@ newline_:
     iny
     sta tib, y
     sta toin + 0
-
-    .if debug
-    jsr showtib
-    .endif 
 
 ;---------------------------------------------------------------------
 ; 
@@ -459,17 +442,17 @@ putchar:
 ;
 
 ;---------------------------------------------------------------------
-def_word "key", "key", 0
-   jsr getchar
-   sta tos + 0
-   jmp used
-
-;---------------------------------------------------------------------
 def_word "emit", "emit", 0
    jsr tspull
    lda tos + 0
    jsr putchar
    jmp link_
+
+;---------------------------------------------------------------------
+def_word "key", "key", 0
+   jsr getchar
+   sta tos + 0
+   jmp used
 
 ;---------------------------------------------------------------------
 ; [tos] = nos
@@ -492,23 +475,6 @@ fetchw:
     jmp used
 
 ;---------------------------------------------------------------------
-def_word "rp@", "rpfetch", 0
-    ldx #(rte - nil)
-    jmp copy
-
-;---------------------------------------------------------------------
-def_word "sp@", "spfetch", 0
-    ldx #(dta - nil)
-    jmp copy
-
-;---------------------------------------------------------------------
-def_word "s@", "statevar", 0 
-    ldx #(state - nil)
-    ; jmp copy
-
-;---------------------------------------------------------------------
-; generic 
-;
 copy:
     lda nil + 0, x
     sta tos + 0
@@ -518,6 +484,21 @@ back:
 used:
     jsr spush
     jmp link_
+
+;---------------------------------------------------------------------
+def_word "s@", "statevar", 0 
+    ldx #(state - nil)
+    jmp copy
+
+;---------------------------------------------------------------------
+def_word "rp@", "rpfetch", 0
+    ldx #(rte - nil)
+    jmp copy
+
+;---------------------------------------------------------------------
+def_word "sp@", "spfetch", 0
+    ldx #(dta - nil)
+    jmp copy
 
 ;---------------------------------------------------------------------
 ; ( nos tos -- nos + tos )
@@ -694,7 +675,7 @@ compile:
 ends:
 
 ; debug stuff
-.if debug
+.if 0
 
 erro:
     lda #'?'
@@ -718,87 +699,6 @@ okey:
     jsr putchar
     rts
 
-showdic:
-
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-
-    ; load lastest link
-    lda #<last
-    sta wrk + 0
-    lda #>last
-    sta wrk + 1
-
-@loop:
-
-    ; update link list
-    lda wrk + 0
-    sta tos + 0
-
-    ; verify is zero
-    ora wrk + 1
-    beq @ends ; end of dictionary, no more words to search, quit
-
-    ; update link list
-    lda wrk + 1
-    sta tos + 1
-    
-    ; get that link, wrk = [tos]
-    ; bypass the link tos+2
-    ldx #(tos - nil) ; from 
-    ldy #(wrk - nil) ; into
-    jsr pull
-
-    ldy #0
-    lda (tos), y
-    and #$7F
-    tax
-
-    adc #' '
-    jsr putchar
-
-@loopa:
-    iny
-    lda (tos), y
-    jsr putchar
-    dex
-    bne @loopa
-
-    lda #10
-    jsr putchar
-
-    jmp @loop
-
-@ends:
-
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-
-    rts
-    
-showtib:
-    lda #'>'
-    jsr putchar
-    ldy #0
-@loop:
-    lda tib, y
-    beq @done
-    jsr putchar
-    iny
-    bne @loop
-@done:
-    lda #'<'
-    jsr putchar
-    rts
-    
 .endif
 
 .align $100
