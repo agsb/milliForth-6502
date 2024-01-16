@@ -28,6 +28,8 @@ This version includes:
 
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
+_16/01/2024_ code for 6502 sized to 615 bytes, review state and use hard stack, still crashes.
+
 _11/01/2024_ code for 6502 sized to 632 bytes, refine ( pull, push, copy ), still crashes.
 
 _10/01/2024_ code for 6502 sized to 621 bytes, turn explicit copy from into, still crashes.

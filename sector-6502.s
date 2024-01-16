@@ -66,16 +66,19 @@ FLAG_IMM  =  1<<7
 ; stack size
 SIZES  = $100
 
-; terminal input buffer, 256 bytes
+; terminal input buffer, 80 bytes forward
 tib = $0200
 ; .res SIZES, $0   
 
-; return stack base, 128 words deep
-rsb = $03FF
+; locals, 16 words forward
+lcs = $0250
+
+; data stack base, 36 words deep backward
+dsb = $02DC 
 ; .res SIZES, $0
 
-; data stack base, 128 words deep
-dsb = $04FF 
+; return stack base, 36 words deep backward
+rsb = $02FF
 ; .res SIZES, $0
 
 ;----------------------------------------------------------------------
@@ -83,20 +86,20 @@ dsb = $04FF
 
 * = $E0
 ; default pseudo registers
-nil:    .word $0 ; reference, do not touch ! 
-lnk:    .word $0 ; link, do not touch !
+nil:    .word $0 ; reserved reference offset
 dta:    .word $0 ; holds data stack base,
 rte:    .word $0 ; holds return stack base
+lnk:    .word $0 ; link return
 
 ; default Forth pseudo registers
-tos:    .word $0 ; top
-nos:    .word $0 ; nos
-wrk:    .word $0 ; work
-temp:   .word $0 ; temp for hold here while in compile state
+tos:    .word $0 ; tos first at top of stack
+nos:    .word $0 ; nos second at top of stack
+wrk:    .word $0 ; work holder
+tmp:    .word $0 ; temporary holder
 
 ; default Forth variables
-state:  .word $0 ; state
-toin:   .word $0 ; toin
+state:  .word $0 ; state, only lsb used
+toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 
@@ -113,7 +116,7 @@ here:   .word $0 ; next free cell
 ;
 ; leave space for page zero, hard stack, buffer and forth stacks
 ;
-* = $500
+* = $300
 
 main:
 
@@ -135,10 +138,9 @@ main:
     lda #>nil
     sta nil + 1
 
-    ; stacks grows downwards
-    ldy #>dsb
+    ; stacks MSBs
+    ldy #>rte
     sty dta + 1
-    ldy #>rsb
     sty rte + 1
 
 ;---------------------------------------------------------------------
@@ -150,19 +152,18 @@ error:
 ;---------------------------------------------------------------------
 quit:
 
-    ; start stacks forward
-    ldy #$FF
+    ; reset stacks
+    ldy #$DC
     sty dta + 0
+    ldy #$FF
     sty rte + 0
 
     ; clear tib stuff
     iny
     sty toin + 0
-    sty toin + 1
     sty tib + 0
 
-    ; state is 'interpret'
-    iny   
+    ; state is 'interpret' == 0
     sty state + 0
 
 ;---------------------------------------------------------------------
@@ -269,8 +270,13 @@ newline_:
     ldy #1
 @loop:  
     jsr getchar
+    ;
+    ; unix like
+    ;
     cmp #10         ; \n ?
     beq @endline
+    ;
+    ; dos like
     ;
     ;   cmp #13     ; \r ?
     ;   beq @endline
@@ -292,16 +298,20 @@ newline_:
     lda #32
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
-    ; mark end of line
+    ; and end of line
     lda #0
     iny
     sta tib, y
-    sta toin + 1
+    sta toin + 0
 
 ;---------------------------------------------------------------------
+; 
+; toin + 0 effective offset
+; toin + 1 scratch for size
+;
 token:
     ; last position on tib
-    ldy toin + 1
+    ldy toin + 0
 
 @skip:
     ; skip spaces
@@ -310,7 +320,7 @@ token:
 
     ; keep start 
     dey
-    sty toin + 0    
+    sty toin + 1    
 
 @scan:
     ; scan spaces
@@ -319,17 +329,17 @@ token:
 
     ; keep stop 
     dey
-    sty toin + 1 
+    sty toin + 0 
 
     ; strlen
     sec
     tya
-    sbc toin + 0
+    sbc toin + 1
 
     ; keep size
-    ldy toin + 0
+    ldy toin + 1
     dey
-    sta tib, y    ; store size ahead 
+    sta tib, y  ; store size ahead 
 
     ; setup token, pass pointer
     sty nos + 0
@@ -449,13 +459,9 @@ def_word "key", "key", 0
 def_word "!", "store", 0
 storew:
     jsr spull2
-    ldx #(tos - nil)
+    ldx #(tos + 2 - nil) ; push starts with decw, then it works
     ldy #(nos - nil)
-    lda nil + 0, y
-    sta (nil, x)
-    jsr incw
-    lda nil + 1, y
-    sta (nil, x)
+    jsr push
     jmp link_
 
 ;---------------------------------------------------------------------
@@ -587,9 +593,9 @@ jump_:
 def_word ":", "colon", 0
     ; save here 
     lda here + 0
-    sta temp + 0
+    pha
     lda here + 1
-    sta temp + 1
+    pha
 
     ; save link
     lda last + 0
@@ -625,7 +631,7 @@ def_word ":", "colon", 0
 
     ; state is 'compile'
 
-    lda #0
+    lda #1
     sta state + 0
     
     jmp link_
@@ -635,13 +641,13 @@ def_word ";", "semis", FLAG_IMM
 
     ; update last
 
-    lda temp + 0
-    sta last + 0
-    lda temp + 1
+    pla
     sta last + 1
+    pla
+    sta last + 0
 
     ; state is 'interpret'
-    lda #1
+    lda #0
     sta state + 0
 
     ; compounds words must ends with 'unnest'

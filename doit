@@ -1,8 +1,10 @@
 #!/usr/bin/bash
 
+DEFAULT=300
+
 sh mk x $1
 
 sh mk a $1
 
-run6502 -l 500 $1.out -R 500 -M E000 -X 0 -c -d 500 +1000 | tee a
+run6502 -l $DEFAULT $1.out -R $DEFAULT -M E000 -X 0 -c -d $DEFAULT +1000 | tee a
 
