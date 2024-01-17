@@ -14,17 +14,30 @@
 ;   Focus in size not performance.
 ;
 ;   Changes:
-
-;   data and return stacks and tib are 256 bytes 
-
-;   only immediate flag used as $80, no hide, no compile, no extras
 ;
-;   6502 is a byte processor, no need 'pad' at end of even names
+;   all data (36 cells) and return (36 cells) stacks, locals (16 cells) and tib (80 bytes) are in same page $200, 256 bytes; 
+;
+;   tib and locals grows forward, stacks grows backwards, no overflow or underflow checks;
+;
+;   only immediate flag used as $80, no hide, no compile, no extras;
 ;
 ;   As Forth-1994: ; FALSE is $0000 ; TRUE  is $FFFF ;
 ;
+;   Remarks:
+;
+;   words must be between spaces, begin and end spaces are necessary;
+;
+;   if locals 'still' not used, data stack could be 52 cells 
+;
+;   For 6502:
+;
+;   hardware stack not used as forth stack, just for jsr/rts and pha/pla
+;
+;   6502 is a byte processor, no need 'pad' at end of even names;
+;
 ;----------------------------------------------------------------------
-; for ca65 
+;
+; stuff for ca65 
 ;
 .p02
 .feature c_comments
@@ -39,15 +52,12 @@
 .ident (.concat (arg1, arg2)):
 .endmacro
 
-H0000 = 0
-hcount .set 0
-
 ; header for primitives
-; the entry point for dictionary is fs_~name~
+; the entry point for dictionary is f_~name~
 ; the entry point for code is ~name~
 .macro def_word name, label, flag
 ;this = *
-makelabel "fs_", label
+makelabel "f_", label
     .ident(.sprintf("H%04X", hcount + 1)) = *
     .word .ident (.sprintf ("H%04X", hcount))
     hcount .set hcount + 1
@@ -55,6 +65,10 @@ makelabel "fs_", label
     .byte name
 makelabel "", label
 .endmacro
+
+H0000 = 0
+
+hcount .set 0
 
 debug = 0
 
@@ -67,23 +81,17 @@ CELL   =  2     ; 16 bits
 ; highlander
 FLAG_IMM  =  1<<7
 
-; stack size
-SIZES  = $100
-
 ; terminal input buffer, 80 bytes forward
 tib = $0200
-; .res SIZES, $0   
 
 ; locals, 16 words forward
 lcs = $0250
 
 ; data stack base, 36 words deep backward
 dsb = $02DC 
-; .res SIZES, $0
 
 ; return stack base, 36 words deep backward
 rsb = $02FF
-; .res SIZES, $0
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
@@ -93,12 +101,12 @@ rsb = $02FF
 nil:    .word $0 ; reserved reference offset
 dta:    .word $0 ; holds data stack base,
 rte:    .word $0 ; holds return stack base
-lnk:    .word $0 ; link return
+lnk:    .word $0 ; link for inner return
 
 ; default Forth pseudo registers
-tos:    .word $0 ; tos first at top of stack
-nos:    .word $0 ; nos second at top of stack
-wrk:    .word $0 ; work holder
+tos:    .word $0 ; top on stack, first
+nos:    .word $0 ; next on stack, second
+wrk:    .word $0 ; work, generic holder
 tmp:    .word $0 ; temporary holder
 
 ; default Forth variables
@@ -107,6 +115,8 @@ toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 
+;----------------------------------------------------------------------
+;
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
 ; no rom code
@@ -125,9 +135,9 @@ here:   .word $0 ; next free cell
 main:
 
     ; latest link
-    lda #<fs_semis
+    lda #<f_semis
     sta last + 0
-    lda #>fs_semis
+    lda #>f_semis
     sta last + 1
 
     ; next free memory cell
@@ -141,11 +151,6 @@ main:
     sta nil + 0
     lda #>nil
     sta nil + 1
-
-    ; stacks MSBs
-    ldy #>rte
-    sty dta + 1
-    sty rte + 1
 
 ;---------------------------------------------------------------------
 error:
@@ -161,6 +166,10 @@ error:
 quit:
 
     ; reset stacks
+    ldy #>rte
+    sty dta + 1
+    sty rte + 1
+
     ldy #$DC
     sty dta + 0
     ldy #$FF
@@ -248,7 +257,7 @@ find:
 
     ; compile or execute
     pla             ; immediate ? 
-    bmi @execw      ; if < 0 bit 7 set
+    bmi @execw      ; bit 7 set if < 0 
 
     lda state + 0   ; executing ?
     bne @execw

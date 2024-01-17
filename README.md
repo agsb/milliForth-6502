@@ -26,8 +26,6 @@ This version includes:
             _getchar_, _putchar_ (depends on system, used minimal for emulator )
 ```
 
-
-
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
 include some debug code and flag
@@ -73,9 +71,10 @@ The milliForth for 6502 have some changes:
 - uses 32 bytes of _page zero_;
 - depends on spaces before and after a word in tib;
 - uses 7-bit ASCII characters;
-- still no include a _'OK '_;
-- still no include a backspace routine; 
-- still no include a empty line routine; 
+
+- still no include a _'OK'_ or _'??'_;
+- still no include a backspace routine for \b; 
+- still no include a empty line routine for \u; 
 
 ### Memory
 
