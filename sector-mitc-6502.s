@@ -63,7 +63,6 @@ makelabel "f_", label
     hcount .set hcount + 1
     .byte .strlen(name) + flag + 0 ; nice trick !
     .byte name
-    .word $0000 ; needed for MITC
 makelabel "", label
 .endmacro
 
@@ -188,23 +187,20 @@ quit:
 ; the outer loop
 outer:
 
-    .word $0000
-
     .if debug 
     jsr showdic
     .endif
 
     ; magic loop
     lda #<outer
-    sta tos + 0
+    sta lnk + 0
     lda #>outer
-    sta tos + 1
-    jsr rpush
+    sta lnk + 1
 
-find:
     ; get a token, (nos)
     jsr token
   
+find:
     ; load lastest link
     lda #<last
     sta wrk + 0
@@ -468,7 +464,7 @@ putchar:
     rts
 
 ;---------------------------------------------------------------------
-; all primitives ends with jmp unnest_
+; all primitives ends with jmp link_
 ;
 
 ;---------------------------------------------------------------------
@@ -482,7 +478,7 @@ def_word "emit", "emit", 0
    jsr tspull
    lda tos + 0
    jsr putchar
-   jmp unnest_
+   jmp link_
 
 ;---------------------------------------------------------------------
 ; [tos] = nos
@@ -492,7 +488,7 @@ storew:
     ldx #(tos + 2 - nil) ; push starts with decw, then it works
     ldy #(nos - nil)
     jsr push
-    jmp unnest_
+    jmp link_
 
 ;---------------------------------------------------------------------
 ; tos = [nos]
@@ -530,7 +526,7 @@ back:
     sta tos + 1
 used:
     jsr spush
-    jmp unnest_
+    jmp link_
 
 ;---------------------------------------------------------------------
 ; ( nos tos -- nos + tos )
@@ -559,7 +555,7 @@ def_word "nand", "nand", 0
 
 ;---------------------------------------------------------------------
 ; test if tos == \0
-def_word "0#", "zeroq", 0
+def_word "0=", "zeroq", 0
     jsr tspull
     ; lda tos + 1, implicit
     ora tos + 0
@@ -590,33 +586,36 @@ inner:
 
 unnest_:
     ; pull tos = [rte], rte+2
-    ldy #(lnk - nil)
+    ldy #(tos - nil)
     jsr rpull
 
 next_:
-    ; wrk = (lnk) ; lnk = lnk + 2
-    ldy #(wrk - nil)
-    ldx #(lnk - nil)
+    ; lnk = [tos], tos+2
+    ldy #(lnk - nil)
+    ldx #(tos - nil)
     jsr pull
 
     ; is a primitive ? 
-    lda wrk + 0
-    ora wrk + 1
-    bne nest_
-jump_:
-    jmp (lnk)
+    lda lnk + 1
+    cmp #>init    ; magic high byte page of init:
+    bcc jump_
 
 nest_:
     ; push into return stack
     jsr rpush
 
 link_:
-    lda wrk + 0
-    sta lnk + 0
-    lda wrk + 1
-    sta lnk + 1
+    lda lnk + 0
+    sta tos + 0
+    lda lnk + 1
+    sta tos + 1
     jmp next_
 
+jump_:
+    ; pull from return stack
+    ldy #(lnk - nil)
+    jsr rpull
+    jmp (tos)
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
@@ -663,7 +662,7 @@ def_word ":", "colon", 0
     lda #1
     sta state + 0
     
-    jmp unnest_
+    jmp link_
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -698,7 +697,7 @@ compile:
     ldx #(here - nil)
     jsr tpush
 
-    jmp unnest_
+    jmp link_
 
 ;---------------------------------------------------------------------
 ends:

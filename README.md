@@ -25,14 +25,14 @@ This version includes:
             quit, token, skip, scan, newline, find, compile, execute, exit (outer interpreter)
             _getchar_, _putchar_ (depends on system, used minimal for emulator )
 ```
-
+    
 ### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
 
 include some debug code and flag
 
-_23/01/2024_ code for 6502 sized to 640 bytes, use of MITC grows each primitive
-                by 2 bytes, need review for standart ITC to wipe those.
-
+_24/01/2024_ code for 6502 review. Recode for use 'standart indirect thread code'. 
+             made a file with 'minimum itc model ' and another with 'standart itc model'
+                 
 _16/01/2024_ code for 6502 sized to 612 bytes, review and reorder, need loop end-of-find.
 
 _11/01/2024_ code for 6502 sized to 632 bytes, refine ( pull, push, copy ), still crashes.
