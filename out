@@ -1,0 +1,2 @@
+Executing: ca65 -l sector-sitc-6502.lst --cpu 6502 -g -mm near -t none sector-sitc-6502.s 
+Executing: ld65 -Ln sector-sitc-6502.lbl -m sector-sitc-6502.map -o sector-sitc-6502.out -C sector-sitc-6502.cfg sector-sitc-6502.o 
