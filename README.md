@@ -30,6 +30,9 @@ This version includes:
 
 include some debug code and flag
 
+_23/01/2024_ code for 6502 sized to 640 bytes, use of MITC grows each primitive
+                by 2 bytes, need review for standart ITC to wipe those.
+
 _16/01/2024_ code for 6502 sized to 612 bytes, review and reorder, need loop end-of-find.
 
 _11/01/2024_ code for 6502 sized to 632 bytes, refine ( pull, push, copy ), still crashes.
