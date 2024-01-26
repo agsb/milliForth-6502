@@ -14,36 +14,17 @@
 ;   Focus in size not performance.
 ;
 ;   Changes:
+
+;   data and return stacks and tib are 256 bytes 
+
+;   only immediate flag used as $80, no hide, no compile, no extras
 ;
-;   all data (36 cells) and return (36 cells) stacks, locals (16 cells)
-;       and tib (80 bytes) are in same page $200, 256 bytes; 
-;
-;   tib and locals grows forward, stacks grows backwards, no overflow 
-;       or underflow checks;
-;
-;   only immediate flag used as $80, no hide, no compile, no extras;
+;   6502 is a byte processor, no need 'pad' at end of even names
 ;
 ;   As Forth-1994: ; FALSE is $0000 ; TRUE  is $FFFF ;
 ;
-;   Remarks:
-;
-;   if locals 'still' not used, data stack could be 52 cells 
-;
-;   words must be between spaces, before and after spaces are necessary;
-;
-;   no line wrap then use a maximum of 72 bytes of tib
-;
-;   For 6502:
-;
-;   page zero and page one reserved
-;
-;   hardware stack not used for forth, just for jsr/rts and pha/pla
-;
-;   6502 is a byte processor, no need 'pad' at end of even names;
-;
 ;----------------------------------------------------------------------
-;
-; stuff for ca65 
+; for ca65 
 ;
 .p02
 .feature c_comments
@@ -58,27 +39,20 @@
 .ident (.concat (arg1, arg2)):
 .endmacro
 
+H0000 = 0
+hcount .set 0
+
 ; header for primitives
-; the entry point for dictionary is f_~name~
-; the entry point for code is ~name~
 .macro def_word name, label, flag
 ;this = *
-makelabel "f_", label
+makelabel "is_", label
     .ident(.sprintf("H%04X", hcount + 1)) = *
     .word .ident (.sprintf ("H%04X", hcount))
     hcount .set hcount + 1
-    .byte .strlen(name) + flag + 0 ; nice trick !
+    .byte .strlen(name) + flag + 0
     .byte name
-    ; needed for MITC, in primitives
-    .word $0000 
 makelabel "", label
 .endmacro
-
-H0000 = 0
-
-hcount .set 0
-
-debug = 0
 
 ;----------------------------------------------------------------------
 ; alias
@@ -89,17 +63,23 @@ CELL   =  2     ; 16 bits
 ; highlander
 FLAG_IMM  =  1<<7
 
+; stack size
+SIZES  = $100
+
 ; terminal input buffer, 80 bytes forward
 tib = $0200
+; .res SIZES, $0   
 
 ; locals, 16 words forward
 lcs = $0250
 
 ; data stack base, 36 words deep backward
 dsb = $02DC 
+; .res SIZES, $0
 
 ; return stack base, 36 words deep backward
 rsb = $02FF
+; .res SIZES, $0
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
@@ -109,12 +89,12 @@ rsb = $02FF
 nil:    .word $0 ; reserved reference offset
 dta:    .word $0 ; holds data stack base,
 rte:    .word $0 ; holds return stack base
-lnk:    .word $0 ; link for inner return
+lnk:    .word $0 ; link return
 
 ; default Forth pseudo registers
-tos:    .word $0 ; top on stack, first
-nos:    .word $0 ; next on stack, second
-wrk:    .word $0 ; work, generic holder
+tos:    .word $0 ; tos first at top of stack
+nos:    .word $0 ; nos second at top of stack
+wrk:    .word $0 ; work holder
 tmp:    .word $0 ; temporary holder
 
 ; default Forth variables
@@ -123,8 +103,6 @@ toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 
-;----------------------------------------------------------------------
-;
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
 ; no rom code
@@ -143,9 +121,9 @@ here:   .word $0 ; next free cell
 main:
 
     ; latest link
-    lda #<f_semis
+    lda #<semis
     sta last + 0
-    lda #>f_semis
+    lda #>semis
     sta last + 1
 
     ; next free memory cell
@@ -160,60 +138,48 @@ main:
     lda #>nil
     sta nil + 1
 
+    ; stacks MSBs
+    ldy #>rte
+    sty dta + 1
+    sty rte + 1
+
 ;---------------------------------------------------------------------
 error:
 
     lda #13
     jsr putchar
 
-    .if debug
-    jsr erro
-    .endif
-
 ;---------------------------------------------------------------------
 quit:
 
     ; reset stacks
-    ldy #>rte
-    sty dta + 1
-    sty rte + 1
-
     ldy #$DC
     sty dta + 0
     ldy #$FF
     sty rte + 0
 
-    ; this is \0
-    iny
-    
     ; clear tib stuff
+    iny
     sty toin + 0
     sty tib + 0
 
-    ; and state is 'interpret' 
+    ; state is 'interpret' == 0
     sty state + 0
 
 ;---------------------------------------------------------------------
 ; the outer loop
 outer:
 
-    .if debug 
-    jsr showdic
-    .endif
-
-    ; a magic loop
+    ; magic loop
     lda #<outer
-    sta tos + 0
+    sta lnk + 0
     lda #>outer
-    sta tos + 1
-    jsr rpush
+    sta lnk + 1
 
-find:
     ; get a token, (nos)
     jsr token
   
-    ; dictionary with only one vocaburary :)
-
+find:
     ; load lastest link
     lda #<last
     sta wrk + 0
@@ -222,7 +188,7 @@ find:
 
 @loop:
 
-    ; update lsb link list
+    ; update link list
     lda wrk + 0
     sta tos + 0
 
@@ -230,23 +196,22 @@ find:
     ora wrk + 1
     beq error ; end of dictionary, no more words to search, quit
 
-    ; update msb link list
+    ; update link list
     lda wrk + 1
     sta tos + 1
     
-    ; save that link, wrk = [tos]
-    ; and advance to size+flag byte, tos+2
+    ; get that link, wrk = [tos]
+    ; bypass the link tos+2
     ldx #(tos - nil) ; from 
     ldy #(wrk - nil) ; into
     jsr pull
 
-    ; compare words
-    ldy #0
-
     ; save the flag at size byte
-    lda (tos), y
+    lda tos + 0
     pha
 
+    ; compare words
+    ldy #0
 @equal:
     lda (nos), y
     ; space ends token
@@ -270,13 +235,12 @@ find:
 
     ; compile or execute
     pla             ; immediate ? 
-    bmi @execw      ; bit 7 set if < 0 
+    bmi @execw      ; if < 0 bit 7 set
 
     lda state + 0   ; executing ?
     bne @execw
 
-; zzzz how does return ? 
-; need a branch or jump to outer
+; zzzz how does return ? need a branch or jump to outer
 
 @compw:
 
@@ -339,10 +303,6 @@ newline_:
     iny
     sta tib, y
     sta toin + 0
-
-    .if debug
-    jsr showtib
-    .endif 
 
 ;---------------------------------------------------------------------
 ; 
@@ -482,17 +442,17 @@ putchar:
 ;
 
 ;---------------------------------------------------------------------
-def_word "key", "key", 0
-   jsr getchar
-   sta tos + 0
-   jmp used
-
-;---------------------------------------------------------------------
 def_word "emit", "emit", 0
    jsr tspull
    lda tos + 0
    jsr putchar
    jmp link_
+
+;---------------------------------------------------------------------
+def_word "key", "key", 0
+   jsr getchar
+   sta tos + 0
+   jmp used
 
 ;---------------------------------------------------------------------
 ; [tos] = nos
@@ -515,23 +475,6 @@ fetchw:
     jmp used
 
 ;---------------------------------------------------------------------
-def_word "rp@", "rpfetch", 0
-    ldx #(rte - nil)
-    jmp copy
-
-;---------------------------------------------------------------------
-def_word "sp@", "spfetch", 0
-    ldx #(dta - nil)
-    jmp copy
-
-;---------------------------------------------------------------------
-def_word "s@", "statevar", 0 
-    ldx #(state - nil)
-    ; jmp copy
-
-;---------------------------------------------------------------------
-; generic 
-;
 copy:
     lda nil + 0, x
     sta tos + 0
@@ -541,6 +484,21 @@ back:
 used:
     jsr spush
     jmp link_
+
+;---------------------------------------------------------------------
+def_word "s@", "statevar", 0 
+    ldx #(state - nil)
+    jmp copy
+
+;---------------------------------------------------------------------
+def_word "rp@", "rpfetch", 0
+    ldx #(rte - nil)
+    jmp copy
+
+;---------------------------------------------------------------------
+def_word "sp@", "spfetch", 0
+    ldx #(dta - nil)
+    jmp copy
 
 ;---------------------------------------------------------------------
 ; ( nos tos -- nos + tos )
@@ -569,7 +527,7 @@ def_word "nand", "nand", 0
 
 ;---------------------------------------------------------------------
 ; test if tos == \0
-def_word "0#", "zeroq", 0
+def_word "0=", "zeroq", 0
     jsr tspull
     ; lda tos + 1, implicit
     ora tos + 0
@@ -609,10 +567,10 @@ next_:
     ldx #(tos - nil)
     jsr pull
 
-    ; is a primitive ? starts with NULL 
+    ; is a primitive ? 
     lda lnk + 1
-    ora lnk + 0    
-    beq jump_
+    cmp #>init    ; magic high byte page of init:
+    bcc jump_
 
 nest_:
     ; push into return stack
@@ -717,7 +675,7 @@ compile:
 ends:
 
 ; debug stuff
-.if debug
+.if 0
 
 erro:
     lda #'?'
@@ -741,103 +699,6 @@ okey:
     jsr putchar
     rts
 
-showdic:
-
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-
-    ; load lastest link
-    lda #<last
-    sta wrk + 0
-    lda #>last
-    sta wrk + 1
-
-@loop:
-
-    ; update link list
-    lda wrk + 0
-    sta tos + 0
-
-    ; verify is zero
-    ora wrk + 1
-    beq @ends ; end of dictionary, no more words to search, quit
-
-    ; update link list
-    lda wrk + 1
-    sta tos + 1
-    
-    ; get that link, wrk = [tos]
-    ; bypass the link tos+2
-    ldx #(tos - nil) ; from 
-    ldy #(wrk - nil) ; into
-    jsr pull
-
-    ldy #0
-    lda (tos), y
-    and #$7F
-    tax
-
-    adc #' '
-    jsr putchar
-
-@loopa:
-    iny
-    lda (tos), y
-    jsr putchar
-    dex
-    bne @loopa
-
-    lda #10
-    jsr putchar
-
-    jmp @loop
-
-@ends:
-
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-
-    rts
-    
-showtib:
-
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-
-    lda #'>'
-    jsr putchar
-    ldy #0
-@loop:
-    lda tib, y
-    beq @done
-    jsr putchar
-    iny
-    bne @loop
-@done:
-    lda #'<'
-    jsr putchar
-
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-
-    rts
-    
 .endif
 
 .align $100
