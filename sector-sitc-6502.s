@@ -15,26 +15,26 @@
 ;
 ;   Changes:
 ;
-;   all data (36 cells) and return (36 cells) stacks, locals (14 cells) 
-;       and tib (84 bytes) are in same page $200, 256 bytes; 
+;   all tib (84 bytes), locals (14 cells), data (36 cells) and 
+;       return (36 cells) stacks are in page $200; 
 ;
-;       tib and locals grows forward, stacks grows backwards;
+;   tib and locals grows forward, stacks grows backwards;
 ;
-;       no overflow or underflow checks;
+;   none overflow or underflow checks;
 ;
-;   only immediate flag used as $80, no hide, compile, extras flags;
+;   only immediate flag used as $80, no extras flags;
 ;
-;   As Forth-1994: ; FALSE is $0000 ; TRUE  is $FFFF ;
+;   As Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
 ;
 ;   Remarks:
 ;
-;   words must be between spaces, begin and end spaces are necessary;
+;   words must be between spaces, begin and end spaces are wise;
 ;
-;   if locals 'still' not used, data stack could be 52 cells 
+;   if locals not used, data stack could be 50 cells 
 ;
 ;   For 6502:
 ;
-;   hardware stack not used as forth stack, free for use;
+;   hardware stack (page $100) not used as forth stack, free for use;
 ;
 ;   6502 is a byte processor, no need 'pad' at end of even names;
 ; 
@@ -64,7 +64,6 @@
 ; the entry point for dictionary is f_~name~
 ; the entry point for code is ~name~
 .macro def_word name, label, flag
-;this = *
 makelabel "f_", label
 .ident(.sprintf("H%04X", hcount + 1)) = *
 .word .ident (.sprintf ("H%04X", hcount))
@@ -84,19 +83,19 @@ debug = 0
 ; alias
 
 ; cell size
-CELL   =  2     ; two bytes, 16 bits
+CELL = 2     ; two bytes, 16 bits
 
 ; highlander
-FLAG_IMM  =  1<<7
+FLAG_IMM = 1<<7
 
-; terminal input buffer, 80 bytes, forward
+; terminal input buffer, 84 bytes, forward
 tib = $0200
 
-; locals, 16 cells, forward
-lcs = $0250
+; locals, 14 cells, forward
+lcs = $0254
 
 ; data stack, 36 cells, backward
-dsb = $02DC 
+dsb = $02B6 
 
 ; return stack, 36 cells, backward
 rsb = $02FF
@@ -138,12 +137,13 @@ here:   .word $0 ; next free cell
 ;----------------------------------------------------------------------
 .segment "CODE" 
 ;
-; leave space for page zero, hard stack, buffer and forth stacks
+; leave space for page zero, hard stack, 
+; buffer, locals and forth stacks
 ;
 * = $300
 
 main:
-; latest link
+; link list
     lda #<exit
     sta last + 0
     lda #>exit
@@ -161,8 +161,15 @@ main:
 
 ;---------------------------------------------------------------------
 error:
+    lda #'?'
+    jsr putchar
+    lda #'O'
+    jsr putchar
+    lda #'K'
+    jsr putchar
     lda #13
     jsr putchar
+
     .if debug
     jsr erro
     .endif
@@ -178,7 +185,7 @@ quit:
     ldy #$FF
     sty rp0 + 0
 ; clear tib stuff
-    iny     ; tricky \0
+    iny ; tricky \0
     sty toin + 0
     sty tib + 0
 ; state is 'interpret' == \0

@@ -39,14 +39,16 @@
 : repeat swap ['] branch , here @ - , dup here @ swap - swap ! ; immediate
 : until ['] ?branch , here @ - , ; immediate
 : do here @ ['] >r , ['] >r , ; immediate
-: loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup , ['] = , ['] ?branch , here @ - , ['] 2drop , ; immediate
+: loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup , ['] = ,
+ ['] ?branch , here @ - , ['] 2drop , ; immediate
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
 : c@ @ ffh and ;
 : type 0 do dup c@ emit 1 + loop drop ;
 : in> >in @ c@ >in dup @ 1 + swap ! ;
 : bl lit [ 1 2* 2* 2* 2* 2* , ] ;
-: parse in> drop >in @ swap 0 begin over in> <> while 1 + repeat swap bl = if >in dup @ 1 - swap ! then ;
+: parse in> drop >in @ swap 0 begin over in> <> 
+  while 1 + repeat swap bl = if >in dup @ 1 - swap ! then ;
 : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;
 : [char] ['] lit , bl word drop c@ , ; immediate
 : ." [char] " parse type ; immediate
@@ -61,8 +63,31 @@ variable tape_head
 variable loop_depth
 variable parse_index
 
-: runbf 0 parse_index ! begin parse_index @ c@ dup dup dup dup dup dup dup [char] , = if key tape_head @ ! then [char] - = if tape_head @ @ 1 - tape_head @ ! then [char] + = if tape_head @ @ 1 + tape_head @ ! then [char] < = if tape_head @ 2 - tape_head ! then [char] > = if tape_head @ 2 + tape_head ! then [char] . = if tape_head @ @ emit then [char] [ = tape_head @ @ 0 = and if 1 loop_depth ! begin parse_index @ 1 + parse_index ! parse_index @ c@ dup [char] [ = if loop_depth @ 1 + loop_depth ! then [char] ] = if loop_depth @ 1 - loop_depth ! then loop_depth @ 0 = until then [char] ] = tape_head @ @ 0 <> and if 1 loop_depth ! begin parse_index @ 1 - parse_index ! parse_index @ c@ dup [char] [ = if loop_depth @ 1 - loop_depth ! then [char] ] = if loop_depth @ 1 + loop_depth ! then loop_depth @ 0 = until then parse_index @ 1 + parse_index ! dup parse_index @ = until drop ;
+: runbf 0 parse_index ! 
+begin parse_index @ c@ dup dup dup dup dup dup dup 
+[char] , = if key tape_head @ ! then 
+[char] - = if tape_head @ @ 1 - tape_head @ ! then 
+[char] + = if tape_head @ @ 1 + tape_head @ ! then 
+[char] < = if tape_head @ 2 - tape_head ! then 
+[char] > = if tape_head @ 2 + tape_head ! then 
+[char] . = if tape_head @ @ emit then 
+[char] [ = tape_head @ @ 0 = and if 1 loop_depth ! 
+begin parse_index @ 1 + parse_index ! parse_index @ c@ dup 
+[char] [ = if loop_depth @ 1 + loop_depth ! then 
+[char] ] = if loop_depth @ 1 - loop_depth ! then 
+loop_depth @ 0 = until then  
+[char] ] = tape_head @ @ 0 <> and if 1 loop_depth ! 
+begin parse_index @ 1 - parse_index ! parse_index @ c@ dup  
+[char] [ = if loop_depth @ 1 - loop_depth ! then 
+[char] ] = if loop_depth @ 1 + loop_depth ! then 
+loop_depth @ 0 = until then 
+parse_index @ 1 + parse_index ! dup parse_index @ = until drop ; 
+
 : BF( [char] ) parse runbf ; immediate
+
 here @ 48 + tape_head !
 
-BF( >++++++++[<+++++++++>-]<.>++++[<+++++++>-]<+.+++++++..+++.>>++++++[<+++++++>-]<++.------------.>++++++[<+++++++++>-]<+.<.+++.------.--------.>>>++++[<++++++++>-]<+.)
+BF( >++++++++[<+++++++++>-]<.>++++[<+++++++>-]<+.+++++++..+++.> 
+>++++++[<+++++++>-]<++.------------.>++++++[<+++++++++>-] 
+<+.<.+++.------.--------.>>>++++[<++++++++>-]<+.) 
+
