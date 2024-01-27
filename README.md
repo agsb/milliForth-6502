@@ -30,7 +30,8 @@ This version includes:
 
 include some debug code and flag
 
-_24/01/2024_ code for 6502 sized to 632 bytes. Review with 'standart indirect thread code'. 
+_28/01/2024_ code for 6502 sized to 632 bytes. Review with 'standart indirect thread code',
+             new sizes for tib, locals, data and return stacks. 
 
 _24/01/2024_ code for 6502 review. Recode for use 'standart indirect thread code'. 
              made a file with 'minimum itc model ' and another with 'standart itc model'
