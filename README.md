@@ -49,57 +49,36 @@ _14/11/2023_ code for 6502 sized to 624 bytes, no ascii-7, no key, no emit, no 2
 
 ## Coding for 6502
 
-Using ca65 V2.19 - Git 7979f8a41.
-
-Focus in size not performance.
+Using ca65 V2.19 - Git 7979f8a41. Focus in size not performance.
 
 The way at 6502 is use a page zero and lots of lda/sta bytes
 
 ### Changes:
 
-all tib (84 bytes), locals (14 cells), data (36 cells) and 
-    return (36 cells) stacks are in page $200; 
+- all tib (84 bytes), locals (14 cells), data (36 cells) and return (36 cells) stacks are in page $200 ; 
+- tib and locals grows forward, stacks grows backwards ;
+- none overflow or underflow checks ;
+- only immediate flag used as $80, no extras flags ;
+- as Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
 
-tib and locals grows forward, stacks grows backwards;
+### Remarks:
 
-none overflow or underflow checks;
-
-only immediate flag used as $80, no extras flags;
-
-As Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
-
-Remarks:
-
-words must be between spaces, begin and end spaces are wise;
-
-if locals not used, data stack could be 50 cells 
-
-hardware stack (page $100) not used as forth stack, free for use;
-
-6502 is a byte processor, no need 'pad' at end of even names;
- 
-no multiuser, no multitask, no faster;
+- words must be between spaces, begin and end spaces are wise;
+- hardware stack (page $100) not used as forth stack, free for use;
+- 6502 is a byte processor, no need 'pad' at end of even names;
+- no multiuser, no multitask, no faster;
+- uses 7-bit ASCII characters;
+- uses 32 bytes of _page zero_;
+- only update _latest_ at end of word definition, so the word is hidden while defined;
+- redefine a word does not changes at previous uses;
+- NOT ! use _Minimal Thread Indirect Code_ as inner dispatcher[^4];
 
 24/01/2024 for comparison with x86 code, rewrite using 
     standart indirect thread code;
 
-by easy, stack operations are backwards but slightly different
-
-usually push is store and decrease, pull is increase and fetch,
-
-here: push is decrease and store, pull is fetch and increase,
-
-The milliForth for 6502 have some changes:
-
-- does not use _hardware stack_ as Forth stack;
-- only _IMMEDIATE_ flag used;
-- only update _latest_ at end of word definition, so the word is hidden while defined;
-- redefine a word does not changes at previous uses;
-- uses _Minimal Thread Indirect Code_ as inner dispatcher[^4];
-- the _tib, locals, data stack, return stack_ at same page ($200) [^5];
-- uses 32 bytes of _page zero_;
-- depends on spaces before and after a word in tib;
-- uses 7-bit ASCII characters;
+The stack operations are backwards but slightly different in order.
+Usually, **push** is _store and decrease_, **pull** is _increase and fetch_.
+This code, **push** is _decrease and store_, **pull** is _fetch and increase_,
 
 - still no include a _'OK'_ or _'??'_;
 - still no include a backspace routine for \b; 
