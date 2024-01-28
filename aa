@@ -1,0 +1,40 @@
+;   The way at 6502 is use a page zero and lots of lda/sta bytes
+;
+;   Focus in size not performance.
+;
+;   Changes:
+;
+;   all tib (84 bytes), locals (14 cells), data (36 cells) and 
+;       return (36 cells) stacks are in page $200; 
+;
+;   tib and locals grows forward, stacks grows backwards;
+;
+;   none overflow or underflow checks;
+;
+;   only immediate flag used as $80, no extras flags;
+;
+;   As Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
+;
+;   Remarks:
+;
+;   words must be between spaces, begin and end spaces are wise;
+;
+;   if locals not used, data stack could be 50 cells 
+;
+;   For 6502:
+;
+;   hardware stack (page $100) not used as forth stack, free for use;
+;
+;   6502 is a byte processor, no need 'pad' at end of even names;
+; 
+;   no multiuser, no multitask, no faster;
+;
+;   24/01/2024 for comparison with x86 code, rewrite using 
+;       standart indirect thread code;
+;
+;   by easy, stack operations are backwards but slightly different
+;
+;   usually push is store and decrease, pull is increase and fetch,
+;
+;   here: push is decrease and store, pull is fetch and increase,
+;

@@ -1,32 +1,19 @@
-# milliForth for 6502
+# A milliForth for 6502
 
 _"A Forth in 380 bytes — the smallest real programming language ever, as of yet."_
 
 The milliForth[^1] is very similar to sectorForth[^2], and smaller than sector Lisp[^3]
 
-## bytes?
+## Bytes?
 
 Yes, bytes. But the code is for a x86 CPU. 
 
 How minimal could be it for a classic 6502 CPU ?
 
-Two essentially different CPUs, a 16-bit x86 based on complex registers and opcodes, and a 8-bit 6502 using page zero as registers and page one as hardware stack.
+Two essentially different CPUs, a 16-bit x86 based on complex registers and opcodes, 
+and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
-## Coding
-
-This version includes: 
-```
-        primitives:
-            sp@, rp@, s@, +, nand, @, !, :, ;, 0=, key, emit, 2/,
-
-        internals: 
-            spush, spull, rpull, rpush, incr, decr, add, etc (register mimics)
-            unnest, next, nest, link, jump, (inner interpreter) 
-            quit, token, skip, scan, newline, find, compile, execute, exit (outer interpreter)
-            _getchar_, _putchar_ (depends on system, used minimal for emulator )
-```
-    
-### Coding for minimal size, not for best performance. Using ca65 V2.19 - Git 7979f8a41.
+## Time table 
 
 include some debug code and flag
 
@@ -60,11 +47,47 @@ _20/11/2023_ rebuild the github repo without fork from original milliForth[^1]
 
 _14/11/2023_ code for 6502 sized to 624 bytes, no ascii-7, no key, no emit, no 2/, many errors
 
-## Language
+## Coding for 6502
 
-_"SectorFORTH was an extensive guide throughout the process of implementing milliFORTH, and milliFORTH's design actually converged on sectorFORTH unintentionally in a few areas. That said, the language implemented is intentionally very similar, being the 'minimal FORTH'."_
+Using ca65 V2.19 - Git 7979f8a41.
 
-For Forth language primer see [Starting Forth](https://www.forth.com/starting-forth/)
+Focus in size not performance.
+
+The way at 6502 is use a page zero and lots of lda/sta bytes
+
+### Changes:
+
+all tib (84 bytes), locals (14 cells), data (36 cells) and 
+    return (36 cells) stacks are in page $200; 
+
+tib and locals grows forward, stacks grows backwards;
+
+none overflow or underflow checks;
+
+only immediate flag used as $80, no extras flags;
+
+As Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
+
+Remarks:
+
+words must be between spaces, begin and end spaces are wise;
+
+if locals not used, data stack could be 50 cells 
+
+hardware stack (page $100) not used as forth stack, free for use;
+
+6502 is a byte processor, no need 'pad' at end of even names;
+ 
+no multiuser, no multitask, no faster;
+
+24/01/2024 for comparison with x86 code, rewrite using 
+    standart indirect thread code;
+
+by easy, stack operations are backwards but slightly different
+
+usually push is store and decrease, pull is increase and fetch,
+
+here: push is decrease and store, pull is fetch and increase,
 
 The milliForth for 6502 have some changes:
 
@@ -82,18 +105,38 @@ The milliForth for 6502 have some changes:
 - still no include a backspace routine for \b; 
 - still no include a empty line routine for \u; 
 
+## Coding
+
+This version includes: 
+```
+    primitives:
+        sp@, rp@, s@, +, nand, @, !, :, ;, 0#, key, emit, 2/,
+
+    internals: 
+        spush, spull, rpull, rpush, incr, decr, add, etc (register mimics)
+        unnest, next, nest, link, jump, (inner interpreter) 
+        quit, token, skip, scan, newline, find, compile, execute, exit (outer interpreter)
+        getch, putch (depends on system, used minimal for emulator )
+```
+    
 ### Memory
 
 ```
     $000    page zero       ; cpu reserved
     $100    hardware stack  ; cpu reserved
-    $200    TIB             ; terminal input buffer, 80 bytes
-    $250    Locals          ; reserved for locals, 16 cells
-    $2DC    data stack      ; data stack, 36 cells
+    $200    TIB             ; terminal input buffer, 84 bytes
+    $254    Locals          ; reserved for locals, 14 cells
+    $2D8    data stack      ; data stack, 36 cells
     $2FF    return stack    ; return stack, 36 cells
     $300    _main_          ; start of Forth
-    $500    _init_          ; start of compose dictionary
+    $5??    _init_          ; start of compose dictionary
 ```
+
+## Language
+
+_"SectorFORTH was an extensive guide throughout the process of implementing milliFORTH, and milliFORTH's design actually converged on sectorFORTH unintentionally in a few areas. That said, the language implemented is intentionally very similar, being the 'minimal FORTH'."_
+
+For Forth language primer see [Starting Forth](https://www.forth.com/starting-forth/)
 
 ## Use
 
@@ -110,6 +153,8 @@ A crude small script for compile with ca65 is included.
 the size is take from main: to ends: using the sector-6502.lbl file
 
 ## Note
+
+the originals files are edited for lines with less than 80 bytes
 
 the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 
