@@ -43,6 +43,12 @@
 ;   24/01/2024 for comparison with x86 code, rewrite using 
 ;       standart indirect thread code;
 ;
+;   by easy, stack operations are backwards but slightly different
+;
+;   usually push is store and decrease, pull is increase and fetch,
+;
+;   here: push is decrease and store, pull is fetch and increase,
+;
 ;----------------------------------------------------------------------
 ;
 ; stuff for ca65 
@@ -92,13 +98,15 @@ FLAG_IMM = 1<<7
 tib = $0200
 
 ; locals, 14 cells, forward
-lcs = $0254
+lcs = $54
+
+; strange ? is a 8-bit system, look at push code ;)
 
 ; data stack, 36 cells, backward
-dsb = $02B6 
+dsb = $B9
 
 ; return stack, 36 cells, backward
-rsb = $02FF
+rsb = $00
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
@@ -177,15 +185,14 @@ error:
 ;---------------------------------------------------------------------
 quit:
 ; reset stacks
-    ldy #>rp0
+    ldy #>tib
     sty sp0 + 1
     sty rp0 + 1
-    ldy #$DC
+    ldy #$B9
     sty sp0 + 0
-    ldy #$FF
+    ldy #$00
     sty rp0 + 0
 ; clear tib stuff
-    iny ; tricky \0
     sty toin + 0
     sty tib + 0
 ; state is 'interpret' == \0
@@ -220,7 +227,6 @@ find:
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
     jsr pull
-
 ; compare words
     ldy #0
 ; save the flag at size byte
@@ -245,26 +251,23 @@ find:
     tya
 ; implict ldx #(fst - nil)
     jsr addw
-    
 ; immediate ? 
     lda state + 1   
     bmi execute      ; bit 7 set 
-    
 ; executing ?
     lda state + 0   
     beq execute
-
 compile:
     jsr move
     jmp next
-
 execute:
-    ldy #(fst - nil)
-    jsr rpull 
-    jmp unnest
+    lda fst + 0
+    sta lnk + 0
+    lda fst + 1
+    sta lnk + 1
+    jmp next
 
 f_find:
-
     .word find
 
 ;---------------------------------------------------------------------
@@ -493,7 +496,6 @@ def_word "sp@", "spat", 0
 ;---------------------------------------------------------------------
 def_word "s@", "stateat", 0 
     ldx #(state - nil)
-; jmp totos
 
 ;---------------------------------------------------------------------
 ; generic 
@@ -589,7 +591,7 @@ create:
     lda #<docol
     sta (here), y
     iny
-    lda #<docol
+    lda #>docol
     sta (here), y
     iny
 ; update here 
@@ -645,12 +647,12 @@ nest:
     ldy #(lnk - nil)
     jsr rpush
 
-link:
 ; must be at next cell, that's why 
     lda #$02
     ldx #(wrk - nil)
     jsr addw
 
+link:
     lda wrk + 0
     sta lnk + 0
     lda wrk + 1
