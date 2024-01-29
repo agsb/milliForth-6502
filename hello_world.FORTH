@@ -36,7 +36,8 @@
 : then dup here @ swap - swap ! ; immediate
 : begin here @ ; immediate
 : while ['] ?branch , here @ 0 , ; immediate
-: repeat swap ['] branch , here @ - , dup here @ swap - swap ! ; immediate
+: repeat swap ['] branch , here @ - , dup here 
+    @ swap - swap ! ; immediate
 : until ['] ?branch , here @ - , ; immediate
 : do here @ ['] >r , ['] >r , ; immediate
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup , 

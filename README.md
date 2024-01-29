@@ -17,10 +17,10 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 include some debug code and flag
 
-_28/01/2024_ code for 6502 sized to 632 bytes. Review with 'standart indirect thread code',
+_28/01/2024_ code for 6502 sized to 632 bytes. Review with 'standart direct thread code',
              new sizes for tib, locals, data and return stacks. 
 
-_24/01/2024_ code for 6502 review. Recode for use 'standart indirect thread code'. 
+_24/01/2024_ code for 6502 review. Recode for use 'standart direct thread code'. 
              made a file with 'minimum itc model ' and another with 'standart itc model'
                  
 _16/01/2024_ code for 6502 sized to 612 bytes, review and reorder, need loop end-of-find.
@@ -51,7 +51,7 @@ _14/11/2023_ code for 6502 sized to 624 bytes, no ascii-7, no key, no emit, no 2
 
 Using ca65 V2.19 - Git 7979f8a41. Focus in size not performance.
 
-The way at 6502 is use a page zero and lots of lda/sta bytes
+The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Changes:
 
@@ -71,10 +71,13 @@ The way at 6502 is use a page zero and lots of lda/sta bytes
 - uses 32 bytes of _page zero_;
 - only update _latest_ at end of word definition, so the word is hidden while defined;
 - redefine a word does not changes at previous uses;
-- NOT ! use _Minimal Thread Indirect Code_ as inner dispatcher[^4];
 
-24/01/2024 for comparison with x86 code, rewrite using 
-    standart indirect thread code;
+
+24/01/2024:
+for comparison with x86 code, 
+    rewrite using standart direct thread code as inner dispatcher;
+    before was using Minimal Thread Indirect Code_ as inner dispatcher[^4];
+
 
 The stack operations are backwards but slightly different in order.
 Usually, **push** is _store and decrease_, **pull** is _increase and fetch_.
@@ -89,7 +92,7 @@ This code, **push** is _decrease and store_, **pull** is _fetch and increase_,
 This version includes: 
 ```
     primitives:
-        sp@, rp@, s@, +, nand, @, !, :, ;, 0#, key, emit, 2/,
+        sp@, rp@, s@, +, nand, @, !, :, ;, 0#, key, emit, 2/, exit,
 
     internals: 
         spush, spull, rpull, rpush, incr, decr, add, etc (register mimics)

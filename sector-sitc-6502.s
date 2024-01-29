@@ -22,7 +22,7 @@
 ;
 ;   none overflow or underflow checks;
 ;
-;   only immediate flag used as $80, no extras flags;
+;   only immediate flag used as $80, no more flags;
 ;
 ;   As Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
 ;
@@ -40,14 +40,14 @@
 ; 
 ;   no multiuser, no multitask, no faster;
 ;
-;   24/01/2024 for comparison with x86 code, rewrite using 
-;       standart indirect thread code;
+;   24/01/2024 for comparison with x86 code, 
+;       rewrite using standart direct thread code;
 ;
 ;   by easy, stack operations are backwards but slightly different
 ;
-;   usually push is store and decrease, pull is increase and fetch,
+;   usually push is 'store and decrease', pull is 'increase and fetch',
 ;
-;   here: push is decrease and store, pull is fetch and increase,
+;   here: push is 'decrease and store', pull is 'fetch and increase',
 ;
 ;----------------------------------------------------------------------
 ;
@@ -83,7 +83,7 @@ H0000 = 0
 
 hcount .set 0
 
-debug = 0
+debug = 1
 
 ;----------------------------------------------------------------------
 ; alias
@@ -201,11 +201,11 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 outer:
+find:
     .if debug 
     jsr showdic
     .endif
 
-find:
 ; get a token
     jsr token
 ; load last
@@ -234,6 +234,9 @@ find:
     sta state + 1   ; non canonical
 @equal:
     lda (snd), y
+    
+    jsr putchar
+
 ; space ends token
     cmp #32  
     beq @done
@@ -261,11 +264,7 @@ compile:
     jsr move
     jmp next
 execute:
-    lda fst + 0
-    sta lnk + 0
-    lda fst + 1
-    sta lnk + 1
-    jmp next
+    jmp (fst) 
 
 f_find:
     .word find
@@ -279,8 +278,6 @@ try:
     rts
 
 ;---------------------------------------------------------------------
-; a page of 254 for buffer, but reserve 3 bytes. (but 72 is enough)
-; no edits, no colapse spcs, no continue between lines
 getline:
 ; drop rts of try
     pla
@@ -312,9 +309,9 @@ getline:
     sta tib, y
     sta toin + 0
 
-    .if debug
-    jsr showtib
-    .endif 
+   ; .if debug
+   ; jsr showtib
+   ; .endif 
 
 ;---------------------------------------------------------------------
 ; 
@@ -428,6 +425,7 @@ copy:
     lda nil + 1, y
     sta (nil, x)
     jsr incw
+rets:
     rts
 
 ;---------------------------------------------------------------------
@@ -435,22 +433,30 @@ copy:
 ; always does echo
 getchar:
     lda $E000
+
 putchar:
     sta $E000
-    rts
+
+; EOF ?
+    cmp #$FF
+    bne rets
+
+; return (0)
+    jmp $0000
 
 ;---------------------------------------------------------------------
 ;
 spull2:
     ldy #(snd - nil)
     jsr spull
+
 spull1:
     ldy #(fst - nil)
     jmp spull
 
 ;---------------------------------------------------------------------
-; all primitives ends with jmp next
-;---------------------------------------------------------------------
+; primitives 
+;
 def_word "key", "key", 0
     jsr getchar
     sta fst + 0
@@ -587,11 +593,14 @@ create:
     iny
     bne @loop
 @ends:
-; update 
-    lda #<docol
+; code field 
+    lda #$4C    ; JMP
+    sta (here), y
+    iny 
+    lda #<nest
     sta (here), y
     iny
-    lda #>docol
+    lda #>nest
     sta (here), y
     iny
 ; update here 
@@ -613,9 +622,9 @@ def_word ";", "semis", FLAG_IMM
     sta state + 0
 
 ; compounds words must ends with 'unnest'
-    lda #<exit
+    lda #<unnest
     sta fst + 0
-    lda #>exit
+    lda #>unnest
     sta fst + 1
 
     jmp compile
@@ -638,10 +647,10 @@ next:
     ldy #(wrk - nil)
     jsr pull
 
-; indirect jmp pass 
 ; historical JMP @(W)+
     jmp (wrk)
 
+docol:
 nest:
 ; push into return stack
     ldy #(lnk - nil)
@@ -660,11 +669,9 @@ link:
     
     jmp next
 
-docol:
-    .word nest
+ends:
 
 ;---------------------------------------------------------------------
-ends:
 
 ; debug stuff
 .if debug
@@ -699,6 +706,12 @@ tya
 pha
 txa
 pha
+
+lda #10
+jsr putchar
+
+lda #'['
+jsr putchar
 
 ; load lastest link
 lda #<last
@@ -748,6 +761,12 @@ jmp @loop
 
 @ends:
 
+lda #']'
+jsr putchar
+
+lda #10
+jsr putchar
+
 pla
 tax
 pla
@@ -774,7 +793,6 @@ rts
 
 .endif
 
-.align $100
 ; for anything above is not a primitive
 init:   
 
