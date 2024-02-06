@@ -133,8 +133,6 @@ last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 
 ;----------------------------------------------------------------------
-;
-;----------------------------------------------------------------------
 ;.segment "ONCE" 
 ; no rom code
 
@@ -235,7 +233,9 @@ find:
 @equal:
     lda (snd), y
     
+    .if debug
     jsr putchar
+    .endif
 
 ; space ends token
     cmp #32  
@@ -254,6 +254,13 @@ find:
     tya
 ; implict ldx #(fst - nil)
     jsr addw
+; return to find
+    lda #<f_find
+    sta trd + 0
+    lda #>f_find
+    sta trd + 1
+    
+    
 ; immediate ? 
     lda state + 1   
     bmi execute      ; bit 7 set 

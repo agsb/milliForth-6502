@@ -17,6 +17,8 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 include some debug code and flag
 
+_30/01/2024_ doing debugs for DTC inner 
+
 _28/01/2024_ code for 6502 sized to 632 bytes. Review with 'standart direct thread code',
              new sizes for tib, locals, data and return stacks. 
 
@@ -57,7 +59,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 - all tib (84 bytes), locals (14 cells), data (36 cells) and return (36 cells) stacks are in page $200 ; 
 - tib and locals grows forward, stacks grows backwards ;
-- none overflow or underflow checks ;
+- no overflow or underflow checks ;
 - only immediate flag used as $80, no extras flags ;
 - as Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
 
