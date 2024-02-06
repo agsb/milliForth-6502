@@ -150,22 +150,22 @@ here:   .word $0 ; next free cell
 
 main:
 ; link list
-    lda #<exit
-    sta last + 0
-    lda #>exit
+    lda #>f_exit
     sta last + 1
+    lda #<f_exit
+    sta last + 0
 
 ; next free memory cell
-    lda #<init
-    sta here + 0
     lda #>init
     sta here + 1
+    lda #<init
+    sta here + 0
 
 ; self pointer
-    lda #<nil
-    sta nil + 0
     lda #>nil
     sta nil + 1
+    lda #<nil
+    sta nil + 0
 
 ;---------------------------------------------------------------------
 error:
@@ -198,12 +198,14 @@ quit:
 ; the outer loop
 outer:
 find:
+
     .if debug 
     jsr showdic
     .endif
 
 ; get a token
     jsr token
+
 ; load last
     lda #<last
     sta trd + 0
@@ -219,6 +221,7 @@ find:
 ; linked list
     lda trd + 1
     sta fst + 1
+
 ; update link 
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
@@ -231,10 +234,6 @@ find:
 @equal:
     lda (snd), y
     
-    .if debug
-    jsr putchar
-    .endif
-
 ; space ends token
     cmp #32  
     beq @done
@@ -707,97 +706,130 @@ rts
 
 showdic:
 
-php
-pha
-tya
-pha
-txa
-pha
+    php
+    pha
+    tya
+    pha
+    txa
+    pha
 
-lda #10
-jsr putchar
+    lda #10
+    jsr putchar
 
-lda #'['
-jsr putchar
+    lda #'['
+    jsr putchar
 
 ; load lastest link
-lda #<last
-sta wrk + 0
-lda #>last
-sta wrk + 1
+    lda #<last
+    sta trd + 0
+    lda #>last
+    sta trd + 1
 
 @loop:
 
 ; update link list
-lda wrk + 0
-sta fst + 0
+    lda trd + 0
+    sta fst + 0
 
 ; verify is zero
-ora wrk + 1
-beq @ends ; end of dictionary, no more words to search, quit
+    ora trd + 1
+    beq @ends ; end of dictionary, no more words to search, quit
 
 ; update link list
-lda wrk + 1
-sta fst + 1
+    lda trd + 1
+    sta fst + 1
+
+    .if debug
+    lda #'~'
+    jsr putchar
+    lda fst + 1
+    jsr printhex
+    lda fst + 0
+    jsr printhex
+    .endif
 
 ; get that link, wrk = [fst]
 ; bypass the link fst+2
-ldx #(fst - nil) ; from 
-ldy #(wrk - nil) ; into
-jsr pull
+    ldx #(fst - nil) ; from 
+    ldy #(trd - nil) ; into
+    jsr pull
 
-ldy #0
-lda (fst), y
-and #$7F
-tax
-
-adc #' '
-jsr putchar
+    lda #'~'
+    jsr putchar
+    
+    ldy #0
+    lda (fst), y
+    and #$7F
+    tax
+    jsr printhex
 
 @loopa:
-iny
-lda (fst), y
-jsr putchar
-dex
-bne @loopa
+    iny
+    lda (fst), y
+    jsr putchar
+    dex
+    bne @loopa
 
-lda #10
-jsr putchar
+    lda #10
+    jsr putchar
 
-jmp @loop
+    jmp @loop
 
 @ends:
 
-lda #']'
-jsr putchar
+    lda #']'
+    jsr putchar
 
-lda #10
-jsr putchar
+    lda #10
+    jsr putchar
 
-pla
-tax
-pla
-tay
-pla
-plp
+    pla
+    tax
+    pla
+    tay
+    pla
+    plp
 
-rts
+    rts
 
 showtib:
-lda #'>'
-jsr putchar
-ldy #0
-@loop:
-lda tib, y
-beq @done
-jsr putchar
-iny
-bne @loop
-@done:
-lda #'<'
-jsr putchar
-rts
+    lda #'>'
+    jsr putchar
+    ldy #0
+    @loop:
+    lda tib, y
+    beq @done
+    jsr putchar
+    iny
+    bne @loop
+    @done:
+    lda #'<'
+    jsr putchar
+    rts
 
+;----------------------------------------------------------------------
+; prints number in tos to hexadecimal ASCII
+;----------------------------------------------------------------------
+; print a 8-bit HEX
+printhex:
+    tax
+    lsr
+    ror
+    ror
+    ror
+    jsr @conv
+    txa
+@conv:
+    and #$0F
+    clc
+    ora #$30
+    cmp #$3A
+    bcc @ends
+    adc #$06
+@ends:
+    jmp putchar
+
+;----------------------------------------------------------------------
 .endif
 
 ; for anything above is not a primitive
