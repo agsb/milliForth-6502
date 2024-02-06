@@ -154,11 +154,13 @@ main:
     sta last + 0
     lda #>exit
     sta last + 1
+
 ; next free memory cell
     lda #<init
     sta here + 0
     lda #>init
     sta here + 1
+
 ; self pointer
     lda #<nil
     sta nil + 0
@@ -168,10 +170,6 @@ main:
 ;---------------------------------------------------------------------
 error:
     lda #'?'
-    jsr putchar
-    lda #'O'
-    jsr putchar
-    lda #'K'
     jsr putchar
     lda #13
     jsr putchar
@@ -253,13 +251,13 @@ find:
 ; update fst
     tya
 ; implict ldx #(fst - nil)
-    jsr addw
+    jsr addwx
+
 ; return to find
-    lda #<f_find
-    sta trd + 0
-    lda #>f_find
-    sta trd + 1
-    
+    lda #<find_
+    sta lnk + 0
+    lda #>find_
+    sta lnk + 1
     
 ; immediate ? 
     lda state + 1   
@@ -273,7 +271,7 @@ compile:
 execute:
     jmp (fst) 
 
-f_find:
+find_:
     .word find
 
 ;---------------------------------------------------------------------
@@ -316,9 +314,9 @@ getline:
     sta tib, y
     sta toin + 0
 
-   ; .if debug
-   ; jsr showtib
-   ; .endif 
+   .if debug
+   jsr showtib
+   .endif 
 
 ;---------------------------------------------------------------------
 ; 
@@ -359,10 +357,10 @@ token:
 
 ;---------------------------------------------------------------------
 ; increment a word in page zero, offset by X
-incw:
+incwx:
     lda #1
 ; add a byte to a word in page zero. offset by X
-addw:
+addwx:
     clc
     adc nil + 0, x
     sta nil + 0, x
@@ -373,7 +371,7 @@ addw:
 
 ;---------------------------------------------------------------------
 ; decrement a word in page zero. offset by X
-decw:
+decwx:
     lda nil + 0, x
     bne @ends
     dec nil + 1, x
@@ -391,10 +389,10 @@ rpush:
 spush:
     ldx #(sp0 - nil)
 push:
-    jsr decw
+    jsr decwx
     lda nil + 1, y
     sta (nil, x)
-    jsr decw
+    jsr decwx
     lda nil + 0, y
     sta (nil, x)
     rts 
@@ -411,10 +409,10 @@ spull:
 pull:
     lda (nil, x)    
     sta nil + 0, y   
-    jsr incw        
+    jsr incwx        
     lda (nil, x)    
     sta nil + 1, y  
-    jmp incw 
+    jmp incwx 
 
 ;---------------------------------------------------------------------
 ; move a cell
@@ -428,12 +426,10 @@ each:
 copy:
     lda nil + 0, y
     sta (nil,x)
-    jsr incw
+    jsr incwx
     lda nil + 1, y
     sta (nil, x)
-    jsr incw
-rets:
-    rts
+    jmp incwx
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
@@ -450,6 +446,9 @@ putchar:
 
 ; return (0)
     jmp $0000
+
+rets:
+    rts
 
 ;---------------------------------------------------------------------
 ;
@@ -481,8 +480,8 @@ def_word "emit", "emit", 0
 def_word "!", "store", 0
 storew:
     jsr spull2
-    ldx #(fst - nil) 
-    ldy #(snd - nil) 
+    ldx #(snd - nil) 
+    ldy #(fst - nil) 
     jsr copy
     jmp next
 
@@ -526,7 +525,7 @@ this:
     jmp next
 
 ;---------------------------------------------------------------------
-; ( snd fst -- snd + fst )
+; ( fst snd -- snd + fst )
 def_word "+", "plus", 0
     jsr spull2
     clc
@@ -538,7 +537,7 @@ def_word "+", "plus", 0
     jmp only
 
 ;---------------------------------------------------------------------
-; ( snd fst -- NOT(snd AND fst) )
+; ( fst snd -- NOT(snd AND fst) )
 def_word "nand", "nand", 0
     jsr spull2
     lda snd + 0
@@ -551,7 +550,7 @@ def_word "nand", "nand", 0
     jmp only
 
 ;---------------------------------------------------------------------
-; test if fst == \0
+; ( 0 -- $FFFF) | ( n -- $0000)
 def_word "0#", "zeroq", 0
     jsr spull1
 ; lda fst + 1, implicit
@@ -568,6 +567,7 @@ rest:
 
 ;---------------------------------------------------------------------
 ; shift right
+; ( n -- n/2 )
 def_word "2/", "asr", 0
     jsr spull1
     lsr fst + 1
@@ -576,7 +576,7 @@ def_word "2/", "asr", 0
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
-; save here, panic if semis not follow 
+; save here, panic if semis not follow elsewhere
     lda here + 0
     pha
     lda here + 1
@@ -585,12 +585,12 @@ def_word ":", "colon", 0
     lda #1
     sta state + 0
 create:
-; get token
-    jsr token
 ; link last into (here)
     ldy #(last - nil)
     jsr each
-;copy size and name
+; get token
+    jsr token
+; copy size and name
     ldy #0
 @loop:    
     lda (snd), y
@@ -600,7 +600,7 @@ create:
     iny
     bne @loop
 @ends:
-; code field 
+; direct code field 
     lda #$4C    ; JMP
     sta (here), y
     iny 
@@ -613,7 +613,7 @@ create:
 ; update here 
     tya
 ; implicit ldx #(here - nil), when 'each'
-    jsr addw
+    jsr addwx
 
     jmp next
 
@@ -666,7 +666,7 @@ nest:
 ; must be at next cell, that's why 
     lda #$02
     ldx #(wrk - nil)
-    jsr addw
+    jsr addwx
 
 link:
     lda wrk + 0
