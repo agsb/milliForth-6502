@@ -132,6 +132,8 @@ state:  .word $0 ; state, only lsb used
 toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
+; extras
+base:   .word $10 ; default base hex radix
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -149,7 +151,7 @@ here:   .word $0 ; next free cell
 ;
 * = $300
 
-main:
+cold:
 ; link list
     lda #>f_exit
     sta last + 1
@@ -167,17 +169,6 @@ main:
     sta nil + 1
     lda #<nil
     sta nil + 0
-
-;---------------------------------------------------------------------
-error:
-    lda #'?'
-    jsr putchar
-    lda #10
-    jsr putchar
-
-    .if debug
-    jsr erro
-    .endif
 
 ;---------------------------------------------------------------------
 quit:
@@ -200,10 +191,6 @@ quit:
 ; the outer loop
 outer:
 find:
-
-;    .if debug 
-;    jsr showdic
-;    .endif
 
 ; get a token
     jsr token
@@ -272,20 +259,40 @@ find:
 ; executing ?
     lda state + 0   
     beq execute
+
 compile:
     lda #'V'
     jsr putchar
-
     jsr move
     jmp next
+
 execute:
     lda #'X'
     jsr putchar
-
     jmp (fst) 
 
 find_:
     .word find
+
+;---------------------------------------------------------------------
+okeys:
+    lda #'O'
+    jsr putchar
+    lda #'K'
+    jsr putchar
+    lda #10
+    jsr putchar
+    jmp find
+
+;---------------------------------------------------------------------
+error:
+    lda #'?'
+    jsr putchar
+    lda #'?'
+    jsr putchar
+    lda #10
+    jsr putchar
+    jmp quit
 
 ;---------------------------------------------------------------------
 try:
@@ -327,15 +334,8 @@ getline:
     sta tib, y
     sta toin + 0
 
-   ;.if debug
-   ;jsr showtib
-   ;.endif 
-
 ;---------------------------------------------------------------------
 ; 
-; toin + 0 effective offset
-; toin + 1 scratch for size
-;
 token:
 ; last position on tib
     ldy toin + 0
@@ -705,26 +705,26 @@ ends:
 .if debug
 
 erro:
-lda #'?'
-jsr putchar
-lda #'?'
-jsr putchar
-lda #10
-jsr putchar
-lda #13
-jsr putchar
-rts
+    lda #'?'
+    jsr putchar
+    lda #'?'
+    jsr putchar
+    lda #10
+    jsr putchar
+    ;lda #13
+    ;jsr putchar
+    rts
 
 okey:
-lda #'O'
-jsr putchar
-lda #'K'
-jsr putchar
-lda #10
-jsr putchar
-lda #13
-jsr putchar
-rts
+    lda #'O'
+    jsr putchar
+    lda #'K'
+    jsr putchar
+    lda #10
+    jsr putchar
+    ;lda #13
+    ;jsr putchar
+    rts
 
 showdic:
 
@@ -849,15 +849,19 @@ showord:
 @loop1:
     jsr decwx
     lda (nil, x)
-    and #$7F
     pha
+    and #$7F
     cmp #' '
     bpl @loop1
 
     pla
     tay
-
     jsr puthex
+
+    tya
+    and #$7F
+    tay 
+
     lda #' '
     jsr putchar
 
