@@ -62,6 +62,7 @@ makelabel "f_", label
     .word .ident (.sprintf ("H%04X", hcount))
     hcount .set hcount + 1
     .byte .strlen(name) + flag + 0 ; nice trick !
+    .word $0000 ; need for MITC
     .byte name
 makelabel "", label
 .endmacro
@@ -81,17 +82,17 @@ CELL   =  2     ; 16 bits
 ; highlander
 FLAG_IMM  =  1<<7
 
-; terminal input buffer, 80 bytes forward
+; terminal input buffer, 84 bytes forward
 tib = $0200
 
-; locals, 16 words forward
-lcs = $0250
+; locals, 14 words forward
+lcs = $0254
 
 ; data stack base, 36 words deep backward
-dsb = $02DC 
+dsb = $B9 
 
 ; return stack base, 36 words deep backward
-rsb = $02FF
+rsb = $00
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
@@ -99,15 +100,17 @@ rsb = $02FF
 * = $E0
 ; default pseudo registers
 nil:    .word $0 ; reserved reference offset
-dta:    .word $0 ; holds data stack base,
-rte:    .word $0 ; holds return stack base
+sp0:    .word $0 ; holds data stack base,
+rp0:    .word $0 ; holds return stack base
+
+; default Forth inner pseudo registers
 lnk:    .word $0 ; link for inner return
+wrk:    .word $0 ; work, generic holder
 
 ; default Forth pseudo registers
-tos:    .word $0 ; top on stack, first
-nos:    .word $0 ; next on stack, second
-wrk:    .word $0 ; work, generic holder
-tmp:    .word $0 ; temporary holder
+fst:    .word $0 ; top on stack, first
+snd:    .word $0 ; next on stack, second
+trd:    .word $0 ; temporary holder
 
 ; default Forth variables
 state:  .word $0 ; state, only lsb used
@@ -166,17 +169,16 @@ error:
 quit:
 
     ; reset stacks
-    ldy #>rte
-    sty dta + 1
-    sty rte + 1
+    ldy #>tib
+    sty sp0 + 1
+    sty rp0 + 1
 
     ldy #$DC
-    sty dta + 0
-    ldy #$FF
-    sty rte + 0
+    sty sp0 + 0
+    ldy #$00
+    sty rp0 + 0
 
     ; clear tib stuff
-    iny
     sty toin + 0
     sty tib + 0
 
@@ -197,10 +199,11 @@ outer:
     lda #>outer
     sta lnk + 1
 
-    ; get a token, (nos)
+find:
+
+    ; get a token, (snd)
     jsr token
   
-find:
     ; load lastest link
     lda #<last
     sta wrk + 0
@@ -211,7 +214,7 @@ find:
 
     ; update link list
     lda wrk + 0
-    sta tos + 0
+    sta fst + 0
 
     ; verify is zero
     ora wrk + 1
@@ -219,11 +222,11 @@ find:
 
     ; update link list
     lda wrk + 1
-    sta tos + 1
+    sta fst + 1
     
-    ; get that link, wrk = [tos]
-    ; bypass the link tos+2
-    ldx #(tos - nil) ; from 
+    ; get that link, wrk = [fst]
+    ; bypass the link fst+2
+    ldx #(fst - nil) ; from 
     ldy #(wrk - nil) ; into
     jsr pull
 
@@ -231,17 +234,17 @@ find:
     ldy #0
 
     ; save the flag at size byte
-    lda (tos), y
-    pha
+    lda (fst), y
+    sta state + 1
 
 @equal:
-    lda (nos), y
+    lda (snd), y
     ; space ends token
     cmp #32  
     beq @done
     ; verify 
     sec
-    sbc (tos), y     
+    sbc (fst), y     
     ; 7-bit ascii, also mask flag
     and #$7F        
     bne @loop
@@ -250,13 +253,13 @@ find:
     bne @equal
 @done:
     
-    ; update tos
+    ; update fst
     tya
-    ; implict ldx #(tos - nil)
+    ; implict ldx #(fst - nil)
     jsr addw
 
     ; compile or execute
-    pla             ; immediate ? 
+    lda state + 1   ; immediate ? 
     bmi @execw      ; bit 7 set if < 0 
 
     lda state + 0   ; executing ?
@@ -269,7 +272,8 @@ find:
     jmp compile
 
 @execw:
-
+    lda fst + 0
+    sta 
     jmp next_
 
 ;---------------------------------------------------------------------
@@ -368,9 +372,9 @@ token:
     sta tib, y  ; store size ahead 
 
     ; setup token, pass pointer
-    sty nos + 0
+    sty snd + 0
     lda #>tib
-    sta nos + 1
+    sta snd + 1
 
     rts
 
@@ -406,16 +410,16 @@ spull2:
     jsr tspull 
 
 nspull:
-    ldy #(nos - nil)
+    ldy #(snd - nil)
     .byte $2c   ; mask ldy, nice trick !
 
 ; pull from data stack
 tspull:
-    ldy #(tos - nil)
+    ldy #(fst - nil)
 
 ; pull from data stack
 spull:
-    ldx #(dta - nil)
+    ldx #(sp0 - nil)
 
 pull:
     lda (nil, x)    
@@ -427,7 +431,7 @@ pull:
 
 ; pull from return stack
 rpull:
-    ldx #(rte - nil)
+    ldx #(rp0 - nil)
     jmp pull
 
 ;---------------------------------------------------------------------
@@ -435,13 +439,13 @@ rpull:
 ; from an absolute page zero address indexed by Y
 ; into a page zero address indexed by X
 rpush:
-    ldx #(rte - nil)
+    ldx #(rp0 - nil)
     .byte $2c   ; mask ldx, nice trick !
 spush:
-    ldx #(dta - nil)
+    ldx #(sp0 - nil)
 
 tpush:
-    ldy #(tos - nil)
+    ldy #(fst - nil)
 
 push:
     jsr decw
@@ -470,44 +474,44 @@ putchar:
 ;---------------------------------------------------------------------
 def_word "key", "key", 0
    jsr getchar
-   sta tos + 0
+   sta fst + 0
    jmp used
 
 ;---------------------------------------------------------------------
 def_word "emit", "emit", 0
    jsr tspull
-   lda tos + 0
+   lda fst + 0
    jsr putchar
-   jmp link_
+   jmp unnest
 
 ;---------------------------------------------------------------------
-; [tos] = nos
+; [fst] = snd
 def_word "!", "store", 0
 storew:
     jsr spull2
-    ldx #(tos + 2 - nil) ; push starts with decw, then it works
-    ldy #(nos - nil)
+    ldx #(fst + 2 - nil) ; push starts with decw, then it works
+    ldy #(snd - nil)
     jsr push
-    jmp link_
+    jmp unnest
 
 ;---------------------------------------------------------------------
-; tos = [nos]
+; fst = [snd]
 def_word "@", "fetch", 0
 fetchw:
     jsr nspull
-    ldx #(nos - nil)
-    ldy #(tos - nil)
+    ldx #(snd - nil)
+    ldy #(fst - nil)
     jsr pull
     jmp used
 
 ;---------------------------------------------------------------------
 def_word "rp@", "rpfetch", 0
-    ldx #(rte - nil)
+    ldx #(rp0 - nil)
     jmp copy
 
 ;---------------------------------------------------------------------
 def_word "sp@", "spfetch", 0
-    ldx #(dta - nil)
+    ldx #(sp0 - nil)
     jmp copy
 
 ;---------------------------------------------------------------------
@@ -520,50 +524,50 @@ def_word "s@", "statevar", 0
 ;
 copy:
     lda nil + 0, x
-    sta tos + 0
+    sta fst + 0
     lda nil + 1, x
 back:
-    sta tos + 1
+    sta fst + 1
 used:
     jsr spush
-    jmp link_
+    jmp unnest
 
 ;---------------------------------------------------------------------
-; ( nos tos -- nos + tos )
+; ( snd fst -- snd + fst )
 def_word "+", "plus", 0
     jsr spull2
     clc
-    lda nos + 0
-    adc tos + 0
-    sta tos + 0
-    lda nos + 1
-    adc tos + 1
+    lda snd + 0
+    adc fst + 0
+    sta fst + 0
+    lda snd + 1
+    adc fst + 1
     jmp back
 
 ;---------------------------------------------------------------------
-; ( nos tos -- NOT(nos AND tos) )
+; ( snd fst -- NOT(snd AND fst) )
 def_word "nand", "nand", 0
     jsr spull2
-    lda nos + 0
-    and tos + 0
+    lda snd + 0
+    and fst + 0
     eor #$FF
-    sta tos + 0
-    lda nos + 1
-    and tos + 1
+    sta fst + 0
+    lda snd + 1
+    and fst + 1
     eor #$FF
     jmp back
 
 ;---------------------------------------------------------------------
-; test if tos == \0
-def_word "0=", "zeroq", 0
+; test if fst == \0
+def_word "0#", "zeroq", 0
     jsr tspull
-    ; lda tos + 1, implicit
-    ora tos + 0
+    ; lda fst + 1, implicit
+    ora fst + 0
     beq istrue  ; is \0
 isfalse:
     lda #$00
 rest:
-    sta tos + 0
+    sta fst + 0
     beq back
 istrue:
     lda #$FF
@@ -573,49 +577,9 @@ istrue:
 ; shift right
 def_word "2/", "asr", 0
     jsr tspull
-    lsr tos + 1
-    ror tos + 0
+    lsr fst + 1
+    ror fst + 0
     jmp used
-
-;---------------------------------------------------------------------
-; minimal indirect thread code
-; lnk must be preserved, as IP
-;
-def_word "exit", "exit", 0
-inner:
-
-unnest_:
-    ; pull tos = [rte], rte+2
-    ldy #(tos - nil)
-    jsr rpull
-
-next_:
-    ; lnk = [tos], tos+2
-    ldy #(lnk - nil)
-    ldx #(tos - nil)
-    jsr pull
-
-    ; is a primitive ? 
-    lda lnk + 1
-    cmp #>init    ; magic high byte page of init:
-    bcc jump_
-
-nest_:
-    ; push into return stack
-    jsr rpush
-
-link_:
-    lda lnk + 0
-    sta tos + 0
-    lda lnk + 1
-    sta tos + 1
-    jmp next_
-
-jump_:
-    ; pull from return stack
-    ldy #(lnk - nil)
-    jsr rpull
-    jmp (tos)
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
@@ -625,6 +589,10 @@ def_word ":", "colon", 0
     lda here + 1
     pha
 
+    ; state is 'compile'
+    lda #1
+    sta state + 0
+    
     ; save link
     lda last + 0
     sta here + 0
@@ -638,13 +606,13 @@ def_word ":", "colon", 0
     lda #$2
     jsr addw
 
-    ; get the token, at nos
+    ; get the token, at snd
     jsr token
 
     ;copy size and name
     ldy #0
 @loop:    
-    lda (nos), y
+    lda (snd), y
     cmp #32     ; stops at space
     beq @endname
     sta (here), y
@@ -657,18 +625,11 @@ def_word ":", "colon", 0
     ; implicit ldx #(here - nil)
     jsr addw
 
-    ; state is 'compile'
-
-    lda #1
-    sta state + 0
-    
-    jmp link_
+    jmp unnset_
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
-
     ; update last
-
     pla
     sta last + 1
     pla
@@ -680,24 +641,54 @@ def_word ";", "semis", FLAG_IMM
 
     ; compounds words must ends with 'unnest'
     lda #<unnest_
-    sta tos + 0
+    sta fst + 0
     lda #>unnest_
-    sta tos + 1
-
-    ; jsr spush
-
-    ; jmp compile
-
-    ; def_word ",", "comma",
+    sta fst + 1
 
 compile:
     
-    ; jsr spull
-
     ldx #(here - nil)
     jsr tpush
 
-    jmp link_
+;    jmp unnest_
+
+;---------------------------------------------------------------------
+; minimal indirect thread code
+; lnk must be preserved, as IP
+;
+def_word "exit", "exit", 0
+inner:
+
+unnest_:
+    ; pull lnk = [rp0], rte+2
+    ldy #(lnk - nil)
+    jsr rpull
+
+next_:
+    ; wrk = [lnk], lnk+2
+    ldy #(wrk - nil)
+    ldx #(lnk - nil)
+    jsr pull
+
+    ; is a primitive ? 
+    lda wrk + 1
+    eor wrk + 0
+    beq jump_
+
+nest_:
+    ; push [rp0] = lnk, rte-2
+    ldy #(lnk - nil)
+    jsr rpush
+
+link_:
+    lda wrk + 0
+    sta lnk + 0
+    lda wrk + 1
+    sta lnk + 1
+    jmp next_
+
+jump_:
+    jmp (lnk)
 
 ;---------------------------------------------------------------------
 ends:
@@ -746,7 +737,7 @@ showdic:
 
     ; update link list
     lda wrk + 0
-    sta tos + 0
+    sta fst + 0
 
     ; verify is zero
     ora wrk + 1
@@ -754,16 +745,16 @@ showdic:
 
     ; update link list
     lda wrk + 1
-    sta tos + 1
+    sta fst + 1
     
-    ; get that link, wrk = [tos]
-    ; bypass the link tos+2
-    ldx #(tos - nil) ; from 
+    ; get that link, wrk = [fst]
+    ; bypass the link fst+2
+    ldx #(fst - nil) ; from 
     ldy #(wrk - nil) ; into
     jsr pull
 
     ldy #0
-    lda (tos), y
+    lda (fst), y
     and #$7F
     tax
 
@@ -772,7 +763,7 @@ showdic:
 
 @loopa:
     iny
-    lda (tos), y
+    lda (fst), y
     jsr putchar
     dex
     bne @loopa

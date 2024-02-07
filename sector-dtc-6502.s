@@ -109,6 +109,7 @@ dsb = $B9
 rsb = $00
 
 ;----------------------------------------------------------------------
+; no values here or must be BSS
 .segment "ZERO"
 
 * = $E0
@@ -171,7 +172,7 @@ main:
 error:
     lda #'?'
     jsr putchar
-    lda #13
+    lda #10
     jsr putchar
 
     .if debug
@@ -184,10 +185,11 @@ quit:
     ldy #>tib
     sty sp0 + 1
     sty rp0 + 1
-    ldy #$B9
+    ldy #<dsb
     sty sp0 + 0
-    ldy #$00
+    ldy #<rsb
     sty rp0 + 0
+    ; y == \0
 ; clear tib stuff
     sty toin + 0
     sty tib + 0
@@ -199,18 +201,19 @@ quit:
 outer:
 find:
 
-    .if debug 
-    jsr showdic
-    .endif
+;    .if debug 
+;    jsr showdic
+;    .endif
 
 ; get a token
     jsr token
 
 ; load last
-    lda #<last
+    lda last + 0
     sta trd + 0
-    lda #>last
+    lda last + 1
     sta trd + 1
+
 @loop:
 ; linked list
     lda trd + 0
@@ -226,14 +229,15 @@ find:
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
     jsr pull
+
 ; compare words
     ldy #0
 ; save the flag at size byte
     lda (fst), y
     sta state + 1   ; non canonical
+
 @equal:
     lda (snd), y
-    
 ; space ends token
     cmp #32  
     beq @done
@@ -252,12 +256,16 @@ find:
 ; implict ldx #(fst - nil)
     jsr addwx
 
+    .if debug 
+    jsr showord
+    .endif
+
 ; return to find
     lda #<find_
     sta lnk + 0
     lda #>find_
     sta lnk + 1
-    
+
 ; immediate ? 
     lda state + 1   
     bmi execute      ; bit 7 set 
@@ -265,9 +273,15 @@ find:
     lda state + 0   
     beq execute
 compile:
+    lda #'V'
+    jsr putchar
+
     jsr move
     jmp next
 execute:
+    lda #'X'
+    jsr putchar
+
     jmp (fst) 
 
 find_:
@@ -313,9 +327,9 @@ getline:
     sta tib, y
     sta toin + 0
 
-   .if debug
-   jsr showtib
-   .endif 
+   ;.if debug
+   ;jsr showtib
+   ;.endif 
 
 ;---------------------------------------------------------------------
 ; 
@@ -444,6 +458,14 @@ putchar:
     bne rets
 
 ; return (0)
+
+    lda #'$'
+    jsr putchar
+    lda #'$'
+    jsr putchar
+    lda #'$'
+    jsr putchar
+
     jmp $0000
 
 rets:
@@ -716,13 +738,16 @@ showdic:
     lda #10
     jsr putchar
 
-    lda #'['
+    lda #'{'
+    jsr putchar
+
+    lda #10
     jsr putchar
 
 ; load lastest link
-    lda #<last
+    lda last + 0
     sta trd + 0
-    lda #>last
+    lda last + 1
     sta trd + 1
 
 @loop:
@@ -739,14 +764,12 @@ showdic:
     lda trd + 1
     sta fst + 1
 
-    .if debug
     lda #'~'
     jsr putchar
     lda fst + 1
-    jsr printhex
+    jsr puthex
     lda fst + 0
-    jsr printhex
-    .endif
+    jsr puthex
 
 ; get that link, wrk = [fst]
 ; bypass the link fst+2
@@ -754,15 +777,18 @@ showdic:
     ldy #(trd - nil) ; into
     jsr pull
 
-    lda #'~'
+    lda #'#'
     jsr putchar
     
     ldy #0
     lda (fst), y
     and #$7F
     tax
-    jsr printhex
+    jsr puthex
 
+    lda #' '
+    jsr putchar
+    
 @loopa:
     iny
     lda (fst), y
@@ -777,7 +803,7 @@ showdic:
 
 @ends:
 
-    lda #']'
+    lda #'}'
     jsr putchar
 
     lda #10
@@ -792,6 +818,71 @@ showdic:
 
     rts
 
+;----------------------------------------------------------------------
+showord:
+
+    php
+    pha
+    tya
+    pha
+    txa
+    pha
+
+    lda #10
+    jsr putchar
+
+    lda #'('
+    jsr putchar
+
+    lda fst + 1
+    sta wrk + 1
+    jsr puthex
+
+    lda fst + 0
+    sta wrk + 0
+    jsr puthex
+
+    lda #' '
+    jsr putchar
+
+    ldx #(wrk - nil)
+@loop1:
+    jsr decwx
+    lda (nil, x)
+    and #$7F
+    pha
+    cmp #' '
+    bpl @loop1
+
+    pla
+    tay
+
+    jsr puthex
+    lda #' '
+    jsr putchar
+
+@loop2:
+    pla
+    jsr putchar
+    dey
+    bne @loop2
+
+@ends:
+
+    lda #')'
+    jsr putchar
+
+    pla
+    tax
+    pla
+    tay
+    pla
+    plp
+
+    rts
+
+;----------------------------------------------------------------------
+; dumps terminal input buffer
 showtib:
     lda #'>'
     jsr putchar
@@ -811,7 +902,7 @@ showtib:
 ; prints number in tos to hexadecimal ASCII
 ;----------------------------------------------------------------------
 ; print a 8-bit HEX
-printhex:
+puthex:
     tax
     lsr
     ror
