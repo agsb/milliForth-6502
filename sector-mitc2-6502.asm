@@ -260,18 +260,14 @@ find:
     beq execute
 
 compile:
-    .if debug
     lda #'V'
     jsr putchar
-    .endif
     jsr copy
-    jmp next
+    jmp unnest
 
 execute:
-    .if debug
     lda #'X'
     jsr putchar
-    .endif
     jmp (fst) 
 
 ;---------------------------------------------------------------------
@@ -556,7 +552,7 @@ keep:
     ldy #(fst - nil)
 this:
     jsr spush
-    jmp next
+    jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
@@ -639,20 +635,20 @@ create:
 ;    lda #$4C    ; JMP
 ;    sta (here), y
 ;    iny 
-    lda #<docol_
+;    lda #<docol_
 ;    lda #<nest
-    sta (here), y
-    iny
-    lda #>docol_
+;    sta (here), y
+;    iny
+;    lda #>docol_
 ;    lda #>nest
-    sta (here), y
-    iny
+;    sta (here), y
+;    iny
 ; update here 
     tya
 ; implicit ldx #(here - nil), when 'each'
     jsr addwx
 ; att: address in data, here updated
-    jmp next
+    jmp unnest
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -692,9 +688,9 @@ next:
     jsr pull
 
 ; minimal 
-;    lda wrk + 1
-;    cmp #>init
-;    bpl nest
+    lda wrk + 1
+    cmp #>init
+    bpl nest
 
 ; historical JMP @(W)+
     jmp (wrk)
@@ -705,9 +701,9 @@ nest:
     jsr rpush
 
 ; must be at next cell, that's why 
-    lda #$02
-    ldx #(wrk - nil)
-    jsr addwx
+;    lda #$02
+;    ldx #(wrk - nil)
+;    jsr addwx
 
 link:
     lda wrk + 0
