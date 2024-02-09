@@ -79,9 +79,11 @@ hcount .set hcount + 1
 makelabel "", label
 .endmacro
 
-H0000 = 0
+;----------------------------------------------------------------------
 
 hcount .set 0
+
+H0000 = 0
 
 debug = 1
 
@@ -158,7 +160,7 @@ cold:
     lda #<f_exit
     sta last + 0
 
-; next free memory cell, must be align $100
+; next free memory cell, must be $page aligned 
     lda #>init
     sta here + 1
     lda #<init
@@ -221,7 +223,8 @@ find:
     ldy #0
 ; save the flag 
     lda (fst), y
-    sta state + 1   ; non canonical
+    sta state + 1
+
 @equal:
     lda (snd), y
 ; space ends token
@@ -255,6 +258,7 @@ find:
 ; immediate ? if < \0
     lda state + 1   
     bmi execute      ; bit 7 set 
+
 ; executing ? if == \0
     lda state + 0   
     beq execute
@@ -264,6 +268,7 @@ compile:
     lda #'V'
     jsr putchar
     .endif
+
     jsr copy
     jmp next
 
@@ -272,7 +277,18 @@ execute:
     lda #'X'
     jsr putchar
     .endif
-    jmp (fst) 
+
+    lda fst + 0
+    sta wrk + 0
+    lda fst + 1
+    sta wrk + 1
+
+    cmp #>init
+    bmi @jump
+
+    jmp nest
+@jump:
+    jmp (fst)
 
 ;---------------------------------------------------------------------
 okeys:
@@ -461,6 +477,8 @@ getchar:
 putchar:
     sta $E000
 
+    .if debug
+
 ; EOF ?
     cmp #$FF
     bne rets
@@ -475,6 +493,8 @@ putchar:
     jsr putchar
 
     jmp $0000
+
+    .endif
 
 rets:
     rts
@@ -540,7 +560,7 @@ def_word "sp@", "spat", 0
 
 ;---------------------------------------------------------------------
 ; ( -- state )
-def_word "s@", "stateat", 0 
+def_word "s@", "stat", 0 
     ldx #(state - nil)
 
 ;---------------------------------------------------------------------
@@ -635,22 +655,12 @@ create:
     iny
     bne @loop
 @ends:
-; direct code field 
-;    lda #$4C    ; JMP
-;    sta (here), y
-;    iny 
-    lda #<docol_
-;    lda #<nest
-    sta (here), y
-    iny
-    lda #>docol_
-;    lda #>nest
-    sta (here), y
-    iny
+
 ; update here 
     tya
 ; implicit ldx #(here - nil), when 'each'
     jsr addwx
+
 ; att: address in data, here updated
     jmp next
 
@@ -692,9 +702,9 @@ next:
     jsr pull
 
 ; minimal 
-;    lda wrk + 1
-;    cmp #>init
-;    bpl nest
+    lda wrk + 1
+    cmp #>init
+    bpl nest
 
 ; historical JMP @(W)+
     jmp (wrk)
@@ -705,9 +715,9 @@ nest:
     jsr rpush
 
 ; must be at next cell, that's why 
-    lda #$02
-    ldx #(wrk - nil)
-    jsr addwx
+;    lda #$02
+;    ldx #(wrk - nil)
+;    jsr addwx
 
 link:
     lda wrk + 0
@@ -957,9 +967,8 @@ showord:
 
     rts
 
-
 ;----------------------------------------------------------------------
-; show list address, till $0000, max 128
+; show list address, till 
 ;
 alist:
 
