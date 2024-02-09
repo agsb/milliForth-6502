@@ -1,0 +1,30 @@
+Modules list:
+-------------
+sector-dtc-6502.o:
+    CODE              Offs=000000  Size=000500  Align=00100  Fill=0000
+    ZERO              Offs=000000  Size=00001A  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+ZERO                  000000  000019  00001A  00001
+CODE                  000200  0006FF  000500  00100
+
+
+Exports list by name:
+---------------------
+__ROM__                   00F000 REA    
+
+
+Exports list by value:
+----------------------
+__ROM__                   00F000 REA    
+
+
+Imports list:
+-------------
+__ROM__ ([linker generated]):
+    [linker generated]        sector-dtc-6502.cfg:12
+
