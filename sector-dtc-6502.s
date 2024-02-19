@@ -136,6 +136,7 @@ last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 ; extras
 base:   .word $0 ; base radix, define before use
+back:   .word $0 ; hold for debug
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -192,11 +193,12 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 outer:
-find:
 
+parse:
 ; get a token
     jsr token
 
+find:
 ; load last
     lda last + 0
     sta trd + 0
@@ -249,10 +251,10 @@ find:
     jsr showord
     .endif
 
-; return to find
-    lda #<find_
+; return to parse
+    lda #<parse_
     sta lnk + 0
-    lda #>find_
+    lda #>parse_
     sta lnk + 1
 
 ; immediate ? if < \0
@@ -270,11 +272,23 @@ compile:
     .endif
 
     jsr copy
+
     jmp next
 
 execute:
     .if debug
     lda #'X'
+    jsr putchar
+    .endif
+
+    lda fst + 1
+    cmp #>init
+    bmi @jump
+
+@compiled:
+
+    .if debug
+    lda #'C'
     jsr putchar
     .endif
 
@@ -285,12 +299,13 @@ execute:
 
     jmp nest
 
-    lda fst + 1
-    cmp #>init
-    bmi @jump
-
-    jmp nest
 @jump:
+
+    .if debug
+    lda #'J'
+    jsr putchar
+    .endif
+
     jmp (fst)
 
 ;---------------------------------------------------------------------
@@ -301,7 +316,8 @@ okeys:
     jsr putchar
     lda #10
     jsr putchar
-    jmp find
+    jmp parse
+    
 
 ;---------------------------------------------------------------------
 error:
@@ -318,7 +334,7 @@ try:
     lda tib, y
     beq getline    ; if \0 
     iny
-    eor #32
+    eor #' '
     rts
 
 ;---------------------------------------------------------------------
@@ -350,7 +366,7 @@ getline:
     bne @loop
 ; clear all if y eq \0
 @ends:
-; grace 
+; grace \b
     lda #32
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
@@ -381,11 +397,11 @@ token:
     dey
     sty toin + 0 
 @done:
-; strlen
+; sizeof
     sec
     tya
     sbc toin + 1
-; keep size
+; keep it
     ldy toin + 1
     dey
     sta tib, y  ; store size ahead 
@@ -424,17 +440,34 @@ decwx:
 ; from a page zero address indexed by Y
 ; into a page zero indirect address indexed by X
 rpush:
+
+    lda #'r'
+    jsr putchar
+
     ldx #(rp0 - nil)
     .byte $2c   ; mask two bytes, nice trick !
 spush:
     ldx #(sp0 - nil)
 push:
+    lda #'0'
+    jsr putchar
+
     jsr decwx
+    lda #'1'
+    jsr putchar
+
     lda nil + 1, y
     sta (nil, x)
+
     jsr decwx
+    lda #'2'
+    jsr putchar
+
     lda nil + 0, y
     sta (nil, x)
+
+    lda #'3'
+    jsr putchar
     rts 
 
 ;---------------------------------------------------------------------
@@ -463,6 +496,8 @@ copy:
     ldy #(fst - nil)
 each:
     ldx #(here - nil)
+;---------------------------------------------------------------------
+; n2z
 poke:
     lda nil + 0, y
     sta (nil,x)
@@ -470,6 +505,17 @@ poke:
     lda nil + 1, y
     sta (nil, x)
     jmp incwx
+
+;---------------------------------------------------------------------
+; z2n
+yank:
+    jsr decwx
+    lda (nil,x)
+    sta nil + 1, y
+    jsr decwx
+    sta (nil, x)
+    lda nil + 0, y
+    rts
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
@@ -710,7 +756,7 @@ next:
     ldy #(wrk - nil)
     jsr pull
 
-    ;jsr dump
+    jsr dump
 
 ; minimal 
     lda wrk + 1
@@ -733,14 +779,15 @@ nest:
     jsr rpush
 
 link:
-    lda #'^'
-    jsr putchar
 
     lda wrk + 0
     sta lnk + 0
     lda wrk + 1
     sta lnk + 1
     
+    lda #'$'
+    jsr putchar
+
     jmp next
 
 ;---------------------------------------------------------------------
@@ -748,10 +795,12 @@ link:
 ;
 docol_:
     .word nest
+
 semis_:
     .word unnest
-find_:
-    .word find
+
+parse_:
+    .word parse
 
 ends:
 
@@ -760,24 +809,74 @@ ends:
 ; debug stuff
 .if debug
 
+;----------------------------------------------------------------------
+.macro toinis
+    php
+    pha
+    tya
+    pha
+    txa
+    pha
+    tsx
+    txa
+    pha
+.endmacro
+
+.macro toends
+    pla
+    tax
+    txs
+    pla
+    tax
+    pla
+    tay
+    pla
+    plp
+.endmacro
+
+;----------------------------------------------------------------------
+.macro saveregs
+    php
+    pha
+    tya
+    pha
+    txa
+    pha
+.endmacro
+
+.macro loadregs
+    pla
+    tax
+    pla
+    tay
+    pla
+    plp
+.endmacro
+
+;----------------------------------------------------------------------
 erro:
+    pha
     lda #'?'
     jsr putchar
     lda #'?'
     jsr putchar
     lda #10
     jsr putchar
+    pla
     rts
 
 okey:
+    pha
     lda #'O'
     jsr putchar
     lda #'K'
     jsr putchar
     lda #10
     jsr putchar
+    pla
     rts
 
+;---------------------------------------------------------------------
 showdic:
 
     php
@@ -861,47 +960,14 @@ showdic:
     lda #10
     jsr putchar
 
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-
     rts
 
 ;----------------------------------------------------------------------
-showord:
-
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-
-    ldy #0
-@push:
-    lda (nil), y
-    pha
-
-    .if 0
-    jsr ilist
-    .endif
-
-    iny
-    cpy #(base - nil) 
-    bne @push
-
-@start:
-
-    lda #10
-    jsr putchar
-
-    lda #'('
-    jsr putchar
-
 ; show cfa
+showcfa:
+
+    lda #' '
+    jsr putchar
 
     lda fst + 1
     sta wrk + 1
@@ -911,12 +977,14 @@ showord:
     sta wrk + 0
     jsr puthex
 
-    lda #' '
-    jsr putchar
+    rts
+;----------------------------------------------------------------------
+showname:
 
 ; search backwards
 
     ldx #(wrk - nil)
+
 @loop1:
     jsr decwx
     lda (nil, x)
@@ -926,6 +994,9 @@ showord:
     bpl @loop1
 
 ; show size+flag
+
+    lda #' '
+    jsr putchar
 
     pla
     tay
@@ -946,6 +1017,48 @@ showord:
     jsr putchar
     dey
     bne @loop2
+
+    rts
+
+;----------------------------------------------------------------------
+; show state
+showsts:
+
+    lda #' '
+    jsr putchar
+
+    lda state + 0
+    jsr puthex
+
+    rts
+
+;----------------------------------------------------------------------
+showord:
+
+    toinis
+
+    ldy #0
+@push:
+    lda (nil), y
+    pha
+
+    iny
+    cpy #(base - nil) 
+    bne @push
+
+@start:
+
+    lda #10
+    jsr putchar
+
+    lda #'('
+    jsr putchar
+
+    jsr showsts
+
+    jsr showcfa
+    
+    jsr showname
 
 ; show list
 
@@ -973,50 +1086,59 @@ showord:
     cpy #$FF 
     bne @pull
 
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
+    toends
 
     rts
 
-;----------------------------------------------------------------------
 
+;----------------------------------------------------------------------
 dump:
 
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
+    lda #10
+    jsr putchar
 
     lda #'{'
     jsr putchar
 
+    lda #' '
+    jsr putchar
+    lda #'L'
+    jsr putchar
+    lda #'='
+    jsr putchar
     lda lnk + 1
     jsr puthex
     lda lnk + 0
     jsr puthex
+
     lda #' '
     jsr putchar
-
+    lda #'W'
+    jsr putchar
+    lda #'='
+    jsr putchar
     lda wrk + 1
     jsr puthex
     lda wrk + 0
     jsr puthex
+
     lda #' '
     jsr putchar
-
+    lda #'S'
+    jsr putchar
+    lda #'='
+    jsr putchar
     lda sp0 + 1
     jsr puthex
     lda sp0 + 0
     jsr puthex
+    
     lda #' '
     jsr putchar
-
+    lda #'R'
+    jsr putchar
+    lda #'='
+    jsr putchar
     lda rp0 + 1
     jsr puthex
     lda rp0 + 0
@@ -1027,19 +1149,49 @@ dump:
     lda #'}'
     jsr putchar
 
-    lda #'}'
+    rts
+    
+;----------------------------------------------------------------------
+dumpr:
+    
+    lda #'R'
     jsr putchar
 
-dumpr:
+    sec
+    lda #rsb
+    sbc rp0 + 0
+    tay
 
+@rloop:
+    lda #' '
+    jsr putchar
+
+    lda (rp0) , y
+    jsr puthex
+    dey
+    bne @rloop
+    
+    rts
+
+;----------------------------------------------------------------------
 dumps:
 
-    pla
-    tax
-    pla
+    lda #'S'
+    jsr putchar
+
+    sec
+    lda #dsb
+    sbc sp0 + 0
     tay
-    pla
-    plp
+
+@sloop:
+    lda #' '
+    jsr putchar
+
+    lda (sp0) , y
+    jsr puthex
+    dey
+    bne @sloop
 
     rts
 
@@ -1054,6 +1206,7 @@ alist:
     lda #' '
     jsr putchar
 
+; view
     lda (fst), y
     sta wrk + 0
     iny
@@ -1061,11 +1214,13 @@ alist:
     sta wrk + 1
     iny
 
+; show
     lda wrk + 1
     jsr puthex
     lda wrk + 0
     jsr puthex
 
+; stop
     lda wrk + 0
     cmp #<unnest
     bne @loop
@@ -1092,7 +1247,7 @@ ilist:
 ;----------------------------------------------------------------------
 ; dumps terminal input buffer
 showtib:
-    lda #'>'
+    lda #'_'
     jsr putchar
     ldy #0
     @loop:
@@ -1102,20 +1257,20 @@ showtib:
     iny
     bne @loop
     @done:
-    lda #'<'
+    lda #'_'
     jsr putchar
     rts
 
 ;----------------------------------------------------------------------
 ; print a 8-bit HEX
 puthex:
-    tax
+    pha
     lsr
     ror
     ror
     ror
     jsr @conv
-    txa
+    pla
 @conv:
     and #$0F
     clc
