@@ -96,6 +96,8 @@ CELL = 2     ; two bytes, 16 bits
 ; highlander
 FLAG_IMM = 1<<7
 
+; "all in" page $200
+
 ; terminal input buffer, 84 bytes, forward
 tib = $0200
 
@@ -251,7 +253,7 @@ find:
     jsr showord
     .endif
 
-; return to parse
+; again 
     lda #<parse_
     sta lnk + 0
     lda #>parse_
@@ -267,7 +269,7 @@ find:
 
 compile:
     .if debug
-    lda #'V'
+    lda #'C'
     jsr putchar
     .endif
 
@@ -277,18 +279,7 @@ compile:
 
 execute:
     .if debug
-    lda #'X'
-    jsr putchar
-    .endif
-
-    lda fst + 1
-    cmp #>init
-    bmi @jump
-
-@compiled:
-
-    .if debug
-    lda #'C'
+    lda #'E'
     jsr putchar
     .endif
 
@@ -297,16 +288,7 @@ execute:
     lda fst + 1
     sta wrk + 1
 
-    jmp nest
-
-@jump:
-
-    .if debug
-    lda #'J'
-    jsr putchar
-    .endif
-
-    jmp (fst)
+    jmp exec
 
 ;---------------------------------------------------------------------
 okeys:
@@ -342,9 +324,6 @@ getline:
 ; drop rts of try
     pla
     pla
-
-    lda #10
-    jsr putchar
 
     lda #10
     jsr putchar
@@ -440,34 +419,19 @@ decwx:
 ; from a page zero address indexed by Y
 ; into a page zero indirect address indexed by X
 rpush:
-
-    lda #'r'
-    jsr putchar
-
     ldx #(rp0 - nil)
     .byte $2c   ; mask two bytes, nice trick !
 spush:
     ldx #(sp0 - nil)
 push:
-    lda #'0'
-    jsr putchar
-
     jsr decwx
-    lda #'1'
-    jsr putchar
-
     lda nil + 1, y
     sta (nil, x)
 
     jsr decwx
-    lda #'2'
-    jsr putchar
-
     lda nil + 0, y
     sta (nil, x)
 
-    lda #'3'
-    jsr putchar
     rts 
 
 ;---------------------------------------------------------------------
@@ -483,6 +447,7 @@ pull:
     lda (nil, x)    
     sta nil + 0, y   
     jsr incwx        
+    
     lda (nil, x)    
     sta nil + 1, y  
     jmp incwx 
@@ -740,55 +705,72 @@ def_word "exit", "exit", 0
 inner:
 
 unnest:
-    lda #'>'
+    .if debug
+    lda #'U'
     jsr putchar
+    .endif
 
 ; pull 
     ldy #(lnk - nil)
     jsr rpull
 
 next:
-    lda #'!'
+    .if debug
+    lda #'X'
     jsr putchar
+    .endif
 
 ; wrk = (lnk) ; lnk = lnk + 2
     ldx #(lnk - nil)
     ldy #(wrk - nil)
     jsr pull
 
+    .if debug
     jsr dump
+    .endif
+
+exec:
+    .if debug
+    lda #'Y'
+    jsr putchar
+    .endif
 
 ; minimal 
     lda wrk + 1
     cmp #>init
-    bpl nest
-
-; historical JMP @(W)+
-jump:
-    lda #'?'
-    jsr putchar
-
-    jmp (wrk)
+    bmi jump
 
 nest:
-    lda #'<'
+    .if debug
+    lda #'N'
     jsr putchar
+    .endif
 
 ; push into return stack
     ldy #(lnk - nil)
     jsr rpush
 
 link:
+    .if debug
+    lda #'L'
+    jsr putchar
+    .endif
 
     lda wrk + 0
     sta lnk + 0
     lda wrk + 1
     sta lnk + 1
     
-    lda #'$'
-    jsr putchar
-
     jmp next
+
+; historical JMP @(W)+
+jump:
+    .if debug
+    lda #'J'
+    jsr putchar
+    .endif
+
+    jmp (wrk)
 
 ;---------------------------------------------------------------------
 ; pseudo
@@ -810,31 +792,6 @@ ends:
 .if debug
 
 ;----------------------------------------------------------------------
-.macro toinis
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-    tsx
-    txa
-    pha
-.endmacro
-
-.macro toends
-    pla
-    tax
-    txs
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-.endmacro
-
-;----------------------------------------------------------------------
 .macro saveregs
     php
     pha
@@ -844,6 +801,7 @@ ends:
     pha
 .endmacro
 
+;----------------------------------------------------------------------
 .macro loadregs
     pla
     tax
@@ -879,12 +837,7 @@ okey:
 ;---------------------------------------------------------------------
 showdic:
 
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
+    saveregs
 
     lda #10
     jsr putchar
@@ -960,6 +913,8 @@ showdic:
     lda #10
     jsr putchar
 
+    loadregs
+
     rts
 
 ;----------------------------------------------------------------------
@@ -980,6 +935,8 @@ showcfa:
     rts
 ;----------------------------------------------------------------------
 showname:
+
+    saveregs
 
 ; search backwards
 
@@ -1017,6 +974,8 @@ showname:
     jsr putchar
     dey
     bne @loop2
+
+    loadregs
 
     rts
 
@@ -1094,6 +1053,8 @@ showord:
 ;----------------------------------------------------------------------
 dump:
 
+    pha
+
     lda #10
     jsr putchar
 
@@ -1148,6 +1109,10 @@ dump:
 
     lda #'}'
     jsr putchar
+
+;;;    jsr showname
+
+    pla
 
     rts
     
