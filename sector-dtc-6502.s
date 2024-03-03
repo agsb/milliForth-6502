@@ -136,9 +136,8 @@ state:  .word $0 ; state, only lsb used
 toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
-; extras
-base:   .word $0 ; base radix, define before use
 back:   .word $0 ; hold for debug
+base:   .word $0 ; base radix, define before use
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -150,6 +149,7 @@ back:   .word $0 ; hold for debug
 
 ;----------------------------------------------------------------------
 .segment "CODE" 
+
 ;
 ; leave space for page zero, hard stack, 
 ; and buffer, locals, forth stacks
@@ -725,9 +725,9 @@ next:
     ldy #(wrk - nil)
     jsr pull
 
-    .if debug
-    jsr dump
-    .endif
+    ;.if debug
+    ;jsr dump
+    ;.endif
 
 exec:
     .if debug
@@ -812,6 +812,29 @@ ends:
 .endmacro
 
 ;----------------------------------------------------------------------
+savenils:
+    ldx #(base - nil)
+    ldy #0
+@loop:
+    lda nil, y
+    pha
+    iny
+    dex
+    bne @loop
+    rts
+
+;----------------------------------------------------------------------
+loadnils:
+    ldy #(base - nil)
+@loop:
+    pla
+    sta nil, y
+    dey 
+    bne @loop
+    rts
+
+
+;----------------------------------------------------------------------
 erro:
     pha
     lda #'?'
@@ -838,6 +861,8 @@ okey:
 showdic:
 
     saveregs
+
+    jsr savenils
 
     lda #10
     jsr putchar
@@ -912,6 +937,8 @@ showdic:
 
     lda #10
     jsr putchar
+
+    jsr loadnils
 
     loadregs
 
@@ -994,7 +1021,9 @@ showsts:
 ;----------------------------------------------------------------------
 showord:
 
-    toinis
+    saveregs
+
+    ; jsr savenils
 
     ldy #0
 @push:
@@ -1045,7 +1074,9 @@ showord:
     cpy #$FF 
     bne @pull
 
-    toends
+    ;jsr loadnils
+
+    loadregs
 
     rts
 
