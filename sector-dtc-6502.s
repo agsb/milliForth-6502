@@ -419,6 +419,10 @@ decwx:
 ; from a page zero address indexed by Y
 ; into a page zero indirect address indexed by X
 rpush:
+    
+    lda #'+'
+    jsr putchar
+
     ldx #(rp0 - nil)
     .byte $2c   ; mask two bytes, nice trick !
 spush:
@@ -432,6 +436,9 @@ push:
     lda nil + 0, y
     sta (nil, x)
 
+    lda #'<'
+    jsr putchar
+
     rts 
 
 ;---------------------------------------------------------------------
@@ -439,6 +446,10 @@ push:
 ; from a page zero indirect address indexed by X
 ; into a page zero address indexed by y
 rpull:
+    
+    lda #'-'
+    jsr putchar
+    
     ldx #(rp0 - nil)
     .byte $2c   ; mask ldy, nice trick !
 spull:
@@ -450,7 +461,12 @@ pull:
     
     lda (nil, x)    
     sta nil + 1, y  
-    jmp incwx 
+    jsr incwx ; jmp*
+    
+    ;lda #'>'
+    ;jsr putchar
+
+    rts
 
 ;---------------------------------------------------------------------
 ; move a cell
@@ -719,6 +735,11 @@ next:
     lda #'X'
     jsr putchar
     .endif
+
+    lda lnk + 1
+    jsr puthex
+    lda lnk + 0
+    jsr puthex
 
 ; wrk = (lnk) ; lnk = lnk + 2
     ldx #(lnk - nil)
