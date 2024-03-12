@@ -107,10 +107,10 @@ lcs = $54
 ; strange ? is a 8-bit system, look at push code ;)
 
 ; data stack, 36 cells, backward
-dsb = $B9
+sp0 = $B9
 
 ; return stack, 36 cells, backward
-rsb = $00
+rp0 = $00
 
 ;----------------------------------------------------------------------
 ; no values here or must be BSS
@@ -119,8 +119,8 @@ rsb = $00
 * = $E0
 ; default pseudo registers
 nil:    .word $0 ; reserved reference offset
-sp0:    .word $0 ; holds data stack base,
-rp0:    .word $0 ; holds return stack base
+spt:    .word $0 ; holds data stack base,
+rpt:    .word $0 ; holds return stack base
 
 ; inner pseudo registers for SITC
 lnk:    .word $0 ; link
@@ -157,6 +157,10 @@ base:   .word $0 ; base radix, define before use
 * = $300
 
 cold:
+;   set real stack
+    ldx #$FF
+    txs
+
 ; link list
     lda #>f_exit
     sta last + 1
@@ -179,12 +183,12 @@ cold:
 quit:
 ; reset stacks
     ldy #>tib
-    sty sp0 + 1
-    sty rp0 + 1
-    ldy #<dsb
-    sty sp0 + 0
-    ldy #<rsb
-    sty rp0 + 0
+    sty spt + 1
+    sty rpt + 1
+    ldy #<sp0
+    sty spt + 0
+    ldy #<rp0
+    sty rpt + 0
     ; y == \0
 ; clear tib stuff
     sty toin + 0
@@ -423,10 +427,10 @@ rpush:
     lda #'+'
     jsr putchar
 
-    ldx #(rp0 - nil)
+    ldx #(rpt - nil)
     .byte $2c   ; mask two bytes, nice trick !
 spush:
-    ldx #(sp0 - nil)
+    ldx #(spt - nil)
 push:
     jsr decwx
     lda nil + 1, y
@@ -435,9 +439,6 @@ push:
     jsr decwx
     lda nil + 0, y
     sta (nil, x)
-
-    lda #'<'
-    jsr putchar
 
     rts 
 
@@ -450,10 +451,10 @@ rpull:
     lda #'-'
     jsr putchar
     
-    ldx #(rp0 - nil)
+    ldx #(rpt - nil)
     .byte $2c   ; mask ldy, nice trick !
 spull:
-    ldx #(sp0 - nil)
+    ldx #(spt - nil)
 pull:
     lda (nil, x)    
     sta nil + 0, y   
@@ -461,12 +462,7 @@ pull:
     
     lda (nil, x)    
     sta nil + 1, y  
-    jsr incwx ; jmp*
-    
-    ;lda #'>'
-    ;jsr putchar
-
-    rts
+    jmp incwx 
 
 ;---------------------------------------------------------------------
 ; move a cell
@@ -579,13 +575,13 @@ fetchw:
 ;---------------------------------------------------------------------
 ; ( -- rp )
 def_word "rp@", "rpat", 0
-    ldx #(rp0 - nil)
+    ldx #(rpt - nil)
     jmp both
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
-    ldx #(sp0 - nil)
+    ldx #(spt - nil)
     jmp both
 
 ;---------------------------------------------------------------------
@@ -1044,6 +1040,8 @@ showord:
 
     saveregs
 
+    jsr lstack
+
     ; jsr savenils
 
     ldy #0
@@ -1069,6 +1067,12 @@ showord:
     
     jsr showname
 
+    lda #' '
+    jsr putchar
+
+    jsr dump
+
+    
 ; show list
 
     lda fst + 1
@@ -1103,6 +1107,27 @@ showord:
 
 
 ;----------------------------------------------------------------------
+
+lstack:
+
+    lda #'['
+    jsr putchar
+
+    tsx
+    dex
+    dex
+    txa
+    jsr puthex
+
+    lda #']'
+    jsr putchar
+
+    lda #' '
+    jsr putchar
+
+    rts
+
+;----------------------------------------------------------------------
 dump:
 
     pha
@@ -1135,34 +1160,39 @@ dump:
     lda wrk + 0
     jsr puthex
 
-    lda #' '
+    lda #10
     jsr putchar
     lda #'S'
     jsr putchar
     lda #'='
     jsr putchar
-    lda sp0 + 1
+    lda spt + 1
     jsr puthex
-    lda sp0 + 0
+    lda spt + 0
     jsr puthex
+
+    jsr dumps
     
-    lda #' '
+    lda #10
     jsr putchar
     lda #'R'
     jsr putchar
     lda #'='
     jsr putchar
-    lda rp0 + 1
+    lda rpt + 1
     jsr puthex
-    lda rp0 + 0
+    lda rpt + 0
     jsr puthex
-    lda #' '
+
+    jsr dumpr
+
+    lda #10
     jsr putchar
 
     lda #'}'
     jsr putchar
 
-;;;    jsr showname
+    ; jsr showname
 
     pla
 
@@ -1171,46 +1201,79 @@ dump:
 ;----------------------------------------------------------------------
 dumpr:
     
+    lda #' '
+    jsr putchar
+
     lda #'R'
     jsr putchar
 
+    lda #' '
+    jsr putchar
+
     sec
-    lda #rsb
-    sbc rp0 + 0
+    lda #rp0
+    sbc rpt + 0
+    beq @ends
     tay
 
 @rloop:
     lda #' '
     jsr putchar
 
-    lda (rp0) , y
+    tya
     jsr puthex
+
+    lda #'='
+    jsr putchar
+
+    lda (rpt), y
+    jsr puthex
+
     dey
     bne @rloop
-    
+
+@ends:
+
     rts
 
 ;----------------------------------------------------------------------
 dumps:
+    
+    lda #' '
+    jsr putchar
 
     lda #'S'
     jsr putchar
 
+    lda #' '
+    jsr putchar
+
     sec
-    lda #dsb
-    sbc sp0 + 0
+    lda #sp0
+    sbc spt + 0
+    beq @ends
     tay
 
 @sloop:
     lda #' '
     jsr putchar
 
-    lda (sp0) , y
+    tya
     jsr puthex
+
+    lda #'='
+    jsr putchar
+
+    lda (spt) , y
+    jsr puthex
+
     dey
     bne @sloop
 
+@ends:
+
     rts
+
 
 ;----------------------------------------------------------------------
 ; show list address, till 
