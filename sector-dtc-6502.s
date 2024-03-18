@@ -117,6 +117,7 @@ rp0 = $00
 .segment "ZERO"
 
 * = $E0
+
 ; default pseudo registers
 nil:    .word $0 ; reserved reference offset
 spt:    .word $0 ; holds data stack base,
@@ -131,13 +132,15 @@ fst:    .word $0 ; first
 snd:    .word $0 ; second
 trd:    .word $0 ; third
 
+; * = $F0
+
 ; default Forth variables
 state:  .word $0 ; state, only lsb used
 toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
-back:   .word $0 ; hold for debug
 base:   .word $0 ; base radix, define before use
+back:   .word $0 ; hold for debug
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -204,6 +207,8 @@ parse:
 ; get a token
     jsr token
 
+    ; jsr showdic
+
 find:
 ; load last
     lda last + 0
@@ -248,14 +253,14 @@ find:
     iny
     bne @equal
 @done:
-; update fst
-    tya
-; implict ldx #(fst - nil)
-    jsr addwx
 
-    .if debug 
+; update fst
+    
+    tya
+    ldx #(fst - nil)
+    jsr addwx
+    
     jsr showord
-    .endif
 
 ; again 
     lda #<parse_
@@ -294,6 +299,7 @@ execute:
 
     jmp exec
 
+;---------------------------------------------------------------------
 ;---------------------------------------------------------------------
 okeys:
     lda #'O'
@@ -658,9 +664,9 @@ rest:
 def_word ":", "colon", 0
 ; save here, panic if semis not follow elsewhere
     lda here + 0
-    pha
+    sta back + 0 ; pha
     lda here + 1
-    pha
+    sta back + 1 ; pha
 ; state is 'compile'
     lda #1
     sta state + 0
@@ -684,8 +690,9 @@ create:
 
 ; update here 
     tya
-; implicit ldx #(here - nil), when 'each'
+    ldx #(here - nil)
     jsr addwx
+
 
 ; att: address in data, here updated
     jmp next
@@ -693,9 +700,9 @@ create:
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
 ; update last, panic if comma not lead 
-    pla
+    lda back + 1 ; pla
     sta last + 1
-    pla
+    lda back + 0 ; pla
     sta last + 0
 ; state is 'interpret'
     lda #0
@@ -731,11 +738,6 @@ next:
     lda #'X'
     jsr putchar
     .endif
-
-    lda lnk + 1
-    jsr puthex
-    lda lnk + 0
-    jsr puthex
 
 ; wrk = (lnk) ; lnk = lnk + 2
     ldx #(lnk - nil)
@@ -830,26 +832,25 @@ ends:
 
 ;----------------------------------------------------------------------
 savenils:
-    ldx #(base - nil)
     ldy #0
 @loop:
-    lda nil, y
-    pha
+    lda $00E0, y
+    sta $00C0, y
     iny
-    dex
+    cpy #16
     bne @loop
     rts
 
 ;----------------------------------------------------------------------
 loadnils:
-    ldy #(base - nil)
+    ldy #0
 @loop:
-    pla
-    sta nil, y
-    dey 
+    lda $00C0, y
+    sta $00E0, y
+    iny
+    cpy #16
     bne @loop
     rts
-
 
 ;----------------------------------------------------------------------
 erro:
@@ -962,29 +963,38 @@ showdic:
     rts
 
 ;----------------------------------------------------------------------
-; show cfa
-showcfa:
+; show state
+showsts:
+
+    lda #' '
+    jsr putchar
+
+    lda state + 0
+    jsr puthex
+
+    rts
+
+;----------------------------------------------------------------------
+; show lst
+showfst:
 
     lda #' '
     jsr putchar
 
     lda fst + 1
-    sta wrk + 1
     jsr puthex
 
     lda fst + 0
-    sta wrk + 0
     jsr puthex
 
     rts
+
 ;----------------------------------------------------------------------
 showname:
 
-    saveregs
-
 ; search backwards
 
-    ldx #(wrk - nil)
+    ldx #(fst - nil)
 
 @loop1:
     jsr decwx
@@ -1019,20 +1029,6 @@ showname:
     dey
     bne @loop2
 
-    loadregs
-
-    rts
-
-;----------------------------------------------------------------------
-; show state
-showsts:
-
-    lda #' '
-    jsr putchar
-
-    lda state + 0
-    jsr puthex
-
     rts
 
 ;----------------------------------------------------------------------
@@ -1040,18 +1036,7 @@ showord:
 
     saveregs
 
-    jsr lstack
-
-    ; jsr savenils
-
-    ldy #0
-@push:
-    lda (nil), y
-    pha
-
-    iny
-    cpy #(base - nil) 
-    bne @push
+    jsr savenils
 
 @start:
 
@@ -1061,16 +1046,16 @@ showord:
     lda #'('
     jsr putchar
 
+    jsr showstk
+
     jsr showsts
 
-    jsr showcfa
+    jsr showfst
     
     jsr showname
 
     lda #' '
     jsr putchar
-
-    jsr dump
 
     
 ; show list
@@ -1086,20 +1071,13 @@ showord:
     lda #')'
     jsr putchar
 
-    ldy #(base - nil - 1)
-@pull:
-    pla
-    sta (nil), y
+    jsr dump
+    
+    ;jsr dumps
 
-    .if 0
-    jsr ilist
-    .endif
+    ;jsr dumpr
 
-    dey
-    cpy #$FF 
-    bne @pull
-
-    ;jsr loadnils
+    jsr loadnils
 
     loadregs
 
@@ -1108,22 +1086,16 @@ showord:
 
 ;----------------------------------------------------------------------
 
-lstack:
-
-    lda #'['
-    jsr putchar
-
-    tsx
-    dex
-    dex
-    txa
-    jsr puthex
-
-    lda #']'
-    jsr putchar
+showstk:
 
     lda #' '
     jsr putchar
+
+    tsx
+    inx
+    inx
+    txa
+    jsr puthex
 
     rts
 
@@ -1137,6 +1109,17 @@ dump:
 
     lda #'{'
     jsr putchar
+
+    lda #' '
+    jsr putchar
+    lda #'H'
+    jsr putchar
+    lda #'='
+    jsr putchar
+    lda here + 1
+    jsr puthex
+    lda here + 0
+    jsr puthex
 
     lda #' '
     jsr putchar
@@ -1160,7 +1143,7 @@ dump:
     lda wrk + 0
     jsr puthex
 
-    lda #10
+    lda #' '
     jsr putchar
     lda #'S'
     jsr putchar
@@ -1170,10 +1153,8 @@ dump:
     jsr puthex
     lda spt + 0
     jsr puthex
-
-    jsr dumps
     
-    lda #10
+    lda #' '
     jsr putchar
     lda #'R'
     jsr putchar
@@ -1184,15 +1165,11 @@ dump:
     lda rpt + 0
     jsr puthex
 
-    jsr dumpr
-
-    lda #10
-    jsr putchar
-
     lda #'}'
     jsr putchar
 
-    ; jsr showname
+    lda #10
+    jsr putchar
 
     pla
 
@@ -1201,7 +1178,7 @@ dump:
 ;----------------------------------------------------------------------
 dumpr:
     
-    lda #' '
+    lda #10
     jsr putchar
 
     lda #'R'
@@ -1239,7 +1216,7 @@ dumpr:
 ;----------------------------------------------------------------------
 dumps:
     
-    lda #' '
+    lda #10
     jsr putchar
 
     lda #'S'
@@ -1276,7 +1253,7 @@ dumps:
 
 
 ;----------------------------------------------------------------------
-; show list address, till 
+; show compiled list address
 ;
 alist:
 
