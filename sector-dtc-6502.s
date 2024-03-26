@@ -300,7 +300,6 @@ execute:
     jmp exec
 
 ;---------------------------------------------------------------------
-;---------------------------------------------------------------------
 okeys:
     lda #'O'
     jsr putchar
@@ -417,11 +416,22 @@ addwx:
 ;---------------------------------------------------------------------
 ; decrement a word in page zero. offset by X
 decwx:
+    lda #'>'
+    jsr putchar
+
+    jsr dumpk
+
     lda nil + 0, x
     bne @ends
     dec nil + 1, x
 @ends:
     dec nil + 0, x
+
+    lda #'<'
+    jsr putchar
+
+    jsr dumpk
+
     rts
 
 ;---------------------------------------------------------------------
@@ -438,13 +448,40 @@ rpush:
 spush:
     ldx #(spt - nil)
 push:
+    
+    lda #'1'
+    jsr putchar
+
+    lda #'='
+    jsr putchar
+
+    jsr dumpk 
+    
     jsr decwx
     lda nil + 1, y
     sta (nil, x)
 
+    lda #'2'
+    jsr putchar
+
+    lda #'='
+    jsr putchar
+
+    ;jsr dumpk 
+
     jsr decwx
     lda nil + 0, y
     sta (nil, x)
+
+    jsr dumpk 
+
+    lda #'3'
+    jsr putchar
+
+    lda #'='
+    jsr putchar
+
+    jsr dumpk 
 
     rts 
 
@@ -765,6 +802,12 @@ nest:
     jsr putchar
     .endif
 
+    ldx #(lnk - nil)
+    lda #2
+    jsr addwx
+
+    jsr dump 
+    
 ; push into return stack
     ldy #(lnk - nil)
     jsr rpush
@@ -1009,13 +1052,14 @@ showname:
     lda #' '
     jsr putchar
 
+; size
     pla
-    tay
+    pha
     jsr puthex
 
 ; mask flag
 
-    tya
+    pla
     and #$7F
     tay 
 
@@ -1057,25 +1101,26 @@ showord:
     lda #' '
     jsr putchar
 
-    
 ; show list
 
     lda fst + 1
     cmp #>init
     bmi @ends
     
-    jsr alist
+; only compiled
+
+    ; jsr alist
 
 @ends:
 
     lda #')'
     jsr putchar
 
-    jsr dump
+    ; jsr dump
     
-    ;jsr dumps
+    ; jsr dumps
 
-    ;jsr dumpr
+    ; jsr dumpr
 
     jsr loadnils
 
@@ -1172,6 +1217,56 @@ dump:
     jsr putchar
 
     pla
+
+    rts
+
+;----------------------------------------------------------------------
+dumpk:
+
+
+    php
+    pha
+    lda #'X'
+    jsr putchar
+    txa
+    pha
+    jsr puthex
+
+    lda #'Y'
+    jsr putchar
+    tya
+    pha
+    jsr puthex
+
+    lda #' '
+    jsr putchar
+
+    tsx
+
+    inx
+    inx
+    inx
+    inx
+
+@loop:
+
+    txa
+    jsr puthex
+    lda #':'
+    jsr putchar
+    lda $100, x
+    jsr puthex
+    lda #' '
+    jsr putchar
+    inx
+    bne @loop
+
+    pla
+    tay
+    pla
+    tax
+    pla
+    plp
 
     rts
     
