@@ -17,6 +17,8 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 include some debug code and flag
 
+_01/05/2024 I'm on vacancy to reflesh some ideas
+
 _30/01/2024_ doing debugs for DTC inner 
 
 _28/01/2024_ code for 6502 sized to 632 bytes. Review with 'standart direct thread code',
