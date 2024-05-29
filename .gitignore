@@ -1,0 +1,13 @@
+
+*.o
+*.a
+*.x
+*.log
+*.toc
+*.fmt
+*.aux
+*~
+?
+tst/
+out/
+
