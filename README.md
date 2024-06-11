@@ -17,6 +17,9 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 include some debug code and flag
 
+_11/06/2024 return and change model for 'minimal indirect thread code' with lots of
+            debugging code to find errors. Renaming main file for it
+
 _01/05/2024 I'm on vacancy to reflesh some ideas
 
 _30/01/2024_ doing debugs for DTC inner 
@@ -67,7 +70,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Remarks:
 
-- words must be between spaces, begin and end spaces are wise;
+- words must be between spaces, before and after is wise;
 - hardware stack (page $100) not used as forth stack, free for use;
 - 6502 is a byte processor, no need 'pad' at end of even names;
 - no multiuser, no multitask, no faster;
@@ -76,12 +79,13 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - only update _latest_ at end of word definition, so the word is hidden while defined;
 - redefine a word does not changes at previous uses;
 
+11/06/2024:
+return to minimal thread indirect code
 
 24/01/2024:
 for comparison with x86 code, 
     rewrite using standart direct thread code as inner dispatcher;
     before was using Minimal Thread Indirect Code_ as inner dispatcher[^4];
-
 
 The stack operations are backwards but slightly different in order.
 Usually, **push** is _store and decrease_, **pull** is _increase and fetch_.
@@ -150,3 +154,4 @@ the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 [^3]: Mind-blowing sectorLISP: https://justine.lol/sectorlisp2/, https://github.com/jart/sectorlisp.
 [^4]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
 [^5]: Minimum are 80, 64, 48, from ANSI X3.215-1994, http://www.forth.org/svfig/Win32Forth/DPANS94.txt;
+
