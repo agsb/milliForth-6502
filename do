@@ -1,1 +1,1 @@
-sh doit sector-dtc-6502 < hello_world.FORTH > zz 
+sh doit $1 < hello_world.FORTH > zz 

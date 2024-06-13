@@ -7,7 +7,9 @@
 *.fmt
 *.aux
 *~
+z*
 ?
 tst/
+try/
 out/
 

@@ -4,15 +4,13 @@ echo " start compiling "
 
 case $1 in
 
-
 a)   
-    cl65 -C $2.cfg -Ln $2.lbl -l $2.lst -m $2.map \
+    cl65 -Ln $2.lbl -l $2.lst -m $2.map \
     --cpu 6502 -t none --no-target-lib \
     --debug --debug-info \
     --memory-model near \
     --target none \
-    -o $2.out \
-    $2.s 2> err | tee out
+    -o $2.out -C $2.cfg $2.s 2> err | tee out
 
     cp $2.s $2.asm
 
@@ -23,10 +21,7 @@ a)
     od --endian=big -x < $2.ram > $2.bhx
     od --endian=big -x < $2.rom > $2.bhx
 
-    # -o $2.rom \
-
     ;;
-
 
 x)
     rm $2.obj $2.dep $2.map $2.lbl $2.lbs $2.lst 

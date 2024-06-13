@@ -17,6 +17,9 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 include some debug code and flag
 
+_12/06/2024 random error in list the values from $00E0 to $00FF, at return
+            can not catch why
+
 _11/06/2024 return and change model for 'minimal indirect thread code' with lots of
             debugging code to find errors. Renaming main file for it
 
