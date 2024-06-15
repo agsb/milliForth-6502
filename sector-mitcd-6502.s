@@ -771,16 +771,11 @@ next:
     ldy #(wrk - nil)
     jsr pull
 
-    ;.if debug
-    ;jsr dump
-    ;.endif
-
 pick:
     .if debug
     lda #'P'
     jsr putchar
     .endif
-
 
 ; minimal 
     lda wrk + 1
@@ -792,12 +787,6 @@ nest:
     lda #'N'
     jsr putchar
     .endif
-
-    jsr dumpnil
-
-    ldx #(lnk - nil)
-    lda #2
-    jsr addwx
 
     jsr dumpnil
 
@@ -835,6 +824,15 @@ jump:
     .endif
 
     jmp (wrk)
+
+; historical 
+goto:
+    .if debug
+    lda #'G'
+    jsr putchar
+    .endif
+
+    jmp (lnk)
 
 ;---------------------------------------------------------------------
 ; pseudo
