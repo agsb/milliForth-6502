@@ -17,6 +17,15 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 include some debug code and flag
 
+_16/06/2024 Return to MITC paradigm.
+            it will grow the size of code, but will work.
+            later todo a real DTC code.
+
+_15/06/2024 I found the big mistake ! Mix DTC and MITC.
+            The compare with init was a great mistake.
+            Some assembler code could lead to wrong comparations.
+            For MITC primitives must have a NULL.
+
 _12/06/2024 random error in list the values from $00E0 to $00FF, at return
             can not catch why
 

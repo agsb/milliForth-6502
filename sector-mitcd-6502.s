@@ -74,6 +74,7 @@ hcount .set hcount + 1
 .byte .strlen(name) + flag + 0 ; nice trick !
 .byte name
 makelabel "", label
+.word 0
 .endmacro
 
 ;----------------------------------------------------------------------
@@ -763,7 +764,7 @@ unnest:
 next:
     .if debug
     lda #'X'
-    jsr putchar
+     jsr putchar
     .endif
 
 ; wrk = (lnk) ; lnk = lnk + 2
@@ -779,8 +780,7 @@ pick:
 
 ; minimal 
     lda wrk + 1
-    cmp #>init
-    bmi jump
+    beq jump
 
 nest:
     .if debug
@@ -823,16 +823,10 @@ jump:
     jsr putchar
     .endif
 
-    jmp (wrk)
-
-; historical 
-goto:
-    .if debug
-    lda #'G'
-    jsr putchar
-    .endif
-
+;   wrk is NULL
     jmp (lnk)
+    ; ???? where to return ?
+
 
 ;---------------------------------------------------------------------
 ; pseudo
@@ -972,9 +966,11 @@ showdic:
     
     ldy #0
     lda (fst), y
+    jsr puthex
+
+    lda (fst), y
     and #$7F
     tax
-    jsr puthex
 
     lda #' '
     jsr putchar
