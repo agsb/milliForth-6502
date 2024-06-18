@@ -146,13 +146,17 @@ This version includes:
    thru end of another area.
 
    A common memory model organization of Forth: 
+
    tib->...<-spt, user forth dictionary, here->...<-rpt
+
    then backward stacks allow to use the slack space ... 
 
    This 6502 Forth memory model is blocked in pages of 256 bytes:
+
    page0, page1, page2, core ... forth dictionary ...here...
    
-   at page2, withou 'rush over' then stacks can simply go forwards:
+   at page2, without 'rush over' then stacks can simply go forwards:
+
    [tib 40 cells][locals 16 cells][spt 36 cells][rpt 36 cells]
 
 ## Language
