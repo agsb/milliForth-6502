@@ -748,7 +748,7 @@ unnest:
 
     jsr dumpnil
 
-; pull 
+; pull, lnk = *(rpt), rpt += 2 
     ldy #(lnk - nil)
     jsr rpull
 
@@ -778,7 +778,7 @@ pick:
     jsr putchar
     .endif
 
-; minimal 
+; minimal test, no words at page 0
     lda wrk + 1
     beq jump
 
@@ -790,7 +790,7 @@ nest:
 
     jsr dumpnil
 
-; push into return stack
+; push, *rp = lnk, rp -=2
     ldy #(lnk - nil)
     jsr rpush
 
@@ -825,7 +825,7 @@ jump:
 
 ;   wrk is NULL
     jmp (lnk)
-    ; ???? where to return ?
+    ; ???? where to return ? unnest
 
 
 ;---------------------------------------------------------------------
