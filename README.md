@@ -126,13 +126,34 @@ This version includes:
 ```
     $000    page zero       ; cpu reserved
     $100    hardware stack  ; cpu reserved
-    $200    TIB             ; terminal input buffer, 84 bytes
-    $254    Locals          ; reserved for locals, 14 cells
-    $2D8    data stack      ; data stack, 36 cells
-    $2FF    return stack    ; return stack, 36 cells
+    $200    TIB             ; terminal input buffer, 80 bytes
+    $250    temporary       ; reserved for scratch, 16 cells
+    $270    data stack      ; data stack, 36 cells
+    $2B8    return stack    ; return stack, 36 cells
     $300    _main_          ; start of Forth
     $5??    _init_          ; start of compose dictionary
 ```
+
+### Stacks
+
+   The stack operations slightly different: works forwards.
+
+   Push is 'store and increase'. Pull is 'decrease and fetch'.
+
+   why ? this way could use push for update here without extra code. 
+
+   the best reason to use a backward stack is when it can grows 
+   thru end of another area.
+
+   A common memory model organization of Forth: 
+   tib->...<-spt, user forth dictionary, here->...<-rpt
+   then backward stacks allow to use the slack space ... 
+
+   This 6502 Forth memory model is blocked in pages of 256 bytes:
+   page0, page1, page2, core ... forth dictionary ...here...
+   
+   at page2, withou 'rush over' then stacks can simply go forwards:
+   [tib 40 cells][locals 16 cells][spt 36 cells][rpt 36 cells]
 
 ## Language
 

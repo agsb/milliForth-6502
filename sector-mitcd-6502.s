@@ -28,27 +28,56 @@
 ;
 ;   Remarks:
 ;
+;   this code uses Minimal Indirect Thread Code, no DTC.
+;
+;   terminal input buffer (tib) is like a stream; 
+;
+;   be wise, Chuck Moore used 64 columns, rule 72 cpl is mandatory;
+;
 ;   words must be between spaces, begin and end spaces are wise;
 ;
-;   if locals not used, data stack could be 50 cells 
+;   only 7-bit ASCII characters, plus \n, no controls, maybe \b later;
 ;
+;   better use by reading a text file source;
+;
+;   if locals not used, data stack could be 50 cells; 
+;   
+;   no multiuser, no multitask, no faster;
+
 ;   For 6502:
 ;
 ;   * hardware stack (page $100) not used as forth stack, free for use;
 ;
 ;   * 6502 is a byte processor, no need 'pad' at end of even names;
 ; 
-;   * no multiuser, no multitask, no faster;
+;   * push is 'store and increase', pull is 'decrease and fetch',
 ;
-;   * by easy, stack operations are backwards but slightly different.
+;   For stacks:
 ;
-;   common: push is 'store and decrease', pull is 'increase and fetch',
+;   stack operations slightly different: works forwards.
 ;
-;   in here: push is 'decrease and store', pull is 'fetch and increase',
+;   push is 'store and increase', pull is 'decrease and fetch',
 ;
+;   why ? this way could use push for update here without extra code. 
+;
+;   best reason to use a backward stack is when it can grows thru 
+;       end of another area.
+;
+;   common memory model organization of Forth: 
+;   [tib->...<-spt: user forth dictionary :here->...<-rpt]
+;   then backward stacks allow to use the slack space ... 
+;
+;   this 6502 Forth memory model blocked in pages of 256 bytes:
+;   [page0][page1][page2][core ... forth dictionary ...here...]
+;   
+;   at page2, no rush over then stacks can go forwards:
+;   [tib 40 cells][locals 16 cells][spt 36 cells][rpt 36 cells]
+
 ;----------------------------------------------------------------------
 ;
-; stuff for ca65 
+; this source is for Ca65
+;
+; stuff for ca65 compiler
 ;
 .p02
 .feature c_comments
@@ -74,6 +103,7 @@ hcount .set hcount + 1
 .byte .strlen(name) + flag + 0 ; nice trick !
 .byte name
 makelabel "", label
+; need for M.I.T.C.
 .word 0
 .endmacro
 
@@ -88,15 +118,15 @@ debug = 1
 ;----------------------------------------------------------------------
 ; alias
 
-; cell size
-CELL = 2     ; two bytes, 16 bits
+; cell size, two bytes, 16-bit
+CELL = 2    
 
-; highlander
+; highlander, immediate flag
 FLAG_IMM = 1<<7
 
 ; "all in" page $200
 
-; terminal input buffer, 84 bytes, forward
+; terminal input buffer, 80 bytes, forward
 tib = $0200
 
 ; locals, 16 cells, forward
@@ -107,11 +137,13 @@ lcs = $50
 ; data stack, 36 cells, backward
 sp0 = $B9
 
+; strange ? is a 8-bit system, look at push code ;)
+
 ; return stack, 36 cells, backward
 rp0 = $00
 
 ;----------------------------------------------------------------------
-; no values here or must be BSS
+; no values here or must be a BSS
 .segment "ZERO"
 
 * = $E0
@@ -121,11 +153,9 @@ nil:    .word $0 ; reserved reference offset
 spt:    .word $0 ; holds data stack base,
 rpt:    .word $0 ; holds return stack base
 
-; inner pseudo registers for SITC
 lnk:    .word $0 ; link
 wrk:    .word $0 ; work
 
-; scratch pseudo registers
 fst:    .word $0 ; first
 snd:    .word $0 ; second
 trd:    .word $0 ; third
@@ -202,6 +232,7 @@ quit:
     sty spt + 0
     ldy #<rp0
     sty rpt + 0
+
     ; y == \0
 ; clear tib stuff
     sty tib + 0
@@ -214,11 +245,10 @@ quit:
 ; the outer loop
 outer:
 
+; begin
 parse:
 ; get a token
     jsr token
-
-    ; jsr showdic
 
 find:
 ; load last
@@ -273,16 +303,9 @@ find:
     
     jsr showord
 
-; repeat again
-
-    lda #<parse_
-    sta lnk + 0
-    lda #>parse_
-    sta lnk + 1
-
 ; immediate ? if < \0
     lda state + 1   
-    bmi execute      ; bit 7 set 
+    bmi execute      
 
 ; executing ? if == \0
     lda state + 0   
@@ -296,7 +319,9 @@ compile:
 
     jsr copy
 
-    jmp next
+; again
+
+    jmp parse
 
 execute:
     .if debug
@@ -309,7 +334,11 @@ execute:
     lda fst + 1
     sta wrk + 1
 
-    jmp pick
+    jsp pick
+
+; again
+
+    jmp parse
 
 ;---------------------------------------------------------------------
 okeys:
@@ -359,7 +388,7 @@ getline:
     cmp #10
     beq @ends
 @puts:
-; 7-bit ascii, also mask flag
+; 7-bit ascii only
     and #$7F      
     sta tib, y
     iny
@@ -370,7 +399,7 @@ getline:
     lda #32
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
-; mark \0
+; mark eot with \0
     lda #0
     iny
     sta tib, y
@@ -442,22 +471,11 @@ decwx:
 rpush:
     ldx #(rpt - nil)
     jmp push
-
     ;.byte $2c   ; mask two bytes, nice trick !
 
 spush:
-    ldx #(spt - nil)
-
-push:
-    jsr decwx
-    lda nil + 1, y
-    sta (nil, x)
-
-    jsr decwx
-    lda nil + 0, y
-    sta (nil, x)
-
-    rts 
+    ldx #(rpt - nil)
+    jmp push
 
 ;---------------------------------------------------------------------
 ; pull a cell 
@@ -466,51 +484,46 @@ push:
 rpull:
     ldx #(rpt - nil)
     jmp pull
-
     ;.byte $2c   ; mask ldy, nice trick !
 
 spull:
     ldx #(spt - nil)
-
-pull:
-    lda (nil, x)    
-    sta nil + 0, y   
-    jsr incwx        
-    
-    lda (nil, x)    
-    sta nil + 1, y  
-    jsr incwx 
-
-    rts
+    jump pull
 
 ;---------------------------------------------------------------------
-; move a cell
+; copy a cell
 ; from a page zero address indexed by Y
 ; into a page zero indirect address indexed by X
-; default case
 copy: 
     ldy #(fst - nil)
+
 each:
     ldx #(here - nil)
+
+    jmp push
+
 ;---------------------------------------------------------------------
-; n2z
-poke:
+; X cursor moves forward
+; address in X is incremented
+push:
     lda nil + 0, y
     sta (nil,x)
     jsr incwx
     lda nil + 1, y
     sta (nil, x)
-    jmp incwx
+    jsr incwx
+    rts ; extra ***
 
 ;---------------------------------------------------------------------
-; z2n
-yank:
+; X cursor moves backward
+; address in X is decremented 
+pull:
     jsr decwx
     lda (nil,x)
     sta nil + 1, y
     jsr decwx
-    sta (nil, x)
-    lda nil + 0, y
+    lda (nil, x)
+    sta nil + 0, y
     rts
 
 ;---------------------------------------------------------------------
