@@ -193,6 +193,8 @@ cold:
     ldx #$FF
     txs
 
+    jsr dumpnil
+
 ; link list
     lda #>f_exit
     sta last + 1
@@ -231,12 +233,16 @@ quit:
 ; state is 'interpret' == \0
     sty state + 0
 
+    jsr dumpnil
+
 ;---------------------------------------------------------------------
 ; the outer loop
 outer:
 
 ; begin
 parse:
+
+    jsr showdic
 
 ; get a token
     jsr token
@@ -245,22 +251,18 @@ find:
 ; load last
     lda last + 1
     sta trd + 1
-    jsr puthex 
-
     lda last + 0
     sta trd + 0
-    jsr puthex 
     
-    lda #10
-    jsr putchar
-
 @loop:
 ; linked list
     lda trd + 0
     sta fst + 0
+
 ; verify null
     ora trd + 1
     beq error ; end of dictionary, no more words to search, quit
+
 ; linked list
     lda trd + 1
     sta fst + 1
@@ -332,7 +334,7 @@ execute:
     lda #<parse_
     sta trd + 0
     lda #>parse_
-    sta trd - 1
+    sta trd + 1
     ldy #(trd - nil)
     jsr rpush
 
@@ -782,14 +784,14 @@ unnest:
     ldy #(lnk - nil)
     jsr rpull
 
-    jsr dumpnil
+;    jsr dumpnil
     
-    jsr dumpr
+;    jsr dumpr
 
-    jsr dumps
+;    jsr dumps
 
-    lda #10
-    jsr putchar
+;    lda #10
+;    jsr putchar
 
 next:
     .if debug
@@ -818,20 +820,20 @@ nest:
     jsr putchar
     .endif
 
-    jsr dumpnil
+;    jsr dumpnil
 
 ; push, *rp = lnk, rp -=2
     ldy #(lnk - nil)
     jsr rpush
 
-    jsr dumpnil
+;    jsr dumpnil
 
-    jsr dumpr
+;    jsr dumpr
 
-    jsr dumps
+;    jsr dumps
 
-    lda #10
-    jsr putchar
+;    lda #10
+;    jsr putchar
 
 link:
     .if debug
@@ -967,6 +969,8 @@ showdic:
 ; update link list
     lda trd + 0
     sta fst + 0
+    
+    jsr dumpnil
 
 ; verify is zero
     ora trd + 1
@@ -976,6 +980,8 @@ showdic:
     lda trd + 1
     sta fst + 1
 
+    jsr dumpnil
+
     lda #'~'
     jsr putchar
     lda fst + 1
@@ -984,7 +990,6 @@ showdic:
     jsr puthex
 
 ; get that link, wrk = [fst]
-; bypass the link fst+2
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
     jsr copyfrom
@@ -1010,6 +1015,9 @@ showdic:
     dex
     bne @loopa
 
+    lda #' '
+    jsr putchar
+    
     lda fst + 1
     jsr puthex
 
@@ -1423,30 +1431,29 @@ dumpr:
     lda #'R'
     jsr putchar
 
-    lda #' '
+    lda #'='
     jsr putchar
 
     sec
     lda #rp0
     sbc rpt + 0
     beq @ends
-    tay
+    tax
 
-@rloop:
-    lda #' '
-    jsr putchar
-
-    tya
     jsr puthex
 
-    lda #'='
+    ldy #0
+
+@loop:
+    lda #' '
     jsr putchar
 
     lda (rpt), y
     jsr puthex
+    iny
 
-    dey
-    bne @rloop
+    dex
+    bne @loop
 
 @ends:
 
@@ -1461,30 +1468,29 @@ dumps:
     lda #'S'
     jsr putchar
 
-    lda #' '
+    lda #'='
     jsr putchar
 
     sec
     lda #sp0
     sbc spt + 0
     beq @ends
-    tay
+    tax
 
-@sloop:
+    jsr puthex
+    
+    ldy #0
+
+@loop:
     lda #' '
     jsr putchar
 
-    tya
+    lda spt, y
     jsr puthex
+    iny
 
-    lda #'='
-    jsr putchar
-
-    lda (spt) , y
-    jsr puthex
-
-    dey
-    bne @sloop
+    dex
+    bne @loop
 
 @ends:
 
