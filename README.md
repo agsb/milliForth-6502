@@ -19,7 +19,7 @@ include some debug code and flag
 
 _16/06/2024 Return to MITC paradigm.
             it will grow the size of code, but will work.
-            later todo a real DTC code.
+            todo a real DTC code, later.
 
 _15/06/2024 I found the big mistake ! Mix DTC and MITC.
             The compare with init was a great mistake.
@@ -90,6 +90,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - uses 32 bytes of _page zero_;
 - only update _latest_ at end of word definition, so the word is hidden while defined;
 - redefine a word does not changes at previous uses;
+- stacks moves like the hardware stack
 
 11/06/2024:
 return to minimal thread indirect code
@@ -98,10 +99,6 @@ return to minimal thread indirect code
 for comparison with x86 code, 
     rewrite using standart direct thread code as inner dispatcher;
     before was using Minimal Thread Indirect Code_ as inner dispatcher[^4];
-
-The stack operations are backwards but slightly different in order.
-Usually, **push** is _store and decrease_, **pull** is _increase and fetch_.
-This code, **push** is _decrease and store_, **pull** is _fetch and increase_,
 
 - still no include a _'OK'_ or _'??'_;
 - still no include a backspace routine for \b; 
@@ -136,18 +133,13 @@ This version includes:
 
 ### Stacks
 
-   The stack operations slightly different: works forwards.
+   " When heap moves forward, move the stack backward "
 
-   Push is 'store and increase'. Pull is 'decrease and fetch'.
-
-   why ? this way could use push for update here without extra code. 
-
-   the best reason to use a backward stack is when it can grows 
-   thru end of another area.
+   Push is 'store and decrease'. Pull is 'increas and fetch'.
 
    A common memory model organization of Forth: 
 
-   tib->...<-spt, user forth dictionary, here->...<-rpt
+   tib->...<-spt, user forth dictionary, here->pad...<-rpt,
 
    then backward stacks allow to use the slack space ... 
 
@@ -155,15 +147,19 @@ This version includes:
 
    page0, page1, page2, core ... forth dictionary ...here...
    
-   at page2, without 'rush over' then stacks can simply go forwards:
+   at page2, without 'rush over'
 
-   [tib 40 cells][locals 16 cells][spt 36 cells][rpt 36 cells]
+   tib 40 cells>, <spt 36 cells, pad 16 cells>,  <rpt 36 cells.
 
 ## Language
 
-_"SectorFORTH was an extensive guide throughout the process of implementing milliFORTH, and milliFORTH's design actually converged on sectorFORTH unintentionally in a few areas. That said, the language implemented is intentionally very similar, being the 'minimal FORTH'."_
+_"SectorFORTH was an extensive guide throughout the process of 
+implementing milliFORTH, and milliFORTH's design actually converged
+on sectorFORTH unintentionally in a few areas. That said, the language
+implemented is intentionally very similar, being the 'minimal FORTH'."_
 
-For Forth language primer see [Starting Forth](https://www.forth.com/starting-forth/)
+For Forth language primer see 
+[Starting Forth](https://www.forth.com/starting-forth/)
 
 ## Use
 
