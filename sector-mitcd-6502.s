@@ -238,26 +238,21 @@ outer:
 ; begin
 parse:
 
-; again
-
-    lda #<parse_
-    sta trd + 0
-
-    lda #>parse_
-    sta trd - 1
-
-    ldy #(trd - nil)
-    jsr rpush
-
 ; get a token
     jsr token
 
 find:
 ; load last
-    lda last + 0
-    sta trd + 0
     lda last + 1
     sta trd + 1
+    jsr puthex 
+
+    lda last + 0
+    sta trd + 0
+    jsr puthex 
+    
+    lda #10
+    jsr putchar
 
 @loop:
 ; linked list
@@ -273,7 +268,7 @@ find:
 ; update link 
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
-    jsr pull
+    jsr copyfrom
 
 ; compare words
     ldy #0
@@ -281,6 +276,7 @@ find:
     lda (fst), y
     sta state + 1
 
+; compare chars
 @equal:
     lda (snd), y
 ; space ends token
@@ -299,19 +295,19 @@ find:
 
 ; update fst
     
+    jsr showord
+
     tya
     ldx #(fst - nil)
     jsr addwx
     
-    jsr showord
+; executing ? if == \0
+    lda state + 0   
+    beq execute
 
 ; immediate ? if < \0
     lda state + 1   
     bmi execute      
-
-; executing ? if == \0
-    lda state + 0   
-    beq execute
 
 compile:
     .if debug
@@ -319,7 +315,9 @@ compile:
     jsr putchar
     .endif
 
-    jmp copy
+    jsr comma
+
+    jmp parse
 
 execute:
     .if debug
@@ -328,6 +326,15 @@ execute:
     .endif
 
 ;  wherever
+
+; again
+
+    lda #<parse_
+    sta trd + 0
+    lda #>parse_
+    sta trd - 1
+    ldy #(trd - nil)
+    jsr rpush
 
     lda fst + 0
     sta wrk + 0
@@ -345,7 +352,6 @@ okeys:
     lda #10
     jsr putchar
     jmp parse
-    
 
 ;---------------------------------------------------------------------
 error:
@@ -475,13 +481,13 @@ rpush:
     .byte $2c   ; mask two bytes, nice trick !
 
 spush:
-    ldx #(rpt - nil)
+    ldx #(spt - nil)
 
 ;---------------------------------------------------------------------
 ; classic stack backwards
 push:
     lda nil + 1, y
-    sta (nil,x)
+    sta (nil, x)
     jsr decwx
     lda nil + 0, y
     sta (nil, x)
@@ -503,7 +509,7 @@ spull:
 ; classic stack backwards
 pull:
     jsr incwx
-    lda (nil,x)
+    lda (nil, x)
     sta nil + 0, y
     jsr incwx
     lda (nil, x)
@@ -513,20 +519,11 @@ pull:
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
-copy: 
+comma: 
     ldy #(fst - nil)
 
 each:
     ldx #(here - nil)
-
-copyfrom:
-    lda (nil, x)
-    sta nil + 0, y
-    jsr incwx
-    lda (nil, x)
-    sta nil + 1, y
-    jsr incwx
-    rts ; extra ***
 
 copyinto:
     lda nil + 0, y
@@ -534,6 +531,15 @@ copyinto:
     jsr incwx
     lda nil + 1, y
     sta (nil, x)
+    jsr incwx
+    rts ; extra ***
+
+copyfrom:
+    lda (nil, x)
+    sta nil + 0, y
+    jsr incwx
+    lda (nil, x)
+    sta nil + 1, y
     jsr incwx
     rts ; extra ***
 
@@ -736,7 +742,7 @@ create:
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
-; update last, panic if comma not lead elsewhere 
+; update last, panic if colon not lead elsewhere 
     lda back + 1 ; pla
     sta last + 1
     lda back + 0 ; pla
@@ -981,9 +987,9 @@ showdic:
 ; bypass the link fst+2
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
-    jsr pull
+    jsr copyfrom
 
-    lda #'#'
+    lda #' '
     jsr putchar
     
     ldy #0
@@ -1003,6 +1009,12 @@ showdic:
     jsr putchar
     dex
     bne @loopa
+
+    lda fst + 1
+    jsr puthex
+
+    lda fst + 0
+    jsr puthex
 
     lda #10
     jsr putchar
@@ -1083,6 +1095,33 @@ showfst:
 ;----------------------------------------------------------------------
 showname:
 
+    lda #' '
+    jsr putchar
+    
+    ldy #0
+    lda (fst), y
+    pha
+    jsr puthex
+    
+    lda #' '
+    jsr putchar
+    
+    pla
+    and #$7F
+    tax
+
+@loop:
+    iny
+    lda (fst),y
+    jsr putchar
+    dex
+    bne @loop
+
+    rts
+
+;----------------------------------------------------------------------
+showback:
+
 ; search backwards
 
     ldx #(fst - nil)
@@ -1141,10 +1180,10 @@ showord:
 
     jsr showsts
 
-    jsr showhere
-
     jsr showlast
     
+    jsr showhere
+
     jsr showfst 
 
     jsr showname
@@ -1155,8 +1194,7 @@ showord:
 ; show list
 
     lda fst + 1
-    cmp #>init
-    bmi @ends
+    beq @ends
     
 ; only compiled
 
@@ -1254,13 +1292,24 @@ dumpext:
 
     lda #' '
     jsr putchar
-    lda #'H'
+    lda #'S'
     jsr putchar
     lda #'='
     jsr putchar
-    lda here + 1
+    lda spt + 1
     jsr puthex
-    lda here + 0
+    lda spt + 0
+    jsr puthex
+    
+    lda #' '
+    jsr putchar
+    lda #'R'
+    jsr putchar
+    lda #'='
+    jsr putchar
+    lda rpt + 1
+    jsr puthex
+    lda rpt + 0
     jsr puthex
 
     lda #' '
@@ -1287,24 +1336,24 @@ dumpext:
 
     lda #' '
     jsr putchar
-    lda #'S'
+    lda #'T'
     jsr putchar
     lda #'='
     jsr putchar
-    lda spt + 1
+    lda last + 1
     jsr puthex
-    lda spt + 0
+    lda last + 0
     jsr puthex
-    
+
     lda #' '
     jsr putchar
-    lda #'R'
+    lda #'H'
     jsr putchar
     lda #'='
     jsr putchar
-    lda rpt + 1
+    lda here + 1
     jsr puthex
-    lda rpt + 0
+    lda here + 0
     jsr puthex
 
     lda #'}'
@@ -1319,7 +1368,7 @@ dumpext:
 
 ;----------------------------------------------------------------------
 ; show hard stack
-dumpk:
+dumphs:
 
     php
     pha
@@ -1440,7 +1489,6 @@ dumps:
 @ends:
 
     rts
-
 
 ;----------------------------------------------------------------------
 ; show compiled list address

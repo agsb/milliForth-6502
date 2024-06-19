@@ -16,6 +16,11 @@ a)
 
     sort -k 2 < $2.lbl > $2.lbs
 
+    grep 'f_' $2.lbs > $2.lbf
+
+    ;;
+
+o)    
     mv rom.bin $2.rom
     mv ram.bin $2.ram
     od --endian=big -x < $2.ram > $2.bhx
@@ -24,9 +29,9 @@ a)
     ;;
 
 x)
-    rm $2.obj $2.dep $2.map $2.lbl $2.lbs $2.lst 
-    rm $2.ram $2.rom $2.out $2.bhx $2.asm
-    rm out err lst 
+    rm $2.obj $2.dep $2.map $2.lbl $2.lbs $2.lbf 2> err 
+    rm $2.ram $2.rom $2.out $2.bhx $2.asm $2.lst 2> err
+    rm out err  
     
     ;;
 
