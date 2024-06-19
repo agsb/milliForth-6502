@@ -1,0 +1,1 @@
+Executing: ca65 -l sector-mitcd-6502.lst --cpu 6502 -g -mm near -t none sector-mitcd-6502.s 

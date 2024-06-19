@@ -602,7 +602,7 @@ storew:
     jsr spull2
     ldx #(snd - nil) 
     ldy #(fst - nil) 
-    jsr copyinto
+    jsr poke
     jmp exit
 
 ;---------------------------------------------------------------------
@@ -612,7 +612,7 @@ fetchw:
     jsr spull1
     ldx #(fst - nil)
     ldy #(snd - nil)
-    jsr copyfrom
+    jsr pull
     jmp this
 
 ;---------------------------------------------------------------------

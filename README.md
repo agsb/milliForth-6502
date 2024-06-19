@@ -15,18 +15,19 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 ## Time table 
 
-include some debug code and flag
+_19/06/2024 Great review of heap and stack core code.
 
 _16/06/2024 Return to MITC paradigm.
             it will grow the size of code, but will work.
             todo a real DTC code, later.
 
 _15/06/2024 I found the big mistake ! Mix DTC and MITC.
-            The compare with init was a great mistake.
+            The compare with init: was a great mistake.
             Some assembler code could lead to wrong comparations.
             For MITC primitives must have a NULL.
 
-_12/06/2024 random error in list the values from $00E0 to $00FF, at return
+_12/06/2024 random error in list the values 
+            from $00E0 to $00FF, at return
             can not catch why
 
 _11/06/2024 return and change model for 'minimal indirect thread code' with lots of
@@ -74,7 +75,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Changes:
 
-- all tib (84 bytes), locals (14 cells), data (36 cells) and return (36 cells) stacks are in page $200 ; 
+- all tib (80 bytes), pad (16 cells), data (36 cells) and return (36 cells) stacks are in page $200 ; 
 - tib and locals grows forward, stacks grows backwards ;
 - no overflow or underflow checks ;
 - only immediate flag used as $80, no extras flags ;
@@ -82,23 +83,23 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Remarks:
 
-- words must be between spaces, before and after is wise;
-- hardware stack (page $100) not used as forth stack, free for use;
 - 6502 is a byte processor, no need 'pad' at end of even names;
+- hardware stack (page $100) not used as forth stack, free for use;
 - no multiuser, no multitask, no faster;
-- uses 7-bit ASCII characters;
 - uses 32 bytes of _page zero_;
 - only update _latest_ at end of word definition, so the word is hidden while defined;
-- redefine a word does not changes at previous uses;
 - stacks moves like the hardware stack
+- words must be between spaces, before and after is wise;
+- redefine a word does not change previous uses;
+- uses 7-bit ASCII characters;
 
 11/06/2024:
-return to minimal thread indirect code
+    return to minimal thread indirect code
+    using Minimal Thread Indirect Code_ as inner dispatcher[^4];
 
 24/01/2024:
-for comparison with x86 code, 
+    for comparison with x86 code, 
     rewrite using standart direct thread code as inner dispatcher;
-    before was using Minimal Thread Indirect Code_ as inner dispatcher[^4];
 
 - still no include a _'OK'_ or _'??'_;
 - still no include a backspace routine for \b; 
@@ -108,14 +109,17 @@ for comparison with x86 code,
 
 This version includes: 
 ```
-    primitives:
-        sp@, rp@, s@, +, nand, @, !, :, ;, 0#, key, emit, 2/, exit,
+primitives:
+    sp@, rp@, s@, +, nand, @, !, :, ;, 0#, key, emit, 2/, exit,
 
-    internals: 
-        spush, spull, rpull, rpush, incr, decr, add, etc (register mimics)
-        unnest, next, nest, link, jump, (inner interpreter) 
-        quit, token, skip, scan, newline, find, compile, execute, exit (outer interpreter)
-        getch, putch (depends on system, used minimal for emulator )
+internals: 
+    spush, spull, rpull, rpush, (stack code)
+    copyfrom, copyinto, (heap code)
+    incr, decr, add, etc (register mimics)
+    unnest, next, nest, pick, link, jump, (inner interpreter) 
+    cold, quit, token, skip, scan, getline, (boot and terminal)
+    parse, find, compile, execute, exit (outer interpreter)
+    getch, putch (depends on system, used minimal for emulator )
 ```
     
 ### Memory
@@ -124,11 +128,11 @@ This version includes:
     $000    page zero       ; cpu reserved
     $100    hardware stack  ; cpu reserved
     $200    TIB             ; terminal input buffer, 80 bytes
-    $250    temporary       ; reserved for scratch, 16 cells
-    $270    data stack      ; data stack, 36 cells
-    $2B8    return stack    ; return stack, 36 cells
+    $298    data stack      ; data stack, 36 cells
+    $299    PAD             ; reserved for scratch, 16 cells
+    $2FF    return stack    ; return stack, 36 cells
     $300    _main_          ; start of Forth
-    $5??    _init_          ; start of compose dictionary
+    $???    _init_          ; start of compose dictionary
 ```
 
 ### Stacks
