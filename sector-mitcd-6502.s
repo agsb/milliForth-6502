@@ -1,5 +1,6 @@
 ;----------------------------------------------------------------------
-;   MilliForth for 6502 
+;
+;   A MilliForth for 6502 
 ;
 ;   original for the 6502, by Alvaro G. S. Barcellos, 2023
 ;
@@ -9,18 +10,18 @@
 ;   SectorForth and MilliForth was made for x86 arch 
 ;   and uses full 16-bit registers 
 ;
-;   The way at 6502 is use a page zero and lots of lda/sta bytes
+;   The way at 6502 is use page zero and lots of lda/sta
 ;
 ;   Focus in size not performance.
 ;
 ;   Changes:
 ;
-;   all tib (80 bytes), locals (16 cells), data (36 cells) and 
+;   all tib (80 bytes), scratch (16 cells), data (36 cells) and 
 ;       return (36 cells) stacks are in page $200; 
 ;
 ;   tib and locals grows forward, stacks grows backwards;
 ;
-;   none overflow or underflow checks;
+;   no overflow or underflow checks;
 ;
 ;   only immediate flag used as $80, no more flags;
 ;
@@ -50,29 +51,22 @@
 ;
 ;   * 6502 is a byte processor, no need 'pad' at end of even names;
 ; 
-;   * push is 'store and increase', pull is 'decrease and fetch',
+;   * push is 'store and decrease', pull is 'increase and fetch',
 ;
 ;   For stacks:
 ;
-;   stack operations slightly different: works forwards.
-;
-;   push is 'store and increase', pull is 'decrease and fetch',
-;
-;   why ? this way could use push for update here without extra code. 
-;
-;   best reason to use a backward stack is when it can grows thru 
-;       end of another area.
+;   "when the heap moves forward, move the stack backward" 
 ;
 ;   common memory model organization of Forth: 
-;   [tib->...<-spt: user forth dictionary :here->...<-rpt]
+;   [tib->...<-spt: user forth dictionary :here->pad...<-rpt]
 ;   then backward stacks allow to use the slack space ... 
 ;
 ;   this 6502 Forth memory model blocked in pages of 256 bytes:
 ;   [page0][page1][page2][core ... forth dictionary ...here...]
 ;   
-;   at page2, no rush over then stacks can go forwards:
-;   [tib 40 cells][locals 16 cells][spt 36 cells][rpt 36 cells]
-
+;   at page2: 
+;   [tib 40 cells>] [<spt 36 cells] [pad 16 cells>] [<rpt 36 cells]
+;
 ;----------------------------------------------------------------------
 ;
 ; this source is for Ca65
@@ -129,18 +123,14 @@ FLAG_IMM = 1<<7
 ; terminal input buffer, 80 bytes, forward
 tib = $0200
 
-; locals, 16 cells, forward
-lcs = $50
-
-; strange ? is a 8-bit system, look at push code ;)
-
 ; data stack, 36 cells, backward
-sp0 = $B9
+sp0 = $98
 
-; strange ? is a 8-bit system, look at push code ;)
+; pad, 16 cells, forward
+pad = $99
 
 ; return stack, 36 cells, backward
-rp0 = $00
+rp0 = $FF
 
 ;----------------------------------------------------------------------
 ; no values here or must be a BSS
@@ -226,14 +216,14 @@ quit:
 ; reset stacks
     ldy #>tib
     sty spt + 1
-    iny             ; magics !
     sty rpt + 1
     ldy #<sp0
     sty spt + 0
     ldy #<rp0
     sty rpt + 0
 
-    ; y == \0
+; reset tib
+    ldy #0      
 ; clear tib stuff
     sty tib + 0
 ; clear cursor
@@ -441,15 +431,21 @@ token:
     rts
 
 ;---------------------------------------------------------------------
-; increment a word in page zero, offset by X
-incwx:
-    lda #1
 ; add a byte to a word in page zero. offset by X
 addwx:
     clc
     adc nil + 0, x
     sta nil + 0, x
     bcc @ends
+    inc nil + 1, x
+@ends:
+    rts
+
+;---------------------------------------------------------------------
+; increment a word in page zero. offset by X
+incwx:
+    inc nil + 0, x
+    bnc @ends
     inc nil + 1, x
 @ends:
     rts
@@ -470,12 +466,21 @@ decwx:
 ; into a page zero indirect address indexed by X
 rpush:
     ldx #(rpt - nil)
-    jmp push
-    ;.byte $2c   ; mask two bytes, nice trick !
+    .byte $2c   ; mask two bytes, nice trick !
 
 spush:
     ldx #(rpt - nil)
-    jmp push
+
+;---------------------------------------------------------------------
+; classic stack backwards
+push:
+    lda nil + 1, y
+    sta (nil,x)
+    jsr decwx
+    lda nil + 0, y
+    sta (nil, x)
+    jsr decwx
+    rts ; extra ***
 
 ;---------------------------------------------------------------------
 ; pull a cell 
@@ -483,48 +488,48 @@ spush:
 ; into a page zero address indexed by y
 rpull:
     ldx #(rpt - nil)
-    jmp pull
-    ;.byte $2c   ; mask ldy, nice trick !
+    .byte $2c   ; mask two bytes, nice trick !
 
 spull:
     ldx #(spt - nil)
-    jump pull
 
 ;---------------------------------------------------------------------
-; copy a cell
-; from a page zero address indexed by Y
-; into a page zero indirect address indexed by X
+; classic stack backwards
+pull:
+    jsr incwx
+    lda (nil,x)
+    sta nil + 0, y
+    jsr incwx
+    lda (nil, x)
+    sta nil + 1, y
+    rts
+
+;---------------------------------------------------------------------
+; classic heap moves always forward
+;
 copy: 
     ldy #(fst - nil)
 
 each:
     ldx #(here - nil)
 
-    jmp push
+copyfrom:
+    lda (nil, x)
+    sta nil + 0, y
+    jsr incwx
+    lda (nil, x)
+    sta nil + 1, y
+    jsr incwx
+    rts ; extra ***
 
-;---------------------------------------------------------------------
-; X cursor moves forward
-; address in X is incremented
-push:
+copyinto:
     lda nil + 0, y
-    sta (nil,x)
+    sta (nil, x)
     jsr incwx
     lda nil + 1, y
     sta (nil, x)
     jsr incwx
     rts ; extra ***
-
-;---------------------------------------------------------------------
-; X cursor moves backward
-; address in X is decremented 
-pull:
-    jsr decwx
-    lda (nil,x)
-    sta nil + 1, y
-    jsr decwx
-    lda (nil, x)
-    sta nil + 0, y
-    rts
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
