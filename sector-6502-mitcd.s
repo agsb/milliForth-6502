@@ -257,10 +257,10 @@ parse:
     ldy #(fst - nil)
     jsr rpush
 
-    jsr showdic
-
 ; get a token
     jsr token
+
+    jsr dumpnil
 
 find:
 ; load last
@@ -270,6 +270,7 @@ find:
     sta trd + 0
     
 @loop:
+
 ; lsb linked list
     lda trd + 0
     sta fst + 0
@@ -975,14 +976,15 @@ showdic:
     lda last + 1
     sta trd + 1
 
+    lda #'1'
+    jsr putchar
+
 @loop:
 
 ; update link list
     lda trd + 0
     sta fst + 0
     
-;    jsr dumpnil
-
 ; verify is zero
     ora trd + 1
     beq @ends ; end of dictionary, no more words to search, quit
@@ -991,7 +993,7 @@ showdic:
     lda trd + 1
     sta fst + 1
 
-;    jsr dumpnil
+   jsr dumpnil
 
     lda #'~'
     jsr putchar
@@ -1459,9 +1461,9 @@ dumpr:
     lda #' '
     jsr putchar
 
+    iny
     lda (rpt), y
     jsr puthex
-    iny
 
     dex
     bne @loop
@@ -1496,9 +1498,9 @@ dumps:
     lda #' '
     jsr putchar
 
+    iny
     lda spt, y
     jsr puthex
-    iny
 
     dex
     bne @loop
