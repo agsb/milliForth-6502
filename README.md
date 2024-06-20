@@ -17,33 +17,49 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 (Still in development)
 
+## Inner Interpreter
+
+As inner interpreter,
+
+the miniForth and milliForth use Direct Thread Code (DTC) 
+
+the FIG-Forth for 6502 uses Indirect Thread Code (ITC) 
+
+This Forth for 6502, will be done using two models:
+
+     with classic DTC and with Minimal Indirect Thread Code (MITC)
+
+(later we will compare both, but DTC will win in less size) 
+
 ## Time table 
 
-_19/06/2024 Great review of heap and stack core code, 
-            reorder tib, sp, rp, pad.
+_19/06/2024_ Great review of heap and stack core code, 
+             reorder tib, sp, rp, pad.
 
-_16/06/2024 Return to MITC paradigm.
-            it will grow the size of code, but will work.
-            todo a real DTC code, later.
+_16/06/2024_ Return to MITC paradigm.
+             it will grow the size of code, but will work.
+             todo a real DTC code, later.
 
-_15/06/2024 I found the big mistake ! Mix DTC and MITC.
-            The compare with init: was a great mistake.
-            Some assembler code could lead to wrong comparations.
-            For MITC primitives must have a NULL.
+_15/06/2024_ I found the big mistake ! Mix DTC and MITC.
+             The compare with init: was a great mistake.
+             Some assembler code could lead to wrong comparations.
+             For MITC primitives must have a NULL.
 
-_12/06/2024 random error in list the values 
-            from $00E0 to $00FF, at return
-            can not catch why
+_12/06/2024_ random error in list the values 
+             from $00E0 to $00FF, at return
+             can not catch why
 
-_11/06/2024 return and change model for 'minimal indirect thread code' with lots of
-            debugging code to find errors. Renaming main file for it
+_11/06/2024_ return and change model for 'minimal indirect thread code'
+             with lots of debugging code to find errors. 
+             Renaming main file for it
 
-_01/05/2024 I'm on vacancy to reflesh some ideas
+_01/05/2024_ I'm on vacancy to reflesh some ideas
 
 _30/01/2024_ doing debugs for DTC inner 
 
-_28/01/2024_ code for 6502 sized to 632 bytes. Review with 'standart direct thread code',
-             new sizes for tib, locals, data and return stacks. 
+_28/01/2024_ code for 6502 sized to 632 bytes. 
+             Review with 'standart direct thread code',
+             new sizes for tib, pad, data and return stacks. 
 
 _24/01/2024_ code for 6502 review. Recode for use 'standart direct thread code'. 
              made a file with 'minimum itc model ' and another with 'standart itc model'
@@ -83,7 +99,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - as Forth-1994[^6]: FALSE is $0000 and TRUE is $FFFF ;
 - all tib (80 bytes), pad (16 cells), data (36 cells) and 
     return (36 cells) stacks are in page $200 ; 
-- tib and locals grows forward, stacks grows backwards ;
+- tib and pad grows forward, stacks grows backwards ;
 - no overflow or underflow checks ;
 - only immediate flag used as $80, no extras flags ;
 

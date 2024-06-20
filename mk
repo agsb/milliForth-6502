@@ -7,10 +7,11 @@ case $1 in
 a)   
     cl65 -Ln $2.lbl -l $2.lst -m $2.map \
     --cpu 6502 -t none --no-target-lib \
-    --debug --debug-info \
     --memory-model near \
     --target none \
+    --debug --debug-info \
     -o $2.out -C $2.cfg $2.s 2> err | tee out
+
 
     cp $2.s $2.asm
 
