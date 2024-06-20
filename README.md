@@ -4,6 +4,8 @@ _"A Forth in 336 bytes — the smallest real programming language ever, as of ye
 
 The milliForth[^1] is very similar to sectorForth[^2], and smaller than sector Lisp[^3]
 
+The miniForth[^4] is another Forth to use in a boot sector of 512 bytes.
+
 ## Bytes?
 
 Yes, bytes. But the code is for a x86 CPU. 
@@ -17,7 +19,8 @@ and a 8-bit 6502 using page zero as registers and page one as hardware stack.
 
 ## Time table 
 
-_19/06/2024 Great review of heap and stack core code.
+_19/06/2024 Great review of heap and stack core code, 
+            reorder tib, sp, rp, pad.
 
 _16/06/2024 Return to MITC paradigm.
             it will grow the size of code, but will work.
@@ -77,11 +80,12 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Changes:
 
-- all tib (80 bytes), pad (16 cells), data (36 cells) and return (36 cells) stacks are in page $200 ; 
+- as Forth-1994[^6]: FALSE is $0000 and TRUE is $FFFF ;
+- all tib (80 bytes), pad (16 cells), data (36 cells) and 
+    return (36 cells) stacks are in page $200 ; 
 - tib and locals grows forward, stacks grows backwards ;
 - no overflow or underflow checks ;
 - only immediate flag used as $80, no extras flags ;
-- as Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
 
 ### Remarks:
 
@@ -94,10 +98,11 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - words must be between spaces, before and after is wise;
 - redefine a word does not change previous uses;
 - uses 7-bit ASCII characters;
+- from ANSI X3.215-1994[^6]
 
 11/06/2024:
     return to minimal thread indirect code
-    using Minimal Thread Indirect Code_ as inner dispatcher[^4];
+    using Minimal Thread Indirect Code_ as inner dispatcher[^5];
 
 24/01/2024:
     for comparison with x86 code, 
@@ -188,9 +193,9 @@ the originals files are edited for lines with less than 80 bytes
 the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 
 ## References
-[^1]: the original milliForth: https://github.com/fuzzballcat/milliForth 
-[^2]: The inspirational sectorForth: https://github.com/cesarblum/sectorforth/.
-[^3]: Mind-blowing sectorLISP: https://justine.lol/sectorlisp2/, https://github.com/jart/sectorlisp.
-[^4]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
-[^5]: Minimum are 80, 64, 48, from ANSI X3.215-1994, http://www.forth.org/svfig/Win32Forth/DPANS94.txt;
-
+[^1]: The original milliForth: https://github.com/fuzzballcat/milliForth 
+[^2]: The inspirational sectorForth: https://github.com/cesarblum/sectorforth/
+[^3]: Mind-blowing sectorLISP: https://justine.lol/sectorlisp2/, https://github.com/jart/sectorlisp
+[^4]: The minforth: https://github.com/meithecatte/miniforth
+[^5]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
+[^6]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
