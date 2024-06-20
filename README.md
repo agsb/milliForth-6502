@@ -4,7 +4,7 @@ _"A Forth in 336 bytes — the smallest real programming language ever, as of ye
 
 The milliForth[^1] is very similar to sectorForth[^2], and smaller than sector Lisp[^3]
 
-The miniForth[^4] is another Forth to use in a boot sector of 512 bytes.
+The miniForth[^4] is another Forth to use in a boot sector of less than 512 bytes.
 
 ## Bytes?
 
