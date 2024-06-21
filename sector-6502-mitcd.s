@@ -196,8 +196,6 @@ cold:
     ldx #$FF
     txs
 
-    jsr dumpnil
-
 ; link list
     lda #>f_exit
     sta last + 1
@@ -236,8 +234,6 @@ quit:
 ; state is 'interpret' == \0
     sty state + 0
 
-    jsr dumpnil
-
     jmp parse
 
 ;---------------------------------------------------------------------
@@ -260,9 +256,6 @@ parse:
 ; get a token
     jsr token
 
-    jsr dumpnil
-
-find:
 ; load last
     lda last + 1
     sta trd + 1
@@ -271,13 +264,17 @@ find:
     
 @loop:
 
+    lda #'('
+    jsr putchar
+    jsr dumpnil
+
 ; lsb linked list
     lda trd + 0
     sta fst + 0
 
 ; verify null
     ora trd + 1
-    beq error ; end of dictionary, no more words to search, quit
+    beq mirror ; end of dictionary, no more words to search, quit
 
 ; msb linked list
     lda trd + 1
@@ -287,6 +284,10 @@ find:
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
     jsr copyfrom
+
+    lda #')'
+    jsr putchar
+    jsr dumpnil
 
 ; compare words
     ldy #0
@@ -334,9 +335,11 @@ compile:
 
 ;  wherever one
 
+    jsr dumpnil
+
     jsr comma
 
-    jmp exit
+    jmp unnest
 
 execute:
     .if debug
@@ -346,10 +349,14 @@ execute:
 
 ;  wherever two
 
+    jsr dumpnil
+
     ldy #(fst - nil)
     jsr rpush
 
-    jmp exit
+    jsr dumpr
+
+    jmp unnest
 
 ;---------------------------------------------------------------------
 okeys:
@@ -360,6 +367,16 @@ okeys:
     lda #10
     jsr putchar
     jmp parse
+
+;---------------------------------------------------------------------
+mirror:
+    lda #'?'
+    jsr putchar
+    lda #'?'
+    jsr putchar
+    lda #10
+    jsr putchar
+    jmp quit
 
 ;---------------------------------------------------------------------
 error:
