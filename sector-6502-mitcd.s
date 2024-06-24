@@ -130,7 +130,7 @@ tib_end = $40
 sp0 = $98
 
 ; pad, 16 cells, forward
-pad = $99
+pad = sp0 + 1
 
 ; return stack, 36 cells, backward
 rp0 = $FF
@@ -235,8 +235,6 @@ quit:
 ; mode is 'interpret' == \0
     sty mode + 0
     
-    jsr dumpnil 
-
     .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
@@ -247,6 +245,7 @@ quit:
     
 parse_: 
     .word 0
+
 ; begin
 parse:
 
@@ -256,6 +255,8 @@ parse:
     sta fst + 0
     ldy #(fst - nil)
     jsr rpush
+
+    jsr showdic
 
 ; get a token
     jsr token
@@ -280,24 +281,10 @@ parse:
     lda trd + 1
     sta fst + 1
 
-    lda fst + 1
-    jsr puthex
-    lda fst + 0
-    jsr puthex
-    lda #' '
-    jsr putchar
-
 ; update link 
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
     jsr copyfrom
-
-    lda fst + 1
-    jsr puthex
-    lda fst + 0
-    jsr puthex
-    lda #' '
-    jsr putchar
 
 ; compare words
     ldy #0
@@ -325,8 +312,6 @@ parse:
     bne @equal
 
 @done:
-
-    jsr showord
 
 ; update fst
     tya
@@ -367,8 +352,6 @@ execute:
 
     ldy #(fst - nil)
     jsr rpush
-
-    jsr dumpr
 
     jmp unnest
 
@@ -476,7 +459,7 @@ token:
 ; keep it
     ldy toin + 1
     dey
-    sta tib, y  ; store size ahead 
+    sta tib, y  ; store size ahead, as counted string 
 
 ; setup token, pass pointer
     sty snd + 0
@@ -600,6 +583,7 @@ putchar:
     .if debug
 
 ; EOF ?
+
     cmp #$FF
     bne rets
 
@@ -759,13 +743,11 @@ def_word ";", "semis", FLAG_IMM
     lda #0
     sta mode + 0
 
-; words must ends with exit
+; compound words must ends with exit
     lda #<exit
     sta fst + 0
     lda #>exit
     sta fst + 1
-
-    jsr showdic 
 
     jmp compile
 
@@ -803,12 +785,14 @@ create:
     ldx #(here - nil)
     jsr addwx
 
-; done here
+; done
     jmp unnest
 
 ;---------------------------------------------------------------------
 ; NON classic direct thread code
 ;   lnk is IP, wrk is W
+;
+; for reference: nest is docol, unnest is semis;
 ;
 ; using MITC, minimum indirect thread code
 ;
@@ -825,21 +809,17 @@ unnest:
     ldy #(lnk - nil)
     jsr rpull
 
-    ; jsr dumpnil
-
-    
-;    jsr dumpr
-
-;    jsr dumps
-
-;    lda #10
-;    jsr putchar
+    jsr dumpnil
+    jsr dumpr
+    jsr dumps
+    lda #10
+    jsr putchar
 
 next:
-    .if debug
-    lda #'X'
-     jsr putchar
-    .endif
+    ;.if debug
+    ;lda #'X'
+    ; jsr putchar
+    ;.endif
 
 ; wrk = (lnk) ; lnk = lnk + 2
     ldy #(wrk - nil)
@@ -849,10 +829,10 @@ next:
     ; jsr dumpnil
 
 pick:
-    .if debug
-    lda #'P'
-    jsr putchar
-    .endif
+    ;.if debug
+    ;lda #'P'
+    ;jsr putchar
+    ;.endif
 
 ; minimal test, no words at page 0
     lda wrk + 1
@@ -868,20 +848,17 @@ nest:
     ldy #(lnk - nil)
     jsr rpush
 
-    ; jsr dumpnil
-
-;    jsr dumpr
-
-;    jsr dumps
-
-;    lda #10
-;    jsr putchar
+    jsr dumpnil
+    jsr dumpr
+    jsr dumps
+    lda #10
+    jsr putchar
 
 link:
-    .if debug
-    lda #'L'
-    jsr putchar
-    .endif
+    ;.if debug
+    ;lda #'L'
+    ;jsr putchar
+    ;.endif
 
     lda wrk + 0
     sta lnk + 0
@@ -899,19 +876,15 @@ jump:
     jsr putchar
     .endif
 
-    ; jsr dumpnil
+    jsr dumpnil
+    jsr dumpr
+    jsr dumps
+    lda #10
+    jsr putchar
+
 
 ;   wrk is NULL
     jmp (lnk)
-
-;---------------------------------------------------------------------
-; pseudo
-;
-docol_:
-    .word nest
-
-semis_:
-    .word unnest
 
 ends:
 
