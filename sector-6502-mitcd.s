@@ -142,6 +142,7 @@ rp0 = $FF
 * = $E0
 
 ; default pseudo registers
+
 nil:    .word $0 ; reserved reference offset
 spt:    .word $0 ; holds data stack base,
 rpt:    .word $0 ; holds return stack base
@@ -155,16 +156,16 @@ trd:    .word $0 ; third
 
 ; * = $F0
 
-; default Forth variables
-state:  .word $0 ; state, only lsb used
-last:   .word $0 ; last link cell
+; default Forth variables, order matters for HELLO.forth !
 
-here:   .word $0 ; next free cell
-back:   .word $0 ; here while compile
-
+mode:   .word $0 ; state, only lsb used
 toin:   .word $0 ; toin, only lsb used
-base:   .word $0 ; base radix, define before use
+last:   .word $0 ; last link cell
+here:   .word $0 ; next free cell
 
+; future expansion
+back:   .word $0 ; hold here while compile
+base:   .word $0 ; base radix, define before use
 head:   .word $0 ; pointer to heap forward
 tail:   .word $0 ; pointer to heap backward
 
@@ -202,7 +203,7 @@ cold:
     lda #<f_exit
     sta last + 0
 
-; next free memory cell, must be $page aligned 
+; next heap free cell  
     lda #>init
     sta here + 1
     lda #<init
@@ -231,25 +232,28 @@ quit:
     sty tib + 0
 ; clear cursor
     sty toin + 0
-; state is 'interpret' == \0
-    sty state + 0
+; mode is 'interpret' == \0
+    sty mode + 0
+    
+    jsr dumpnil 
 
-    jmp parse
+    .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
 ; the outer loop
-outer:
 
-parse_:
+; parse is a headless primitive, need a 0x0
+; need 3 variables
+    
+parse_: 
     .word 0
-
 ; begin
 parse:
 
-    lda #<parse_
-    sta fst + 0
     lda #>parse_
     sta fst + 1
+    lda #<parse_
+    sta fst + 0
     ldy #(fst - nil)
     jsr rpush
 
@@ -264,10 +268,6 @@ parse:
     
 @loop:
 
-    lda #'('
-    jsr putchar
-    jsr dumpnil
-
 ; lsb linked list
     lda trd + 0
     sta fst + 0
@@ -280,36 +280,50 @@ parse:
     lda trd + 1
     sta fst + 1
 
+    lda fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+    lda #' '
+    jsr putchar
+
 ; update link 
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
     jsr copyfrom
 
-    lda #')'
+    lda fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+    lda #' '
     jsr putchar
-    jsr dumpnil
 
 ; compare words
     ldy #0
-; save the flag, first byte is size plus flag 
+; save the flag, first byte is size and flag 
     lda (fst), y
-    sta state + 1
+    sta mode + 1
 
 ; compare chars
 @equal:
     lda (snd), y
-; space ends token
+
+; space ends
     cmp #32  
     beq @done
 ; verify 
     sec
     sbc (fst), y     
+
 ; 7-bit ascii, also mask flag
     and #$7F        
     bne @loop
+
 ; next char
     iny
     bne @equal
+
 @done:
 
     jsr showord
@@ -320,11 +334,11 @@ parse:
     jsr addwx
     
 ; executing ? if == \0
-    lda state + 0   
+    lda mode + 0   
     beq execute
 
 ; immediate ? if < \0
-    lda state + 1   
+    lda mode + 1   
     bmi execute      
 
 compile:
@@ -335,7 +349,7 @@ compile:
 
 ;  wherever one
 
-    jsr dumpnil
+    ; jsr dumpnil
 
     jsr comma
 
@@ -349,7 +363,7 @@ execute:
 
 ;  wherever two
 
-    jsr dumpnil
+    ; jsr dumpnil
 
     ldy #(fst - nil)
     jsr rpush
@@ -488,7 +502,7 @@ addwx:
 ; increment a word in page zero. offset by X
 incwx:
     inc nil + 0, x
-    bcc @ends
+    bne @ends
     inc nil + 1, x
 @ends:
     rts
@@ -509,7 +523,7 @@ decwx:
 ; into a page zero indirect address indexed by X
 rpush:
     ldx #(rpt - nil)
-    .byte $2c   ; mask two bytes, nice trick !
+    .byte $2c   ; mask next two bytes, nice trick !
 
 spush:
     ldx #(spt - nil)
@@ -531,7 +545,7 @@ push:
 ; into a page zero address indexed by y
 rpull:
     ldx #(rpt - nil)
-    .byte $2c   ; mask two bytes, nice trick !
+    .byte $2c   ; mask next two bytes, nice trick !
 
 spull:
     ldx #(spt - nil)
@@ -630,59 +644,16 @@ def_word "emit", "emit", 0
     jsr spull1
     lda fst + 0
     jsr putchar
-    jmp exit
+    jmp unnest
 
 ;---------------------------------------------------------------------
-; ( w a -- ) ; [a] = w
-def_word "!", "store", 0
-storew:
-    jsr spull2
-    ldx #(snd - nil) 
-    ldy #(fst - nil) 
-    jsr copyinto
-    jmp exit
-
-;---------------------------------------------------------------------
-; ( a -- w ) ; w = [a]
-def_word "@", "fetch", 0
-fetchw:
+; shift right
+; ( w -- w/2 )
+def_word "2/", "asr", 0
     jsr spull1
-    ldx #(fst - nil)
-    ldy #(snd - nil)
-    jsr copyfrom
-    jmp this
-
-;---------------------------------------------------------------------
-; ( -- rp )
-def_word "rp@", "rpat", 0
-    ldy #(rpt - nil)
-    jmp both
-
-;---------------------------------------------------------------------
-; ( -- sp )
-def_word "sp@", "spat", 0
-    ldy #(spt - nil)
-    jmp both
-
-;---------------------------------------------------------------------
-; ( -- state )
-def_word "s@", "stat", 0 
-    ldy #(state - nil)
-
-;---------------------------------------------------------------------
-; generic 
-;
-both:
-    lda nil + 0, y
-    sta fst + 0
-    lda nil + 1, y
-only:
-    sta fst + 1
-keep:
-    ldy #(fst - nil)
-this:
-    jsr spush
-    jmp exit
+    lsr fst + 1
+    ror fst + 0
+    jmp keep
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
@@ -710,15 +681,6 @@ def_word "nand", "nand", 0
     jmp only
 
 ;---------------------------------------------------------------------
-; shift right
-; ( w -- w/2 )
-def_word "2/", "asr", 0
-    jsr spull1
-    lsr fst + 1
-    ror fst + 0
-    jmp keep
-
-;---------------------------------------------------------------------
 ; ( 0 -- $FFFF) | ( n -- $0000)
 def_word "0#", "zeroq", 0
     jsr spull1
@@ -727,12 +689,85 @@ def_word "0#", "zeroq", 0
     beq istrue  ; is \0
 isfalse:
     lda #$00
-    .byte $2c   ; mask two bytes, nice trick !
+    .byte $2c   ; mask next two bytes, nice trick !
 istrue:
     lda #$FF
 rest:
     sta fst + 0
     jmp only
+
+;---------------------------------------------------------------------
+; ( w a -- ) ; [a] = w
+def_word "!", "store", 0
+storew:
+    jsr spull2
+    ldx #(snd - nil) 
+    ldy #(fst - nil) 
+    jsr copyinto
+    jmp unnest
+
+;---------------------------------------------------------------------
+; ( a -- w ) ; w = [a]
+def_word "@", "fetch", 0
+fetchw:
+    jsr spull1
+    ldx #(fst - nil)
+    ldy #(snd - nil)
+    jsr copyfrom
+    jmp this
+
+;---------------------------------------------------------------------
+; ( -- rp )
+def_word "rp@", "rpat", 0
+    ldy #(rpt - nil)
+    jmp both
+
+;---------------------------------------------------------------------
+; ( -- sp )
+def_word "sp@", "spat", 0
+    ldy #(spt - nil)
+    jmp both
+
+;---------------------------------------------------------------------
+; ( -- mode )
+def_word "s@", "stat", 0 
+    ldy #(mode - nil)
+
+;---------------------------------------------------------------------
+; generic 
+;
+both:
+    lda nil + 0, y
+    sta fst + 0
+    lda nil + 1, y
+only:
+    sta fst + 1
+keep:
+    ldy #(fst - nil)
+this:
+    jsr spush
+    jmp unnest
+
+;---------------------------------------------------------------------
+def_word ";", "semis", FLAG_IMM
+; update last, panic if colon not lead elsewhere 
+    lda back + 0 
+    sta last + 0
+    lda back + 1 
+    sta last + 1
+; mode is 'interpret'
+    lda #0
+    sta mode + 0
+
+; words must ends with exit
+    lda #<exit
+    sta fst + 0
+    lda #>exit
+    sta fst + 1
+
+    jsr showdic 
+
+    jmp compile
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
@@ -741,9 +776,9 @@ def_word ":", "colon", 0
     sta back + 0 
     lda here + 1
     sta back + 1 
-; state is 'compile'
+; mode is 'compile'
     lda #1
-    sta state + 0
+    sta mode + 0
 
 create:
 ; copy last into (here)
@@ -769,28 +804,7 @@ create:
     jsr addwx
 
 ; done here
-    jmp exit
-
-;---------------------------------------------------------------------
-def_word ";", "semis", FLAG_IMM
-; update last, panic if colon not lead elsewhere 
-    lda back + 0 
-    sta last + 0
-    lda back + 1 
-    sta last + 1
-; state is 'interpret'
-    lda #0
-    sta state + 0
-
-; words must ends with exit
-    lda #<exit
-    sta fst + 0
-    lda #>exit
-    sta fst + 1
-
-    jsr showdic 
-
-    jmp compile
+    jmp unnest
 
 ;---------------------------------------------------------------------
 ; NON classic direct thread code
@@ -811,7 +825,7 @@ unnest:
     ldy #(lnk - nil)
     jsr rpull
 
-    jsr dumpnil
+    ; jsr dumpnil
 
     
 ;    jsr dumpr
@@ -832,7 +846,7 @@ next:
     ldx #(lnk - nil)
     jsr copyfrom
 
-    ;jsr dumpnil
+    ; jsr dumpnil
 
 pick:
     .if debug
@@ -854,7 +868,7 @@ nest:
     ldy #(lnk - nil)
     jsr rpush
 
-    jsr dumpnil
+    ; jsr dumpnil
 
 ;    jsr dumpr
 
@@ -984,17 +998,11 @@ showdic:
     lda #'{'
     jsr putchar
 
-    lda #10
-    jsr putchar
-
 ; load lastest link
     lda last + 0
     sta trd + 0
     lda last + 1
     sta trd + 1
-
-    lda #'1'
-    jsr putchar
 
 @loop:
 
@@ -1010,10 +1018,11 @@ showdic:
     lda trd + 1
     sta fst + 1
 
-   jsr dumpnil
-
-    lda #'~'
+    lda #10
     jsr putchar
+
+   ; jsr dumpnil
+
     lda fst + 1
     jsr puthex
     lda fst + 0
@@ -1048,39 +1057,41 @@ showdic:
     lda #' '
     jsr putchar
     
+    iny
+    tya
+    ldx #(fst - nil)
+    jsr addwx
+
     lda fst + 1
     jsr puthex
 
     lda fst + 0
     jsr puthex
 
-    lda #10
-    jsr putchar
-
     jmp @loop
 
 @ends:
 
-    lda #'}'
-    jsr putchar
-
     lda #10
     jsr putchar
 
-    jsr loadnils
+    lda #'}'
+    jsr putchar
+
+    ; jsr loadnils
 
     loadregs
 
     rts
 
 ;----------------------------------------------------------------------
-; show state
+; show mode
 showsts:
 
     lda #' '
     jsr putchar
 
-    lda state + 0
+    lda mode + 0
     jsr puthex
 
     rts

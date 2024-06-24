@@ -143,8 +143,13 @@ internals:
     cold, quit, token, skip, scan, getline, (boot and terminal)
     parse, find, compile, execute, exit (outer interpreter)
     getch, putch (depends on system, used minimal for emulator )
-```
     
+Order in dictionary:
+    
+    exit : ; sp@ rp@ s@ @ ! 0# nand + asr emit key
+
+```
+
 ### Memory
 
 ```
