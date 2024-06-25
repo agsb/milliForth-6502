@@ -1,0 +1,50 @@
+;----------------------------------------------------------------------
+;   MilliForth for 6502 
+;
+;   original for the 6502, by Alvaro G. S. Barcellos, 2023
+;
+;   https://github.com/agsb 
+;   see the disclaimer file in this repo for more information.
+;
+;   SectorForth and MilliForth was made for x86 arch 
+;   and uses full 16-bit registers 
+;
+;   The way at 6502 is use a page zero and lots of lda/sta bytes
+;
+;   Focus in size not performance.
+;
+;   Changes:
+;
+;   all data (36 cells) and return (36 cells) stacks, PAD (16 cells)
+;       and TIB (80 bytes) are in same page $200, 256 bytes; 
+;
+;   TIB and PAD grows forward, stacks grows backwards;
+;
+;   no overflow or underflow checks;
+;
+;   the header order is LINK, SIZE+FLAG, NAME.
+;
+;   only IMMEDIATE flag used as $80, no hide, no compile, no extras;
+;
+;   As Forth-1994: FALSE is $0000 ; TRUE  is $FFFF ;
+;
+;   Remarks:
+;
+;       if PAD not used, data stack could be 52 cells; 
+;
+;       words must be between spaces, before and after, must;
+;
+;       no line wrap then use a maximum of 72 bytes of tib;
+;
+;       no need 'pad' at end of even names;
+;
+;   For 6502:
+;
+;       is a 8-bit processor with 16-bit address space;
+;
+;       in address space, most significant byte is the page count;
+;
+;       page zero and page one hardware reserved;
+;
+;       hardware stack not used for this Forth;
+;

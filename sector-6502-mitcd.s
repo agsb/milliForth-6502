@@ -16,46 +16,55 @@
 ;
 ;   Changes:
 ;
-;   all tib (80 bytes), scratch (16 cells), data (36 cells) and 
-;       return (36 cells) stacks are in page $200; 
+;   all data (36 cells) and return (36 cells) stacks, PAD (16 cells)
+;       and TIB (80 bytes) are in same page $200, 256 bytes; 
 ;
-;   tib and locals grows forward, stacks grows backwards;
+;   TIB and PAD grows forward, stacks grows backwards;
 ;
 ;   no overflow or underflow checks;
 ;
-;   only immediate flag used as $80, no more flags;
+;   the header order is LINK, SIZE+FLAG, NAME.
 ;
-;   As Forth-1994: FALSE is $0000 and TRUE is $FFFF ;
+;   only IMMEDIATE flag used as $80, no hide, no compile, no extras;
+;
+;   As Forth-1994: FALSE is $0000 ; TRUE  is $FFFF ;
 ;
 ;   Remarks:
 ;
-;   this code uses Minimal Indirect Thread Code, no DTC.
+;       this code uses Minimal Indirect Thread Code, no DTC.
 ;
-;   terminal input buffer (tib) is like a stream; 
+;       if PAD not used, data stack could be 52 cells; 
 ;
-;   be wise, Chuck Moore used 64 columns, rule 72 cpl is mandatory;
+;       words must be between spaces, before and after, must;
 ;
-;   words must be between spaces, begin and end spaces are wise;
+;       no line wrap then use a maximum of 72 bytes of tib;
 ;
-;   only 7-bit ASCII characters, plus \n, no controls, maybe \b later;
+;       no need 'pad' at end of even names;
 ;
-;   better use by reading a text file source;
+;       TIB (terminal input buffer) is like a stream;
 ;
-;   if locals not used, data stack could be 50 cells; 
-;   
-;   no multiuser, no multitask, no faster;
-
+;       be wise, Chuck Moore used 64 columns, obey rule 72 CPL;
+;
+;       only 7-bit ASCII characters, plus \n, no controls;
+;
+;       no multiuser, no multitask, no faster;
+;
+;
 ;   For 6502:
 ;
-;   * hardware stack (page $100) not used as forth stack, free for use;
+;       is a 8-bit processor with 16-bit address space;
 ;
-;   * 6502 is a byte processor, no need 'pad' at end of even names;
-; 
-;   * push is 'store and decrease', pull is 'increase and fetch',
+;       in address space, most significant byte is the page count;
+;
+;       page zero and page one hardware reserved;
+;
+;       hardware stack not used for this Forth;
 ;
 ;   For stacks:
 ;
 ;   "when the heap moves forward, move the stack backward" 
+;
+;   push is 'store and decrease', pull is 'increase and fetch',
 ;
 ;   common memory model organization of Forth: 
 ;   [tib->...<-spt: user forth dictionary :here->pad...<-rpt]
@@ -241,8 +250,6 @@ quit:
 ; the outer loop
 
 ; parse is a headless primitive, need a 0x0
-; need 3 variables
-    
 parse_: 
     .word 0
 
@@ -295,7 +302,6 @@ parse:
 ; compare chars
 @equal:
     lda (snd), y
-
 ; space ends
     cmp #32  
     beq @done
@@ -303,7 +309,7 @@ parse:
     sec
     sbc (fst), y     
 
-; 7-bit ascii, also mask flag
+; clean 7-bit ascii
     and #$7F        
     bne @loop
 
@@ -318,6 +324,7 @@ parse:
     ldx #(fst - nil)
     jsr addwx
     
+;  wherever 
     ldy #(fst - nil)
 
 ; executing ? if == \0
@@ -333,8 +340,6 @@ compile:
     lda #'C'
     jsr putchar
     .endif
-
-;  wherever one
 
     ; jsr dumpnil
 
@@ -368,9 +373,9 @@ okeys:
 
 ;---------------------------------------------------------------------
 mirror:
-    lda #'?'
+    lda #'Z'
     jsr putchar
-    lda #'?'
+    lda #'Z'
     jsr putchar
     lda #10
     jsr putchar
@@ -454,8 +459,8 @@ token:
     sty toin + 0 
 @done:
 ; sizeof
-    sec
     tya
+    sec
     sbc toin + 1
 ; keep it
     ldy toin + 1
