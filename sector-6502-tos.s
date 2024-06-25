@@ -175,8 +175,12 @@ here:   .word $0 ; next free cell
 ; future expansion
 back:   .word $0 ; hold here while compile
 base:   .word $0 ; base radix, define before use
-head:   .word $0 ; pointer to heap forward
-tail:   .word $0 ; pointer to heap backward
+
+tos:    .word   ; top of stack
+nos:    .word   ; next on stack
+
+;head:   .word $0 ; pointer to heap forward
+;tail:   .word $0 ; pointer to heap backward
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -263,21 +267,10 @@ parse:
     ldy #(fst - nil)
     jsr rpush
 
+    jsr showdic
+
 ; get a token
     jsr token
-
-    lda #10
-    jsr putchar
-
-    ldy #0
-    lda (snd), y
-    tax
-@toks:
-    iny
-    lda (snd), y
-    jsr putchar
-    dex
-    bne @toks
 
 ; load last
     lda last + 1
@@ -417,8 +410,6 @@ getline:
     pla
 
     lda #10
-    jsr putchar
-    lda #'_'
     jsr putchar
 
 ; leave a space
@@ -622,12 +613,16 @@ rets:
 ;---------------------------------------------------------------------
 ;
 spull2:
-    ldy #(snd - nil)
-    jsr spull
+    ldy #(nos - nil)
+    jmp spull
 
 spull1:
-    ldy #(fst - nil)
+    ldy #(tos - nil)
     jmp spull
+
+spush1:
+    ldy #(tos - nil)
+    jmp spush
 
 ;---------------------------------------------------------------------
 ; primitives, a address, c byte ascii, w signed word, u unsigned word 
@@ -635,57 +630,57 @@ spull1:
 ; ( -- c )
 def_word "key", "key", 0
     jsr getchar
-    sta fst + 0
-    jmp keep
+    sta tos + 0
+    jmp unnest
     
 ;---------------------------------------------------------------------
 ; ( c -- )
 def_word "emit", "emit", 0
-    jsr spull1
-    lda fst + 0
+    lda tos + 0
     jsr putchar
+    jsr spull1
     jmp unnest
 
 ;---------------------------------------------------------------------
 ; shift right
 ; ( w -- w/2 )
 def_word "2/", "asr", 0
-    jsr spull1
-    lsr fst + 1
-    ror fst + 0
-    jmp keep
+    lsr tos + 1
+    ror tos + 0
+    jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
     jsr spull2
     clc
-    lda snd + 0
-    adc fst + 0
-    sta fst + 0
-    lda snd + 1
-    adc fst + 1
-    jmp only
+    lda tos + 0
+    adc nos + 0
+    sta tos + 0
+    lda tos + 1
+    adc nos + 1
+    sta tos + 1
+    jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
     jsr spull2
-    lda snd + 0
-    and fst + 0
+    lda tos + 0
+    and nos + 0
     eor #$FF
-    sta fst + 0
-    lda snd + 1
-    and fst + 1
+    sta tos + 0
+    lda tos + 1
+    and nos + 1
     eor #$FF
-    jmp only
+    sta tos + 1
+    jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( 0 -- $FFFF) | ( n -- $0000)
 def_word "0#", "zeroq", 0
-    jsr spull1
-; lda fst + 1, implicit
-    ora fst + 0
+; lda tos + 1, implicit
+    ora tos + 0
     beq istrue  ; is \0
 isfalse:
     lda #$00
@@ -693,44 +688,52 @@ isfalse:
 istrue:
     lda #$FF
 rest:
-    sta fst + 0
-    jmp only
+    sta tos + 0
+    sta tos + 1
+    jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( w a -- ) ; [a] = w
 def_word "!", "store", 0
 storew:
     jsr spull2
-    ldx #(snd - nil) 
-    ldy #(fst - nil) 
+    ldx #(tos - nil) 
+    ldy #(nos - nil) 
     jsr copyinto
+    jsr spull1
     jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
 def_word "@", "fetch", 0
 fetchw:
-    jsr spull1
-    ldx #(fst - nil)
-    ldy #(snd - nil)
+    ldx #(tos - nil)
+    ldy #(nos - nil)
     jsr copyfrom
-    jmp this
+    lda nos + 0
+    sta tos + 0
+    lda nos + 1
+    sta tos + 1
+    jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( -- rp )
 def_word "rp@", "rpat", 0
+    jsr spush1
     ldy #(rpt - nil)
     jmp both
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
+    jsr spush1
     ldy #(spt - nil)
     jmp both
 
 ;---------------------------------------------------------------------
 ; ( -- mode )
 def_word "s@", "stat", 0 
+    jsr spush1
     ldy #(mode - nil)
 
 ;---------------------------------------------------------------------
@@ -738,14 +741,9 @@ def_word "s@", "stat", 0
 ;
 both:
     lda nil + 0, y
-    sta fst + 0
+    sta tos + 0
     lda nil + 1, y
-only:
-    sta fst + 1
-keep:
-    ldy #(fst - nil)
-this:
-    jsr spush
+    sta tos + 1
     jmp unnest
 
 ;---------------------------------------------------------------------
@@ -826,8 +824,8 @@ unnest:
     jsr rpull
 
     jsr dumpnil
-    jsr dumpr
-    jsr dumps
+    ;jsr dumpr
+    ;jsr dumps
     lda #10
     jsr putchar
 
@@ -865,8 +863,8 @@ nest:
     jsr rpush
 
     jsr dumpnil
-    jsr dumpr
-    jsr dumps
+    ;jsr dumpr
+    ;jsr dumps
     lda #10
     jsr putchar
 
@@ -892,11 +890,11 @@ jump:
     jsr putchar
     .endif
 
-    ;jsr dumpnil
+    jsr dumpnil
     ;jsr dumpr
     ;jsr dumps
-    ;lda #10
-    ;jsr putchar
+    lda #10
+    jsr putchar
 
 ;   wrk is NULL
     jmp (lnk)
@@ -1009,6 +1007,8 @@ showdic:
     lda #10
     jsr putchar
 
+   ; jsr dumpnil
+
     lda fst + 1
     jsr puthex
     lda fst + 0
@@ -1050,20 +1050,10 @@ showdic:
 
     lda fst + 1
     jsr puthex
+
     lda fst + 0
     jsr puthex
 
-    ldx #(fst - nil) ; from 
-    ldy #(snd - nil) ; into
-    jsr copyfrom
-
-    lda snd + 0
-    ora snd + 1
-    beq @primitive
-
-@compound:
-    
-@primitive:
     jmp @loop
 
 @ends:
@@ -1074,7 +1064,7 @@ showdic:
     lda #'}'
     jsr putchar
 
-    jsr loadnils
+    ; jsr loadnils
 
     loadregs
 
@@ -1174,36 +1164,24 @@ showback:
 @loop1:
     jsr decwx
     lda (nil, x)
+    pha
     and #$7F
     cmp #' '
     bpl @loop1
-
-; show link
-
-    lda #' '
-    jsr putchar
-
-    jsr decwx
-    jsr decwx
-
-    lda (nil, x)
-    jsr puthex
-    jsr incwx
-    lda (nil, x)
-    jsr puthex
-    jsr incwx
 
 ; show size+flag
 
     lda #' '
     jsr putchar
 
-    lda (nil, x)
+; size
+    pla
+    pha
     jsr puthex
 
 ; mask flag
 
-    lda (nil, x)
+    pla
     and #$7F
     tay 
 
@@ -1213,8 +1191,7 @@ showback:
     jsr putchar
 
 @loop2:
-    jsr incwx
-    lda (nil, x)
+    pla
     jsr putchar
     dey
     bne @loop2
@@ -1426,7 +1403,7 @@ dumpext:
 
 ;----------------------------------------------------------------------
 ; show hard stack
-dumph:
+dumphs:
 
     php
     pha
