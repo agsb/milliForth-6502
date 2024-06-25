@@ -190,12 +190,12 @@ cold:
 ;   clear BCD
     cld
 
-;   enable interrupts
-    cli
-
 ;   set real stack
     ldx #$FF
     txs
+
+;   enable interrupts
+    cli
 
 ; link list
     lda #>f_exit
@@ -246,7 +246,7 @@ quit:
 parse_: 
     .word 0
 
-; begin
+; like a begin-again
 parse:
 
     lda #>parse_
@@ -318,6 +318,8 @@ parse:
     ldx #(fst - nil)
     jsr addwx
     
+    ldy #(fst - nil)
+
 ; executing ? if == \0
     lda mode + 0   
     beq execute
@@ -350,7 +352,6 @@ execute:
 
     ; jsr dumpnil
 
-    ldy #(fst - nil)
     jsr rpush
 
     jmp unnest
@@ -548,9 +549,6 @@ pull:
 ; classic heap moves always forward
 ;
 comma: 
-    ldy #(fst - nil)
-
-each:
     ldx #(here - nil)
 
 copyinto:
@@ -765,7 +763,7 @@ def_word ":", "colon", 0
 create:
 ; copy last into (here)
     ldy #(last - nil)
-    jsr each
+    jsr comma
 
 ; get token
     jsr token
@@ -810,8 +808,8 @@ unnest:
     jsr rpull
 
     jsr dumpnil
-    jsr dumpr
-    jsr dumps
+    ;jsr dumpr
+    ;jsr dumps
     lda #10
     jsr putchar
 
@@ -849,8 +847,8 @@ nest:
     jsr rpush
 
     jsr dumpnil
-    jsr dumpr
-    jsr dumps
+    ;jsr dumpr
+    ;jsr dumps
     lda #10
     jsr putchar
 
@@ -877,11 +875,10 @@ jump:
     .endif
 
     jsr dumpnil
-    jsr dumpr
-    jsr dumps
+    ;jsr dumpr
+    ;jsr dumps
     lda #10
     jsr putchar
-
 
 ;   wrk is NULL
     jmp (lnk)
