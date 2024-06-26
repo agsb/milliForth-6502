@@ -266,10 +266,6 @@ parse:
 ; get a token
     jsr token
 
-    jsr showdic
-
-    jsr dumpnil
-
 find:
 ; load last
     lda last + 1
@@ -360,6 +356,10 @@ execute:
     ; jsr dumpnil
 
     jsr rpush
+
+    jsr showdic
+
+    jsr dumpnil
 
     jmp unnest
 
