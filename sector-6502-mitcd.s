@@ -980,6 +980,10 @@ unnest:
     ldy #(lnk - nil)
     jsr rpull
 
+    shows ' '
+
+    showbulk lnk 
+
 next:
 ; wrk = (lnk) ; lnk = lnk + 2
     ldy #(wrk - nil)
@@ -994,6 +998,10 @@ pick:
 nest:
     shows ' '
     shows 'N'
+    shows ' '
+
+    showbulk lnk 
+
     
 ; push, *rp = lnk, rp -=2
     ldy #(lnk - nil)
@@ -1065,10 +1073,6 @@ showlist:
 
     shows ' '
 
-    showbulk fst
-
-    shows ' '
-
     shows '['
     
 @loop:
@@ -1110,8 +1114,22 @@ showord:
 
     ldy #0
 
+    shows ' '
+
+    showbulk fst
+
     jsr showlist
     
+    tya 
+    ldx #(fst -nil)
+    jsr addwx 
+
+    ldy #0
+
+    shows ' '
+
+    showbulk fst
+
     rts
 
 ;---------------------------------------------------------------------
@@ -1278,9 +1296,10 @@ showrs:
     beq @ends
 
     tax
-    ldy #0
-
+    lsr
     jsr puthex
+
+    ldy #1
 
 @loop:
     shows ' '
@@ -1293,6 +1312,8 @@ showrs:
 
 @ends:
 
+    shows 10
+
     loadregs
 
     rts
@@ -1301,8 +1322,6 @@ showrs:
 showsp:
     
     saveregs
-
-    shows 10
 
     shows 'S'
 
@@ -1314,9 +1333,10 @@ showsp:
     beq @ends
 
     tax
-    ldy #0
-
+    lsr
     jsr puthex
+
+    ldy #1
 
 @loop:
     shows ' '
@@ -1328,6 +1348,8 @@ showsp:
     bne @loop
 
 @ends:
+
+    shows 10
 
     loadregs
 
