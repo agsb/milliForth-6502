@@ -110,6 +110,36 @@ makelabel "", label
 .word 0
 .endmacro
 
+;---------------------------------------------------------------------
+/*
+NOTES:
+
+    must reorder the debug
+    maybe list the references in dictionary for compound words
+
+    something wrong at end of execution of compound words, 
+    exit should break the sequence of references
+    the nest and unnest for deep-search seems work well
+
+*/
+.macro showvalue reg
+    lda #' '
+    jsr putchar
+    lda reg + 1
+    jsr puthex
+    lda reg + 0
+    jsr puthex
+.endmacro
+
+.macro showrefer reg
+    lda #' '
+    jsr putchar
+    lda (reg + 1), y
+    jsr puthex
+    lda (reg + 0), y
+    jsr puthex
+.endmacro
+
 ;----------------------------------------------------------------------
 
 hcount .set 0
@@ -325,6 +355,15 @@ eval:
 ;  wherever 
     ldy #(fst - nil)
 
+    lda fst + 1
+    jsr puthex
+
+    lda fst + 0
+    jsr puthex
+
+    lda #' '
+    jsr putchar
+
 ; executing ? if == \0
     lda mode + 0   
     beq execute
@@ -408,8 +447,6 @@ getline:
     pla
 
     lda #10
-    jsr putchar
-    lda #'_'
     jsr putchar
 
 ; leave a space
@@ -661,7 +698,16 @@ def_word "+", "plus", 0
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
+    
+    lda #'n'
+    jsr putchar
+
     jsr spull2
+
+    showvalue snd
+    
+    showvalue fst
+
     lda snd + 0
     and fst + 0
     eor #$FF
@@ -823,6 +869,8 @@ inner:
 
 unnest:
     .if debug
+    lda #' '
+    jsr putchar
     lda #'U'
     jsr putchar
     .endif
@@ -844,6 +892,8 @@ pick:
 
 nest:
     .if debug
+    lda #' '
+    jsr putchar
     lda #'N'
     jsr putchar
     .endif
@@ -863,15 +913,27 @@ link:
 ; wrk is NULL
 jump:
     .if debug
+    lda #' '
+    jsr putchar
     lda #'J'
     jsr putchar
     .endif
+
+    lda #' '
+    jsr putchar
 
     lda lnk+1
     jsr puthex
 
     lda lnk+0
     jsr puthex
+
+    jsr dumpr
+
+    jsr dumps
+
+    lda #10
+    jsr putchar
 
     jmp (lnk)
 
@@ -1465,28 +1527,32 @@ dumpr:
     lda #'='
     jsr putchar
 
+    tya 
+    pha
+
     sec
     lda #rp0
     sbc rpt + 0
     beq @ends
-    tax
+
+    tay
 
     jsr puthex
-
-    ldy #0
 
 @loop:
     lda #' '
     jsr putchar
 
-    iny
     lda (rpt), y
     jsr puthex
 
-    dex
+    dey
     bne @loop
 
 @ends:
+
+    pla
+    tay
 
     rts
 
@@ -1502,28 +1568,32 @@ dumps:
     lda #'='
     jsr putchar
 
+    tya 
+    pha
+
     sec
     lda #sp0
     sbc spt + 0
     beq @ends
-    tax
+
+    tay
 
     jsr puthex
-    
-    ldy #0
 
 @loop:
     lda #' '
     jsr putchar
 
-    iny
-    lda spt, y
+    lda (spt), y
     jsr puthex
 
-    dex
+    dey
     bne @loop
 
 @ends:
+
+    pla
+    tay
 
     rts
 
