@@ -114,39 +114,173 @@ makelabel "", label
 /*
 NOTES:
 
-    must reorder the debug
-    maybe list the references in dictionary for compound words
+26/06/2024
+
+   In debug mode, It's still a mess, don't get lost !!!
 
     something wrong at end of execution of compound words, 
     exit should break the sequence of references
     the nest and unnest for deep-search seems work well
 
+    guilty by abuse of pla/pha 
+
 */
-.macro showvalue reg
-    lda #' '
+
+debug = 1
+
+.if debug
+
+;---------------------------------------------------------------------
+.macro shows c
+    pha
+    lda #c
     jsr putchar
+    pla
+
+.endmacro
+
+;---------------------------------------------------------------------
+.macro showval reg
+    pha
+    lda reg
+    jsr puthex
+    pla
+
+.endmacro
+
+;---------------------------------------------------------------------
+.macro showchr reg
+    pha
+    lda (reg), y
+    jsr putchar
+    pla
+
+.endmacro
+
+;---------------------------------------------------------------------
+.macro showhex reg
+    pha
+    lda (reg), y
+    jsr puthex
+    pla
+
+.endmacro
+
+;---------------------------------------------------------------------
+.macro showbulk reg
+    pha
     lda reg + 1
     jsr puthex
     lda reg + 0
     jsr puthex
+    pla
+
 .endmacro
 
+;---------------------------------------------------------------------
 .macro showrefer reg
-    lda #' '
-    jsr putchar
-    lda (reg + 1), y
+    pha
+    lda (reg), y
+    sta wrk + 0
+    iny
+    lda (reg), y
+    sta wrk + 1
+    iny 
+
+    lda wrk + 1
     jsr puthex
-    lda (reg + 0), y
+    lda wrk + 0
     jsr puthex
+    pla
+
 .endmacro
 
 ;----------------------------------------------------------------------
+.macro saveregs
+    php
+    pha
+    tya
+    pha
+    txa
+    pha
+
+.endmacro
+
+;----------------------------------------------------------------------
+.macro loadregs
+    pla
+    tax
+    pla
+    tay
+    pla
+    plp
+
+.endmacro
+
+;----------------------------------------------------------------------
+.macro savenils
+    pha
+    tya
+    pha
+    ldy #0
+@loop_savenils:
+    lda $00E0, y
+    sta $00C0, y
+    iny
+    cpy #32
+    bne @loop_savenils
+    pla
+    tay
+    pla
+
+.endmacro
+
+;----------------------------------------------------------------------
+.macro loadnils
+    pha
+    tya
+    pha
+    ldy #0
+@loop_loadnils:
+    lda $00C0, y
+    sta $00E0, y
+    iny
+    cpy #32
+    bne @loop_loadnils
+    pla
+    tay
+    pla
+
+.endmacro
+
+;----------------------------------------------------------------------
+.macro shownils
+    pha
+    tya
+    pha
+    ldy #0
+    shows '{'
+@loop_shownils:
+    shows ' '
+    showrefer nil
+    cpy #32
+    bne @loop_shownils
+    shows '}'
+    pla
+    tay
+    pla
+
+.endmacro
+
+
+.endif
+;----------------------------------------------------------------------
+
 
 hcount .set 0
 
 H0000 = 0
 
-debug = 1
 
 ;----------------------------------------------------------------------
 ; alias
@@ -283,7 +417,7 @@ quit:
 parse_: 
     .word 0
 
-; like a begin-again
+; like a begin-again, false nest
 parse:
 
     lda #>parse_
@@ -310,7 +444,10 @@ find:
 
 ; verify null
     ora trd + 1
-    beq mirror ; end of dictionary, no more words to search, quit
+    bne @each
+    jmp error ; end of dictionary, no more words to search, quit
+
+@each:    
 
 ; msb linked list
     lda trd + 1
@@ -322,6 +459,7 @@ find:
     jsr copyfrom
 
 ; compare words
+
     ldy #0
 ; save the flag, first byte is size and flag 
     lda (fst), y
@@ -355,14 +493,7 @@ eval:
 ;  wherever 
     ldy #(fst - nil)
 
-    lda fst + 1
-    jsr puthex
-
-    lda fst + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
+    showbulk fst
 
 ; executing ? if == \0
     lda mode + 0   
@@ -373,54 +504,25 @@ eval:
     bmi execute      
 
 compile:
-    .if debug
-    lda #'C'
-    jsr putchar
-    .endif
 
-    ; jsr dumpnil
+    shows 'C'
 
     jsr comma
 
     jmp unnest
 
 execute:
-    .if debug
-    lda #'E'
-    jsr putchar
-    .endif
 
-;  wherever two
-
-    ; jsr dumpnil
+    shows 'E'
 
     jsr rpush
 
+    shows 10
+    shownils
+
     jsr showdic
 
-    jsr dumpnil
-
     jmp unnest
-
-;---------------------------------------------------------------------
-okeys:
-    lda #'O'
-    jsr putchar
-    lda #'K'
-    jsr putchar
-    lda #10
-    jsr putchar
-    jmp parse
-
-;---------------------------------------------------------------------
-mirror:
-    lda #'Z'
-    jsr putchar
-    lda #'Z'
-    jsr putchar
-    lda #10
-    jsr putchar
-    jmp quit
 
 ;---------------------------------------------------------------------
 error:
@@ -431,6 +533,16 @@ error:
     lda #10
     jsr putchar
     jmp quit
+
+;---------------------------------------------------------------------
+okey:
+    lda #'O'
+    jsr putchar
+    lda #'K'
+    jsr putchar
+    lda #10
+    jsr putchar
+    jmp parse
 
 ;---------------------------------------------------------------------
 try:
@@ -698,16 +810,7 @@ def_word "+", "plus", 0
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
-    
-    lda #'n'
-    jsr putchar
-
     jsr spull2
-
-    showvalue snd
-    
-    showvalue fst
-
     lda snd + 0
     and fst + 0
     eor #$FF
@@ -796,17 +899,16 @@ def_word ";", "semis", FLAG_IMM
     lda #0
     sta mode + 0
 
+    shows ' '
+    shows 'K'
+
 ; compound words must ends with exit
+finish:
     lda #<exit
     sta fst + 0
     lda #>exit
     sta fst + 1
     
-    ; jmp compile
-
-    lda #'K'
-    jsr putchar
-
     ldy #(fst - nil)
     jsr comma
 
@@ -815,7 +917,7 @@ def_word ";", "semis", FLAG_IMM
     lda last+1
     sta fst+1
 
-    jsr showord
+    ; jsr showord
 
     jmp unnest
 
@@ -829,6 +931,9 @@ def_word ":", "colon", 0
 ; mode is 'compile'
     lda #1
     sta mode + 0
+
+    shows ' '
+    shows 'W'
 
 create:
 ; copy last into (here)
@@ -868,13 +973,9 @@ def_word "exit", "exit", 0
 inner:
 
 unnest:
-    .if debug
-    lda #' '
-    jsr putchar
-    lda #'U'
-    jsr putchar
-    .endif
-
+    shows ' '
+    shows 'U'
+    
 ; pull, lnk = *(rpt), rpt += 2 
     ldy #(lnk - nil)
     jsr rpull
@@ -891,13 +992,9 @@ pick:
     beq jump
 
 nest:
-    .if debug
-    lda #' '
-    jsr putchar
-    lda #'N'
-    jsr putchar
-    .endif
-
+    shows ' '
+    shows 'N'
+    
 ; push, *rp = lnk, rp -=2
     ldy #(lnk - nil)
     jsr rpush
@@ -912,101 +1009,109 @@ link:
 ; historical JMP @(W)+
 ; wrk is NULL
 jump:
-    .if debug
-    lda #' '
-    jsr putchar
-    lda #'J'
-    jsr putchar
-    .endif
+    shows ' '
+    shows 'J'
+    
+    shows ' '
 
-    lda #' '
-    jsr putchar
+    showbulk lnk 
 
-    lda lnk+1
-    jsr puthex
+    jsr showrs
 
-    lda lnk+0
-    jsr puthex
+    jsr showsp
 
-    jsr dumpr
-
-    jsr dumps
-
-    lda #10
-    jsr putchar
+    shows ' '
 
     jmp (lnk)
 
 ends:
 
+;----------------------------------------------------------------------
+; START OF DEBUG CODE
 ;---------------------------------------------------------------------
 
 ; debug stuff
 .if debug
 
 ;----------------------------------------------------------------------
-.macro saveregs
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-.endmacro
+showname:
 
-;----------------------------------------------------------------------
-.macro loadregs
+    shows ' '
+    
+    lda (fst), y
+    pha
+    jsr puthex
+    
+    shows ' '
+    
     pla
+    and #$7F
     tax
-    pla
-    tay
-    pla
-    plp
-.endmacro
 
-;----------------------------------------------------------------------
-savenils:
-    ldy #0
 @loop:
-    lda $00E0, y
-    sta $00C0, y
     iny
-    cpy #16
+    lda (fst),y
+    jsr putchar
+    dex
     bne @loop
+
+    iny
+
     rts
 
 ;----------------------------------------------------------------------
-loadnils:
-    ldy #0
+; show compiled list address
+showlist:
+
+    shows ' '
+
+    showbulk fst
+
+    shows ' '
+
+    shows '['
+    
 @loop:
-    lda $00C0, y
-    sta $00E0, y
-    iny
-    cpy #16
+    shows ' '
+
+    showrefer fst
+
+; was a null ? no code in page 0 !
+    lda wrk + 1
+    beq @ends
+
+; was a exit ?
+    lda wrk + 1
+    cmp #>exit
     bne @loop
+
+    lda wrk + 0
+    cmp #<exit
+    bne @loop
+
+@ends:
+
+    shows ' '
+
+    shows ']'
+
     rts
 
 ;----------------------------------------------------------------------
-erro:
-    pha
-    lda #'?'
-    jsr putchar
-    lda #'?'
-    jsr putchar
-    lda #10
-    jsr putchar
-    pla
-    rts
+showord:
 
-okey:
-    pha
-    lda #'O'
-    jsr putchar
-    lda #'K'
-    jsr putchar
-    lda #10
-    jsr putchar
-    pla
+    ldy #0
+
+    jsr showname
+
+    tya 
+    ldx #(fst -nil)
+    jsr addwx 
+
+    ldy #0
+
+    jsr showlist
+    
     rts
 
 ;---------------------------------------------------------------------
@@ -1014,13 +1119,11 @@ showdic:
 
     saveregs
 
-    jsr savenils
+    savenils
 
-    lda #10
-    jsr putchar
+    shows 10
 
-    lda #'{'
-    jsr putchar
+    shows '{'
 
 ; load lastest link
     lda last + 0
@@ -1042,208 +1145,38 @@ showdic:
     lda trd + 1
     sta fst + 1
 
-    lda #10
-    jsr putchar
+    shows 10
 
-    lda fst + 1
-    jsr puthex
-    lda fst + 0
-    jsr puthex
+    shows ' '
+
+    showbulk fst
 
 ; get that link, wrk = [fst]
     ldx #(fst - nil) ; from 
     ldy #(trd - nil) ; into
     jsr copyfrom
 
-    lda #' '
-    jsr putchar
-    
-    ldy #0
-    lda (fst), y
-    jsr puthex
+    shows ' '
 
-    lda (fst), y
-    and #$7F
-    tax
+    showbulk trd
 
-    lda #' '
-    jsr putchar
-    
-@loopa:
-    iny
-    lda (fst), y
-    jsr putchar
-    dex
-    bne @loopa
+    shows ' '
 
-    lda #' '
-    jsr putchar
-    
-    iny
-    tya
-    ldx #(fst - nil)
-    jsr addwx
+    jsr showord
 
-    lda fst + 1
-    jsr puthex
-    lda fst + 0
-    jsr puthex
-
-    ldx #(fst - nil) ; from 
-    ldy #(snd - nil) ; into
-    jsr copyfrom
-
-    lda snd + 0
-    ora snd + 1
-    beq @primitive
-
-@compound:
-    
-@primitive:
     jmp @loop
 
 @ends:
 
-    lda #10
-    jsr putchar
+    shows 10
 
-    lda #'}'
-    jsr putchar
+    shows '}'
 
-    jsr loadnils
+    shows 10
+
+    loadnils
 
     loadregs
-
-    rts
-
-;----------------------------------------------------------------------
-; show mode
-showsts:
-
-    lda #' '
-    jsr putchar
-
-    lda mode + 1
-    jsr puthex
-
-    lda mode + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-; show here
-showhere:
-
-    lda #' '
-    jsr putchar
-
-    lda here + 1
-    jsr puthex
-
-    lda here + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-; show last
-showlast:
-
-    lda #' '
-    jsr putchar
-
-    lda last + 1
-    jsr puthex
-
-    lda last + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-; show lst
-showfst:
-
-    lda #' '
-    jsr putchar
-
-    lda fst + 1
-    jsr puthex
-
-    lda fst + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-showref:
-
-    lda #' '
-    jsr putchar
-    
-; view
-    lda (fst), y
-    sta wrk + 0
-    iny
-    lda (fst), y
-    sta wrk + 1
-    iny
-
-; show
-    lda wrk + 1
-    jsr puthex
-    lda wrk + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-showname:
-
-    lda #' '
-    jsr putchar
-    
-    lda (fst), y
-    pha
-    jsr puthex
-    
-    lda #' '
-    jsr putchar
-    
-    pla
-    and #$7F
-    tax
-
-@loop:
-    iny
-    lda (fst),y
-    jsr putchar
-    dex
-    bne @loop
-
-    rts
-
-;----------------------------------------------------------------------
-; show compiled list address
-; all compound words ends with exit:
-showlst:
-
-@loop:
-    lda #' '
-    jsr putchar
-
-    jsr showref
-
-; stop
-    lda wrk + 0
-    cmp #<exit
-    bne @loop
-    lda wrk + 1
-    cmp #>exit
-    bne @loop
-
-@ends:
 
     rts
 
@@ -1267,57 +1200,6 @@ showbck:
     rts
 
 ;----------------------------------------------------------------------
-showord:
-
-    saveregs
-
-    jsr savenils
-
-    lda #10
-    jsr putchar
-
-    lda #'('
-    jsr putchar
-
-    ldy #0
-
-    jsr showfst
-
-    jsr showref
-
-    jsr showname
-
-; show list
-
-    lda (fst), y
-    iny
-    ora (fst), y
-    beq @ends
-    
-; only compiled
-    
-    jsr showlst
-
-@ends:
-
-    lda #')'
-    jsr putchar
-
-    ; jsr dump
-    
-    ; jsr dumps
-
-    ; jsr dumpr
-
-    jsr loadnils
-
-    loadregs
-
-    rts
-
-
-;----------------------------------------------------------------------
-
 showstk:
 
     lda #' '
@@ -1328,142 +1210,6 @@ showstk:
     inx
     txa
     jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-dumpnil:
-
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-
-    lda #10
-    jsr putchar
-    lda #'='
-    jsr putchar
-
-    ldy #0
-@loop:
-    lda #' '
-    jsr putchar
-    lda nil+1, y
-    jsr puthex
-    lda nil+0, y
-    jsr puthex
-    iny
-    iny
-
-    cpy #16
-    bne @byes
-    lda #' '
-    jsr putchar
-    lda #'_'
-    jsr putchar
-
-@byes:    
-    cpy #32
-    bne @loop
-    
-    lda #10
-    jsr putchar
-
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-
-    rts
-
-;----------------------------------------------------------------------
-dumpext:
-
-    pha
-
-    lda #10
-    jsr putchar
-
-    lda #'{'
-    jsr putchar
-
-    lda #' '
-    jsr putchar
-    lda #'S'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda spt + 1
-    jsr puthex
-    lda spt + 0
-    jsr puthex
-    
-    lda #' '
-    jsr putchar
-    lda #'R'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda rpt + 1
-    jsr puthex
-    lda rpt + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'L'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda lnk + 1
-    jsr puthex
-    lda lnk + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'W'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda wrk + 1
-    jsr puthex
-    lda wrk + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'T'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda last + 1
-    jsr puthex
-    lda last + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'H'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda here + 1
-    jsr puthex
-    lda here + 0
-    jsr puthex
-
-    lda #'}'
-    jsr putchar
-
-    lda #10
-    jsr putchar
-
-    pla
 
     rts
 
@@ -1516,89 +1262,79 @@ dumph:
     rts
     
 ;----------------------------------------------------------------------
-dumpr:
+showrs:
     
-    lda #10
-    jsr putchar
+    saveregs
 
-    lda #'R'
-    jsr putchar
+    shows 10
 
-    lda #'='
-    jsr putchar
+    shows 'R'
 
-    tya 
-    pha
+    shows '='
 
     sec
     lda #rp0
     sbc rpt + 0
     beq @ends
 
-    tay
+    tax
+    ldy #0
 
     jsr puthex
 
 @loop:
-    lda #' '
-    jsr putchar
+    shows ' '
 
-    lda (rpt), y
-    jsr puthex
+    showrefer rpt
 
-    dey
+    dex
+    dex
     bne @loop
 
 @ends:
 
-    pla
-    tay
+    loadregs
 
     rts
 
 ;----------------------------------------------------------------------
-dumps:
+showsp:
     
-    lda #10
-    jsr putchar
+    saveregs
 
-    lda #'S'
-    jsr putchar
+    shows 10
 
-    lda #'='
-    jsr putchar
+    shows 'S'
 
-    tya 
-    pha
+    shows '='
 
     sec
     lda #sp0
     sbc spt + 0
     beq @ends
 
-    tay
+    tax
+    ldy #0
 
     jsr puthex
 
 @loop:
-    lda #' '
-    jsr putchar
+    shows ' '
 
-    lda (spt), y
-    jsr puthex
+    showrefer spt
 
-    dey
+    dex
+    dex
     bne @loop
 
 @ends:
 
-    pla
-    tay
+    loadregs
 
     rts
 
 ;----------------------------------------------------------------------
-; dumps terminal input buffer
+; showsp terminal input buffer
 showtib:
     lda #'_'
     jsr putchar
@@ -1613,6 +1349,11 @@ showtib:
     lda #'_'
     jsr putchar
     rts
+
+;----------------------------------------------------------------------
+; END OF DEBUG CODE
+;----------------------------------------------------------------------
+.endif
 
 ;----------------------------------------------------------------------
 ; print a 8-bit HEX
@@ -1633,9 +1374,6 @@ puthex:
     adc #$06
 @ends:
     jmp putchar
-
-;----------------------------------------------------------------------
-.endif
 
 ; for anything above is not a primitive
 .align $100
