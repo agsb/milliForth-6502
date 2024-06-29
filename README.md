@@ -33,6 +33,8 @@ This Forth for 6502, will be done using two models:
 
 ## Time table 
 
+_28/06/2024_ Found a bug: exit must drop top of return stack 
+
 _19/06/2024_ Great review of heap and stack core code, 
              reorder tib, sp, rp, pad.
 

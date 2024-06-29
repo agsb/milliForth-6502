@@ -259,13 +259,14 @@ debug = 1
     tya
     pha
     ldy #0
-    shows '{'
+    shows '('
 @loop_shownils:
     shows ' '
     showrefer nil
     cpy #32
     bne @loop_shownils
-    shows '}'
+    shows ' '
+    shows ')'
     pla
     tay
     pla
@@ -493,8 +494,6 @@ eval:
 ;  wherever 
     ldy #(fst - nil)
 
-    showbulk fst
-
 ; executing ? if == \0
     lda mode + 0   
     beq execute
@@ -505,7 +504,13 @@ eval:
 
 compile:
 
+    shows ' '
+
     shows 'C'
+
+    shows ' '
+
+    showbulk fst
 
     jsr comma
 
@@ -513,14 +518,17 @@ compile:
 
 execute:
 
+    shows ' '
+
     shows 'E'
 
+    shows ' '
+
+    showbulk fst
+
+    jsr showsts
+
     jsr rpush
-
-    shows 10
-    shownils
-
-    jsr showdic
 
     jmp unnest
 
@@ -970,7 +978,16 @@ create:
 ; using MITC, minimum indirect thread code
 ;
 def_word "exit", "exit", 0
-inner:
+    shows ' '
+    shows 'V'
+    
+    ldx #(rpt - nil)
+    jsr incwx
+    jsr incwx
+
+    jsr showsts
+
+; heart beat:
 
 unnest:
     shows ' '
@@ -990,6 +1007,9 @@ next:
     ldx #(lnk - nil)
     jsr copyfrom
 
+; historical JMP @(W)+
+    
+
 pick:
 ; minimal test, no words at page 0
     lda wrk + 1
@@ -1001,7 +1021,6 @@ nest:
     shows ' '
 
     showbulk lnk 
-
     
 ; push, *rp = lnk, rp -=2
     ldy #(lnk - nil)
@@ -1014,21 +1033,15 @@ link:
     sta lnk + 1
     jmp next
 
-; historical JMP @(W)+
 ; wrk is NULL
 jump:
     shows ' '
+
     shows 'J'
     
     shows ' '
 
     showbulk lnk 
-
-    jsr showrs
-
-    jsr showsp
-
-    shows ' '
 
     jmp (lnk)
 
@@ -1040,6 +1053,20 @@ ends:
 
 ; debug stuff
 .if debug
+
+showsts:
+
+    shows 10
+    
+    shownils
+
+    jsr showrs
+
+    jsr showsp
+
+    jsr showdic
+
+    rts
 
 ;----------------------------------------------------------------------
 showname:

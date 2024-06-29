@@ -111,6 +111,32 @@ makelabel "", label
 .endmacro
 
 ;----------------------------------------------------------------------
+.macro shows cc
+    lda #cc
+    jsr putchar
+.endmacro
+
+;----------------------------------------------------------------------
+.macro saveregs
+    php
+    pha
+    tya
+    pha
+    txa
+    pha
+.endmacro
+
+;----------------------------------------------------------------------
+.macro loadregs
+    pla
+    tax
+    pla
+    tay
+    pla
+    plp
+.endmacro
+
+;----------------------------------------------------------------------
 
 hcount .set 0
 
@@ -130,9 +156,10 @@ FLAG_IMM = 1<<7
 ; "all in" page $200
 
 ; terminal input buffer, 80 bytes, forward
-; note: getline, token, skip, scan depends on page boundary
+; must start at begin of a page
 tib = $0200
 
+; old tib#
 tib_end = $40
 
 ; data stack, 36 cells, backward
@@ -156,14 +183,14 @@ nil:    .word $0 ; reserved reference offset
 spt:    .word $0 ; holds data stack base,
 rpt:    .word $0 ; holds return stack base
 
+tos:    .word $0 ; top of Forth parameter data stack
 lnk:    .word $0 ; link
 wrk:    .word $0 ; work
 
-fst:    .word $0 ; first
 snd:    .word $0 ; second
-trd:    .word $0 ; third
+tmp:    .word $0 ; third
 
-; * = $F0
+* = $F0
 
 ; default Forth variables, order matters for HELLO.forth !
 
@@ -173,14 +200,11 @@ last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 
 ; future expansion
-back:   .word $0 ; hold here while compile
+back:   .word $0 ; hold 'here while compile
 base:   .word $0 ; base radix, define before use
 
-tos:    .word   ; top of stack
-nos:    .word   ; next on stack
-
-;head:   .word $0 ; pointer to heap forward
-;tail:   .word $0 ; pointer to heap backward
+head:   .word $0 ; pointer to heap forward
+tail:   .word $0 ; pointer to heap backward
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -261,46 +285,46 @@ parse_:
 parse:
 
     lda #>parse_
-    sta fst + 1
+    sta wrk + 1
     lda #<parse_
-    sta fst + 0
-    ldy #(fst - nil)
+    sta wrk + 0
+    ldy #(wrk - nil)
     jsr rpush
 
-    jsr showdic
+    jsr okeys
 
 ; get a token
     jsr token
 
 ; load last
     lda last + 1
-    sta trd + 1
+    sta lnk + 1
     lda last + 0
-    sta trd + 0
+    sta lnk + 0
     
 @loop:
 
 ; lsb linked list
-    lda trd + 0
-    sta fst + 0
+    lda lnk + 0
+    sta wrk + 0
 
 ; verify null
-    ora trd + 1
-    beq mirror ; end of dictionary, no more words to search, quit
+    ora wrk + 1
+    beq error ; end of dictionary, no more words to search, quit
 
 ; msb linked list
-    lda trd + 1
-    sta fst + 1
+    lda lnk + 1
+    sta wrk + 1
 
 ; update link 
-    ldx #(fst - nil) ; from 
-    ldy #(trd - nil) ; into
+    ldx #(wrk - nil) ; from 
+    ldy #(lnk - nil) ; into
     jsr copyfrom
 
 ; compare words
     ldy #0
 ; save the flag, first byte is size and flag 
-    lda (fst), y
+    lda (wrk), y
     sta mode + 1
 
 ; compare chars
@@ -311,7 +335,7 @@ parse:
     beq @done
 ; verify 
     sec
-    sbc (fst), y     
+    sbc (wrk), y     
 
 ; clean 7-bit ascii
     and #$7F        
@@ -321,15 +345,17 @@ parse:
     iny
     bne @equal
 
+; panic if y = \0
+
 @done:
 
-; update fst
+; update
     tya
-    ldx #(fst - nil)
+    ldx #(wrk - nil)
     jsr addwx
     
 ;  wherever 
-    ldy #(fst - nil)
+    ldy #(wrk - nil)
 
 ; executing ? if == \0
     lda mode + 0   
@@ -340,26 +366,12 @@ parse:
     bmi execute      
 
 compile:
-    .if debug
-    lda #'C'
-    jsr putchar
-    .endif
-
-    ; jsr dumpnil
 
     jsr comma
 
     jmp unnest
 
 execute:
-    .if debug
-    lda #'E'
-    jsr putchar
-    .endif
-
-;  wherever two
-
-    ; jsr dumpnil
 
     jsr rpush
 
@@ -373,17 +385,7 @@ okeys:
     jsr putchar
     lda #10
     jsr putchar
-    jmp parse
-
-;---------------------------------------------------------------------
-mirror:
-    lda #'Z'
-    jsr putchar
-    lda #'Z'
-    jsr putchar
-    lda #10
-    jsr putchar
-    jmp quit
+    rts
 
 ;---------------------------------------------------------------------
 error:
@@ -398,20 +400,18 @@ error:
 ;---------------------------------------------------------------------
 try:
     lda tib, y
-    beq getline    ; if \0 
+    beq newline    ; if \0 
     iny
     eor #' '
     rts
 
 ;---------------------------------------------------------------------
-getline:
+newline:
 ; drop rts of try
     pla
     pla
 
-    lda #10
-    jsr putchar
-
+getline:
 ; leave a space
     ldy #1
 @loop:  
@@ -419,8 +419,19 @@ getline:
 ;
 ; unix \n
 ;
-    cmp #10
+@key_linefeed:
+    cmp #10 ; line feed
     beq @ends
+
+@key_backspace:    
+    cmp #8  ; back space
+    bne @key_cancel
+    dey
+    jmp @loop
+@key_cancel:    
+    cmp #24 ; cancel
+    beq getline
+
 @puts:
 ; 7-bit ascii only
     and #$7F      
@@ -612,11 +623,11 @@ rets:
 
 ;---------------------------------------------------------------------
 ;
-spull2:
-    ldy #(nos - nil)
-    jmp spull
+spullwrk:
+    ldy #(wrk - nil)
+    .byte $2c   ; mask next two bytes, nice trick !
 
-spull1:
+spulltos:
     ldy #(tos - nil)
     jmp spull
 
@@ -638,7 +649,7 @@ def_word "key", "key", 0
 def_word "emit", "emit", 0
     lda tos + 0
     jsr putchar
-    jsr spull1
+    jsr spulltos
     jmp unnest
 
 ;---------------------------------------------------------------------
@@ -652,26 +663,26 @@ def_word "2/", "asr", 0
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
-    jsr spull2
+    jsr spullwrk
     clc
     lda tos + 0
-    adc nos + 0
+    adc wrk + 0
     sta tos + 0
     lda tos + 1
-    adc nos + 1
+    adc wrk + 1
     sta tos + 1
     jmp unnest
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
-    jsr spull2
+    jsr spullwrk
     lda tos + 0
-    and nos + 0
+    and wrk + 0
     eor #$FF
     sta tos + 0
     lda tos + 1
-    and nos + 1
+    and wrk + 1
     eor #$FF
     sta tos + 1
     jmp unnest
@@ -696,11 +707,11 @@ rest:
 ; ( w a -- ) ; [a] = w
 def_word "!", "store", 0
 storew:
-    jsr spull2
+    jsr spullwrk
     ldx #(tos - nil) 
-    ldy #(nos - nil) 
+    ldy #(wrk - nil) 
     jsr copyinto
-    jsr spull1
+    jsr spulltos
     jmp unnest
 
 ;---------------------------------------------------------------------
@@ -708,11 +719,11 @@ storew:
 def_word "@", "fetch", 0
 fetchw:
     ldx #(tos - nil)
-    ldy #(nos - nil)
+    ldy #(wrk - nil)
     jsr copyfrom
-    lda nos + 0
+    lda wrk + 0
     sta tos + 0
-    lda nos + 1
+    lda wrk + 1
     sta tos + 1
     jmp unnest
 
@@ -759,9 +770,9 @@ def_word ";", "semis", FLAG_IMM
 
 ; compound words must ends with exit
     lda #<exit
-    sta fst + 0
+    sta wrk + 0
     lda #>exit
-    sta fst + 1
+    sta wrk + 1
 
     jmp compile
 
@@ -810,93 +821,49 @@ create:
 ;
 ; using MITC, minimum indirect thread code
 ;
+;---------------------------------------------------------------------
+; drop top of return stack
 def_word "exit", "exit", 0
-inner:
+    lda #(rpt - nil)
+    jsr incwx
+    jsr incwx
+    ; jmp unnest
+
+;---------------------------------------------------------------------
+; inner interpreter
 
 unnest:
-    .if debug
-    lda #'U'
-    jsr putchar
-    .endif
-
 ; pull, lnk = *(rpt), rpt += 2 
     ldy #(lnk - nil)
     jsr rpull
 
-    jsr dumpnil
-    ;jsr dumpr
-    ;jsr dumps
-    lda #10
-    jsr putchar
-
 next:
-    ;.if debug
-    ;lda #'X'
-    ; jsr putchar
-    ;.endif
-
 ; wrk = (lnk) ; lnk = lnk + 2
     ldy #(wrk - nil)
     ldx #(lnk - nil)
     jsr copyfrom
 
-    ; jsr dumpnil
-
 pick:
-    ;.if debug
-    ;lda #'P'
-    ;jsr putchar
-    ;.endif
-
 ; minimal test, no words at page 0
     lda wrk + 1
     beq jump
 
 nest:
-    .if debug
-    lda #'N'
-    jsr putchar
-    .endif
-
 ; push, *rp = lnk, rp -=2
     ldy #(lnk - nil)
     jsr rpush
 
-    jsr dumpnil
-    ;jsr dumpr
-    ;jsr dumps
-    lda #10
-    jsr putchar
-
 link:
-    ;.if debug
-    ;lda #'L'
-    ;jsr putchar
-    ;.endif
-
     lda wrk + 0
     sta lnk + 0
     lda wrk + 1
     sta lnk + 1
     
-    ; jsr dumpnil
-
     jmp next
 
 ; historical JMP @(W)+
+; but wrk is NULL
 jump:
-    .if debug
-    lda #'J'
-    jsr putchar
-    .endif
-
-    jsr dumpnil
-    ;jsr dumpr
-    ;jsr dumps
-    lda #10
-    jsr putchar
-
-;   wrk is NULL
     jmp (lnk)
 
 ends:
@@ -904,673 +871,7 @@ ends:
 ;---------------------------------------------------------------------
 
 ; debug stuff
-.if debug
-
-;----------------------------------------------------------------------
-.macro saveregs
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-.endmacro
-
-;----------------------------------------------------------------------
-.macro loadregs
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-.endmacro
-
-;----------------------------------------------------------------------
-savenils:
-    ldy #0
-@loop:
-    lda $00E0, y
-    sta $00C0, y
-    iny
-    cpy #16
-    bne @loop
-    rts
-
-;----------------------------------------------------------------------
-loadnils:
-    ldy #0
-@loop:
-    lda $00C0, y
-    sta $00E0, y
-    iny
-    cpy #16
-    bne @loop
-    rts
-
-;----------------------------------------------------------------------
-erro:
-    pha
-    lda #'?'
-    jsr putchar
-    lda #'?'
-    jsr putchar
-    lda #10
-    jsr putchar
-    pla
-    rts
-
-okey:
-    pha
-    lda #'O'
-    jsr putchar
-    lda #'K'
-    jsr putchar
-    lda #10
-    jsr putchar
-    pla
-    rts
-
-;---------------------------------------------------------------------
-showdic:
-
-    saveregs
-
-    jsr savenils
-
-    lda #10
-    jsr putchar
-
-    lda #'{'
-    jsr putchar
-
-; load lastest link
-    lda last + 0
-    sta trd + 0
-    lda last + 1
-    sta trd + 1
-
-@loop:
-
-; update link list
-    lda trd + 0
-    sta fst + 0
-    
-; verify is zero
-    ora trd + 1
-    beq @ends ; end of dictionary, no more words to search, quit
-
-; update link list
-    lda trd + 1
-    sta fst + 1
-
-    lda #10
-    jsr putchar
-
-   ; jsr dumpnil
-
-    lda fst + 1
-    jsr puthex
-    lda fst + 0
-    jsr puthex
-
-; get that link, wrk = [fst]
-    ldx #(fst - nil) ; from 
-    ldy #(trd - nil) ; into
-    jsr copyfrom
-
-    lda #' '
-    jsr putchar
-    
-    ldy #0
-    lda (fst), y
-    jsr puthex
-
-    lda (fst), y
-    and #$7F
-    tax
-
-    lda #' '
-    jsr putchar
-    
-@loopa:
-    iny
-    lda (fst), y
-    jsr putchar
-    dex
-    bne @loopa
-
-    lda #' '
-    jsr putchar
-    
-    iny
-    tya
-    ldx #(fst - nil)
-    jsr addwx
-
-    lda fst + 1
-    jsr puthex
-
-    lda fst + 0
-    jsr puthex
-
-    jmp @loop
-
-@ends:
-
-    lda #10
-    jsr putchar
-
-    lda #'}'
-    jsr putchar
-
-    ; jsr loadnils
-
-    loadregs
-
-    rts
-
-;----------------------------------------------------------------------
-; show mode
-showsts:
-
-    lda #' '
-    jsr putchar
-
-    lda mode + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-; show here
-showhere:
-
-    lda #' '
-    jsr putchar
-
-    lda here + 1
-    jsr puthex
-
-    lda here + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-; show last
-showlast:
-
-    lda #' '
-    jsr putchar
-
-    lda last + 1
-    jsr puthex
-
-    lda last + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-; show lst
-showfst:
-
-    lda #' '
-    jsr putchar
-
-    lda fst + 1
-    jsr puthex
-
-    lda fst + 0
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-showname:
-
-    lda #' '
-    jsr putchar
-    
-    ldy #0
-    lda (fst), y
-    pha
-    jsr puthex
-    
-    lda #' '
-    jsr putchar
-    
-    pla
-    and #$7F
-    tax
-
-@loop:
-    iny
-    lda (fst),y
-    jsr putchar
-    dex
-    bne @loop
-
-    rts
-
-;----------------------------------------------------------------------
-showback:
-
-; search backwards
-
-    ldx #(fst - nil)
-
-@loop1:
-    jsr decwx
-    lda (nil, x)
-    pha
-    and #$7F
-    cmp #' '
-    bpl @loop1
-
-; show size+flag
-
-    lda #' '
-    jsr putchar
-
-; size
-    pla
-    pha
-    jsr puthex
-
-; mask flag
-
-    pla
-    and #$7F
-    tay 
-
-; show name
-
-    lda #' '
-    jsr putchar
-
-@loop2:
-    pla
-    jsr putchar
-    dey
-    bne @loop2
-
-    rts
-
-;----------------------------------------------------------------------
-showord:
-
-    saveregs
-
-    jsr savenils
-
-@start:
-
-    lda #10
-    jsr putchar
-
-    lda #'('
-    jsr putchar
-
-    jsr showsts
-
-    jsr showlast
-    
-    jsr showhere
-
-    jsr showfst 
-
-    jsr showname
-
-    lda #' '
-    jsr putchar
-
-; show list
-
-    lda fst + 1
-    beq @ends
-    
-; only compiled
-
-    ; jsr alist
-
-@ends:
-
-    lda #')'
-    jsr putchar
-
-    ; jsr dump
-    
-    ; jsr dumps
-
-    ; jsr dumpr
-
-    jsr loadnils
-
-    loadregs
-
-    rts
-
-
-;----------------------------------------------------------------------
-
-showstk:
-
-    lda #' '
-    jsr putchar
-
-    tsx
-    inx
-    inx
-    txa
-    jsr puthex
-
-    rts
-
-;----------------------------------------------------------------------
-dumpnil:
-
-    php
-    pha
-    tya
-    pha
-    txa
-    pha
-
-    lda #10
-    jsr putchar
-    lda #'='
-    jsr putchar
-
-    ldy #0
-@loop:
-    lda #' '
-    jsr putchar
-    lda nil+1, y
-    jsr puthex
-    lda nil+0, y
-    jsr puthex
-    iny
-    iny
-
-    cpy #16
-    bne @byes
-    lda #' '
-    jsr putchar
-    lda #'_'
-    jsr putchar
-
-@byes:    
-    cpy #32
-    bne @loop
-    
-    pla
-    tax
-    pla
-    tay
-    pla
-    plp
-
-    rts
-
-;----------------------------------------------------------------------
-dumpext:
-
-    pha
-
-    lda #10
-    jsr putchar
-
-    lda #'{'
-    jsr putchar
-
-    lda #' '
-    jsr putchar
-    lda #'S'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda spt + 1
-    jsr puthex
-    lda spt + 0
-    jsr puthex
-    
-    lda #' '
-    jsr putchar
-    lda #'R'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda rpt + 1
-    jsr puthex
-    lda rpt + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'L'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda lnk + 1
-    jsr puthex
-    lda lnk + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'W'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda wrk + 1
-    jsr puthex
-    lda wrk + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'T'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda last + 1
-    jsr puthex
-    lda last + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-    lda #'H'
-    jsr putchar
-    lda #'='
-    jsr putchar
-    lda here + 1
-    jsr puthex
-    lda here + 0
-    jsr puthex
-
-    lda #'}'
-    jsr putchar
-
-    lda #10
-    jsr putchar
-
-    pla
-
-    rts
-
-;----------------------------------------------------------------------
-; show hard stack
-dumphs:
-
-    php
-    pha
-    txa
-    pha
-    tya
-    pha
-
-    tsx
-
-    lda #'S'
-    jsr putchar
-    txa
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-
-    inx
-    inx
-    inx
-    inx
-
-@loop:
-
-    txa
-    jsr puthex
-    lda #':'
-    jsr putchar
-    lda $100, x
-    jsr puthex
-    lda #' '
-    jsr putchar
-    inx
-    bne @loop
-
-    pla
-    tay
-    pla
-    tax
-    pla
-    plp
-
-    rts
-    
-;----------------------------------------------------------------------
-dumpr:
-    
-    lda #10
-    jsr putchar
-
-    lda #'R'
-    jsr putchar
-
-    lda #'='
-    jsr putchar
-
-    sec
-    lda #rp0
-    sbc rpt + 0
-    beq @ends
-    tax
-
-    jsr puthex
-
-    ldy #0
-
-@loop:
-    lda #' '
-    jsr putchar
-
-    iny
-    lda (rpt), y
-    jsr puthex
-
-    dex
-    bne @loop
-
-@ends:
-
-    rts
-
-;----------------------------------------------------------------------
-dumps:
-    
-    lda #10
-    jsr putchar
-
-    lda #'S'
-    jsr putchar
-
-    lda #'='
-    jsr putchar
-
-    sec
-    lda #sp0
-    sbc spt + 0
-    beq @ends
-    tax
-
-    jsr puthex
-    
-    ldy #0
-
-@loop:
-    lda #' '
-    jsr putchar
-
-    iny
-    lda spt, y
-    jsr puthex
-
-    dex
-    bne @loop
-
-@ends:
-
-    rts
-
-;----------------------------------------------------------------------
-; show compiled list address
-;
-alist:
-
-    ldy #$0
-
-@loop:
-    lda #' '
-    jsr putchar
-
-; view
-    lda (fst), y
-    sta wrk + 0
-    iny
-    lda (fst), y
-    sta wrk + 1
-    iny
-
-; show
-    lda wrk + 1
-    jsr puthex
-    lda wrk + 0
-    jsr puthex
-
-; stop
-    lda wrk + 0
-    cmp #<unnest
-    bne @loop
-    lda wrk + 1
-    cmp #>unnest
-    bne @loop
-
-@ends:
-
-    rts
-
-;----------------------------------------------------------------------
-; value:offset
-ilist:
-    jsr puthex
-    lda #':'
-    jsr putchar
-    tya
-    jsr puthex
-    lda #' '
-    jsr putchar
-    rts
+.if 0
 
 ;----------------------------------------------------------------------
 ; dumps terminal input buffer
