@@ -566,21 +566,15 @@ getline:
     pla
     pla
 
-    lda #10
-    jsr putchar
+    shows 10
 
-; leave a space
+; leave first byte
     ldy #1
 @loop:  
     jsr getchar
-;
-; unix \n
-;
-    cmp #10
+    cmp #10         ; unix \n
     beq @ends
-@puts:
-; 7-bit ascii only
-    and #$7F      
+    and #$7F        ; 7-bit ascii only
     sta tib, y
     iny
     cmp tib_end
@@ -626,7 +620,7 @@ token:
 ; keep it
     ldy toin + 1
     dey
-    sta tib, y  ; store size ahead, as counted string 
+    sta tib, y  ; store size for counted string 
 
 ; setup token, pass pointer
     sty snd + 0
@@ -778,8 +772,10 @@ spull1:
     jmp spull
 
 ;---------------------------------------------------------------------
+;
 ; primitives, a address, c byte ascii, w signed word, u unsigned word 
 ;
+;---------------------------------------------------------------------
 ; ( -- c )
 def_word "key", "key", 0
     jsr getchar
@@ -868,26 +864,23 @@ fetchw:
 ; ( -- rp )
 def_word "rp@", "rpat", 0
     ldy #(rpt - nil)
-    jmp both
+    jmp this
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
     ldy #(spt - nil)
-    jmp both
+    jmp this
 
 ;---------------------------------------------------------------------
 ; ( -- mode )
 def_word "s@", "stat", 0 
     ldy #(mode - nil)
+    jmp this
 
 ;---------------------------------------------------------------------
 ; generic 
 ;
-both:
-    lda nil + 0, y
-    sta fst + 0
-    lda nil + 1, y
 only:
     sta fst + 1
 keep:
@@ -919,13 +912,6 @@ finish:
     
     ldy #(fst - nil)
     jsr comma
-
-    lda last+0
-    sta fst+0
-    lda last+1
-    sta fst+1
-
-    ; jsr showord
 
     jmp unnest
 
@@ -977,6 +963,9 @@ create:
 ;
 ; using MITC, minimum indirect thread code
 ;
+
+;---------------------------------------------------------------------
+; R( a -- ) drop top of return stack
 def_word "exit", "exit", 0
     shows ' '
     shows 'V'
@@ -1009,7 +998,6 @@ next:
 
 ; historical JMP @(W)+
     
-
 pick:
 ; minimal test, no words at page 0
     lda wrk + 1

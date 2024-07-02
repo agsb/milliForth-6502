@@ -106,8 +106,8 @@ hcount .set hcount + 1
 .byte .strlen(name) + flag + 0 ; nice trick !
 .byte name
 makelabel "", label
-; need for M.I.T.C.
-.word 0
+; only need in M.I.T.C.
+; .word 0
 .endmacro
 
 ;----------------------------------------------------------------------
@@ -188,7 +188,7 @@ lnk:    .word $0 ; link
 wrk:    .word $0 ; work
 
 snd:    .word $0 ; second
-tmp:    .word $0 ; third
+trd:    .word $0 ; third
 
 * = $F0
 
@@ -277,9 +277,6 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 
-; parse is a headless primitive, need a 0x0
-parse_: 
-    .word 0
 
 ; like a begin-again
 parse:
@@ -369,13 +366,18 @@ compile:
 
     jsr comma
 
-    jmp unnest
+; ???
+    jmp next
 
 execute:
 
     jsr rpush
 
-    jmp unnest
+; ???
+    jmp next
+
+parse_: 
+    .word parse
 
 ;---------------------------------------------------------------------
 okeys:
@@ -631,7 +633,7 @@ spulltos:
     ldy #(tos - nil)
     jmp spull
 
-spush1:
+spushtos:
     ldy #(tos - nil)
     jmp spush
 
@@ -642,7 +644,7 @@ spush1:
 def_word "key", "key", 0
     jsr getchar
     sta tos + 0
-    jmp unnest
+    jmp next
     
 ;---------------------------------------------------------------------
 ; ( c -- )
@@ -650,7 +652,7 @@ def_word "emit", "emit", 0
     lda tos + 0
     jsr putchar
     jsr spulltos
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; shift right
@@ -658,7 +660,7 @@ def_word "emit", "emit", 0
 def_word "2/", "asr", 0
     lsr tos + 1
     ror tos + 0
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
@@ -671,7 +673,7 @@ def_word "+", "plus", 0
     lda tos + 1
     adc wrk + 1
     sta tos + 1
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
@@ -685,7 +687,7 @@ def_word "nand", "nand", 0
     and wrk + 1
     eor #$FF
     sta tos + 1
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( 0 -- $FFFF) | ( n -- $0000)
@@ -701,7 +703,7 @@ istrue:
 rest:
     sta tos + 0
     sta tos + 1
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( w a -- ) ; [a] = w
@@ -712,7 +714,7 @@ storew:
     ldy #(wrk - nil) 
     jsr copyinto
     jsr spulltos
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
@@ -725,37 +727,35 @@ fetchw:
     sta tos + 0
     lda wrk + 1
     sta tos + 1
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( -- rp )
 def_word "rp@", "rpat", 0
-    jsr spush1
     ldy #(rpt - nil)
     jmp both
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
-    jsr spush1
     ldy #(spt - nil)
     jmp both
 
 ;---------------------------------------------------------------------
 ; ( -- mode )
 def_word "s@", "stat", 0 
-    jsr spush1
     ldy #(mode - nil)
 
 ;---------------------------------------------------------------------
 ; generic 
 ;
 both:
+    jsr spushtos
     lda nil + 0, y
     sta tos + 0
     lda nil + 1, y
     sta tos + 1
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -768,13 +768,22 @@ def_word ";", "semis", FLAG_IMM
     lda #0
     sta mode + 0
 
-; compound words must ends with exit
-    lda #<exit
-    sta wrk + 0
-    lda #>exit
-    sta wrk + 1
+; compound words ends
+    ldy #0
 
-    jmp compile
+    lda #4C ; isa code for jmp
+    sta (here), y
+    iny
+
+    lda #<exit
+    sta (here), y
+    iny
+    
+    lda #>exit
+    sta (here), y
+    iny
+
+    jmp uphere
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
@@ -800,17 +809,33 @@ create:
 @loop:    
     lda (snd), y
     cmp #32    ; stops at space
-    beq @ends
+    beq ends
     sta (here), y
     iny
     bne @loop
-@ends:
+
+;---------------------------------------------------------------------
+; compound words start 
+    ldy #0
+    
+    lda #4C ; isa code for jmp
+    sta (here), y
+    iny
+
+    lda #<docol
+    sta (here), y
+    iny
+    
+    lda #>docol
+    sta (here), y
+    iny
+
+uphere:
 ; update here 
     tya
     ldx #(here - nil)
     jsr addwx
 
-; done
     jmp unnest
 
 ;---------------------------------------------------------------------
@@ -843,10 +868,7 @@ next:
     ldx #(lnk - nil)
     jsr copyfrom
 
-pick:
-; minimal test, no words at page 0
-    lda wrk + 1
-    beq jump
+    jmp (wrk)
 
 nest:
 ; push, *rp = lnk, rp -=2
