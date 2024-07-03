@@ -49,7 +49,6 @@
 ;
 ;       no multiuser, no multitask, no faster;
 ;
-;
 ;   For 6502:
 ;
 ;       is a 8-bit processor with 16-bit address space;
@@ -273,15 +272,12 @@ debug = 1
 
 .endmacro
 
-
 .endif
 ;----------------------------------------------------------------------
-
 
 hcount .set 0
 
 H0000 = 0
-
 
 ;----------------------------------------------------------------------
 ; alias
@@ -295,7 +291,7 @@ FLAG_IMM = 1<<7
 ; "all in" page $200
 
 ; terminal input buffer, 80 bytes, forward
-; note: getline, token, skip, scan depends on page boundary
+; getline, token, skip, scan, depends on page boundary
 tib = $0200
 
 tib_end = $40
@@ -320,10 +316,9 @@ rp0 = $FF
 nil:    .word $0 ; reserved reference offset
 spt:    .word $0 ; holds data stack base,
 rpt:    .word $0 ; holds return stack base
+ipt:    .word $0 ; holds instruction pointer
 
-lnk:    .word $0 ; link
 wrk:    .word $0 ; work
-
 fst:    .word $0 ; first
 snd:    .word $0 ; second
 trd:    .word $0 ; third
@@ -395,6 +390,7 @@ quit:
     ldy #>tib
     sty spt + 1
     sty rpt + 1
+
     ldy #<sp0
     sty spt + 0
     ldy #<rp0
@@ -422,11 +418,9 @@ parse_:
 parse:
 
     lda #>parse_
-    sta fst + 1
+    sta ipt + 1
     lda #<parse_
-    sta fst + 0
-    ldy #(fst - nil)
-    jsr rpush
+    sta ipt + 0
 
 ; get a token
     jsr token
@@ -528,8 +522,6 @@ execute:
 
     jsr showsts
 
-    jsr rpush
-
     jmp unnest
 
 ;---------------------------------------------------------------------
@@ -598,6 +590,7 @@ getline:
 token:
 ; last position on tib
     ldy toin + 0
+
 @skip:
 ; skip spaces
     jsr try
@@ -605,6 +598,7 @@ token:
 ; keep start 
     dey
     sty toin + 1    
+
 @scan:
 ; scan spaces
     jsr try
@@ -612,6 +606,7 @@ token:
 ; keep stop 
     dey
     sty toin + 0 
+
 @done:
 ; sizeof
     tya
@@ -788,7 +783,7 @@ def_word "emit", "emit", 0
     jsr spull1
     lda fst + 0
     jsr putchar
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; shift right
@@ -848,7 +843,7 @@ storew:
     ldx #(snd - nil) 
     ldy #(fst - nil) 
     jsr copyinto
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
@@ -887,7 +882,7 @@ keep:
     ldy #(fst - nil)
 this:
     jsr spush
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -913,7 +908,7 @@ finish:
     ldy #(fst - nil)
     jsr comma
 
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
@@ -953,11 +948,11 @@ create:
     jsr addwx
 
 ; done
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 ; NON classic direct thread code
-;   lnk is IP, wrk is W
+;   ipt is IP, wrk is W
 ;
 ; for reference: nest is docol, unnest is semis;
 ;
@@ -970,9 +965,9 @@ def_word "exit", "exit", 0
     shows ' '
     shows 'V'
     
-    ldx #(rpt - nil)
-    jsr incwx
-    jsr incwx
+    ;ldx #(rpt - nil)
+    ;jsr incwx
+    ;jsr incwx
 
     jsr showsts
 
@@ -982,18 +977,18 @@ unnest:
     shows ' '
     shows 'U'
     
-; pull, lnk = *(rpt), rpt += 2 
-    ldy #(lnk - nil)
+; ipt = (rpt), rpt += 2 
+    ldy #(ipt - nil)
     jsr rpull
 
     shows ' '
 
-    showbulk lnk 
+    showbulk ipt 
 
 next:
-; wrk = (lnk) ; lnk = lnk + 2
+; wrk = (ipt) ; ipt += 2
     ldy #(wrk - nil)
-    ldx #(lnk - nil)
+    ldx #(ipt - nil)
     jsr copyfrom
 
 ; historical JMP @(W)+
@@ -1008,17 +1003,18 @@ nest:
     shows 'N'
     shows ' '
 
-    showbulk lnk 
+    showbulk ipt 
     
-; push, *rp = lnk, rp -=2
-    ldy #(lnk - nil)
+; push, *rp = ipt, rp -=2
+    ldy #(ipt - nil)
     jsr rpush
 
 link:
     lda wrk + 0
-    sta lnk + 0
+    sta ipt + 0
     lda wrk + 1
-    sta lnk + 1
+    sta ipt + 1
+
     jmp next
 
 ; wrk is NULL
@@ -1029,9 +1025,18 @@ jump:
     
     shows ' '
 
-    showbulk lnk 
+    showbulk ipt 
 
-    jmp (lnk)
+    lda ipt + 0
+    sta wrk + 0
+    lda ipt + 1
+    sta wrk + 1
+
+    ldx #(ipt - nil)
+    jsr incwx
+    jsr incwx
+
+    jmp (wrk)
 
 ends:
 
