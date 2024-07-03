@@ -1031,9 +1031,8 @@ link:
     lda ipt + 1
     sta wrk + 1
 
-    ldx #(ipt - nil)
-    jsr incwx
-    jsr incwx
+    ; ldy #(ipt - nil)
+    jsr rpull
 
 jump:
     jmp wrk
