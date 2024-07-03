@@ -508,7 +508,7 @@ compile:
 
     jsr comma
 
-    jmp unnest
+    jmp next
 
 execute:
 
@@ -522,7 +522,7 @@ execute:
 
     jsr showsts
 
-    jmp unnest
+    jmp next
 
 ;---------------------------------------------------------------------
 error:
