@@ -996,7 +996,7 @@ next:
 pick:
 ; minimal test, no words at page 0
     lda wrk + 1
-    beq jump
+    beq link
 
 nest:
     shows ' '
@@ -1009,7 +1009,6 @@ nest:
     ldy #(ipt - nil)
     jsr rpush
 
-link:
     lda wrk + 0
     sta ipt + 0
     lda wrk + 1
@@ -1018,7 +1017,7 @@ link:
     jmp next
 
 ; wrk is NULL
-jump:
+link:
     shows ' '
 
     shows 'J'
@@ -1036,7 +1035,8 @@ jump:
     jsr incwx
     jsr incwx
 
-    jmp (wrk)
+jump:
+    jmp wrk
 
 ends:
 
