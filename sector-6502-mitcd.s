@@ -285,7 +285,7 @@ H0000 = 0
 ; cell size, two bytes, 16-bit
 CELL = 2    
 
-; highlander, immediate flag
+; highlander, immediate flag, also execute state
 FLAG_IMM = 1<<7
 
 ; "all in" page $200
@@ -314,9 +314,9 @@ rp0 = $FF
 ; default pseudo registers
 
 nil:    .word $0 ; reserved reference offset
-spt:    .word $0 ; holds data stack base,
-rpt:    .word $0 ; holds return stack base
-ipt:    .word $0 ; holds instruction pointer
+spt:    .word $0 ; data stack base,
+rpt:    .word $0 ; return stack base
+ipt:    .word $0 ; instruction pointer
 
 wrk:    .word $0 ; work
 fst:    .word $0 ; first
@@ -333,10 +333,10 @@ last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell
 
 ; future expansion
-back:   .word $0 ; hold here while compile
-base:   .word $0 ; base radix, define before use
-head:   .word $0 ; pointer to heap forward
-tail:   .word $0 ; pointer to heap backward
+back:   .word $0 ; hold 'here while compile
+base:   .word $0 ; base radix
+head:   .word $0 ; heap forward, also DP
+tail:   .word $0 ; heap backward
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -487,6 +487,11 @@ find:
 eval:
 ;  wherever 
     ldy #(fst - nil)
+
+    ; if execute is FLAG_IMM
+    ; lda mode + 1
+    ; ora mode + 0
+    ; bmi execute
 
 ; executing ? if == \0
     lda mode + 0   
