@@ -187,7 +187,7 @@ fst:    .word $0 ; first
 snd:    .word $0 ; second
 trd:    .word $0 ; third
 
-* = $F0
+; * = $F0
 
 ; default Forth variables, order matters for HELLO.forth !
 
@@ -363,11 +363,15 @@ debug = 1
 @loop_shownils:
     shows ' '
     
-    lda nil+1, y
-    jsr puthex
     iny
-    lda nil+0, y
+    lda nil, y
     jsr puthex
+    dey
+    lda nil, y
+    jsr puthex
+    
+    iny
+    
     iny
 
     cpy #32
@@ -1179,13 +1183,16 @@ def_word "key", "key", 0
     jsr spush1
     jsr getchar
     sta tos + 0
+    ; tos + 1 unchanged
     jmp next
     
 ;---------------------------------------------------------------------
 ; ( c -- )
 def_word "emit", "emit", 0
+    ; tos + 1 unchanged
     lda tos + 0
     jsr putchar
+this:    
     jsr spull1
     jmp next
 
@@ -1245,8 +1252,7 @@ storew:
     ldx #(tos) 
     ldy #(wrk) 
     jsr copyinto
-    jsr spull1
-    jmp next
+    jmp this
 
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
@@ -1294,11 +1300,11 @@ def_word ";", "semis", FLAG_IMM
 ; compound words must ends with exit
 finish:
     lda #<exit
-    sta fst + 0
+    sta wrk + 0
     lda #>exit
-    sta fst + 1
+    sta wrk + 1
     
-    ldy #(fst)
+    ldy #(wrk)
     jsr comma
 
     jmp next
@@ -1358,10 +1364,6 @@ def_word "exit", "exit", 0
     shows ' '
     shows 'V'
     
-    ;ldx #(rpt)
-    ;jsr incwx
-    ;jsr incwx
-
     jsr showsts
 
 ; heart beat:
@@ -1370,7 +1372,7 @@ unnest:
     shows ' '
     shows 'U'
     
-; ipt = (rpt), rpt += 2 
+; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
     jsr rpull
 
@@ -1380,8 +1382,8 @@ unnest:
 
 next:
 ; wrk = (ipt) ; ipt += 2
-    ldy #(wrk)
     ldx #(ipt)
+    ldy #(wrk)
     jsr copyfrom
 
 ; historical JMP @(W)+
@@ -1424,7 +1426,8 @@ link:
     lda ipt + 1
     sta wrk + 1
 
-    ; ldy #(ipt)
+; pull, ipt = (rpt), rpt += 2 
+    ldy #(ipt)
     jsr rpull
 
 jump:
