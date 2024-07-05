@@ -113,20 +113,12 @@ makelabel "", label
 /*
 NOTES:
 
-03/07/2024
-
-    still in debug mode. 
-    
-    someday will wipe all 'nil' 
-
 26/06/2024
 
    In debug mode, It's still a mess, don't get lost !!!
 
     something wrong at end of execution of compound words, 
-    
     exit should break the sequence of references
-    
     the nest and unnest for deep-search seems work well
 
     guilty by abuse of pla/pha 
@@ -430,8 +422,6 @@ parse:
     lda #<parse_
     sta ipt + 0
 
-    shownils
-
 ; get a token
     jsr token
 
@@ -601,7 +591,7 @@ getline:
     sta toin + 0
 
 ;---------------------------------------------------------------------
-; in place. 
+; in place. TIB changed every token
 token:
 ; last position on tib
     ldy toin + 0
@@ -980,6 +970,10 @@ def_word "exit", "exit", 0
     shows ' '
     shows 'V'
     
+    ;ldx #(rpt - nil)
+    ;jsr incwx
+    ;jsr incwx
+
     jsr showsts
 
 ; heart beat:
@@ -1002,6 +996,8 @@ next:
     ldx #(ipt - nil)
     jsr copyfrom
 
+; historical JMP @(W)+
+    
 pick:
 ; minimal test, no words at page 0
     lda wrk + 1
@@ -1040,7 +1036,7 @@ link:
     lda ipt + 1
     sta wrk + 1
 
-    ldy #(ipt - nil)
+    ; ldy #(ipt - nil)
     jsr rpull
 
 jump:

@@ -194,7 +194,7 @@ trd:    .word $0 ; third
 mode:   .word $0 ; state, only lsb used
 toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
-here:   .word $0 ; next free cell
+here:   .word $0 ; next free cell in heap dictionary, aka dpt
 
 ; future expansion
 back:   .word $0 ; hold 'here while compile
@@ -353,7 +353,8 @@ debug = 1
 .endmacro
 
 ;----------------------------------------------------------------------
-.macro shownils
+shownils:
+
     pha
     tya
     pha
@@ -386,14 +387,14 @@ debug = 1
     tay
     pla
 
-.endmacro
+    rts
 
 ;---------------------------------------------------------------------
 showsts:
 
     shows 10
     
-    shownils
+    jsr shownils
 
     jsr showrs
 
@@ -792,6 +793,52 @@ quit:
     .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
+
+teste:
+
+    shows '0'
+    jsr showsts
+
+    lda #21
+    sta tos+0
+
+    lda #43
+    sta tos+1
+
+    shows '1'
+
+    ; jsr showsts
+
+    jsr spush1
+
+    jsr spush1
+
+    jsr spush1
+
+    shows '2'
+    ; jsr showsts
+
+    jsr spull1
+
+    jsr spull1
+
+    jsr spull1
+
+    shows '3'
+    ; jsr showsts
+
+    jsr rpush1
+
+    jsr rpush1
+
+    jsr rpush1
+    
+    shows '4'
+    ;jsr showsts
+
+    jmp 0000
+
+;---------------------------------------------------------------------
 ; the outer loop
 
 ; parse is a headless primitive, need a 0x0
@@ -1163,6 +1210,16 @@ rets:
 ;
 
 ;---------------------------------------------------------------------
+rpull1:
+    ldy #(tos)
+    jmp rpull
+
+;---------------------------------------------------------------------
+rpush1:
+    ldy #(tos)
+    jmp rpush
+
+;---------------------------------------------------------------------
 spull2:
     ldy #(wrk)
     jmp spull
@@ -1178,13 +1235,11 @@ spush1:
     jmp spush
 
 ;---------------------------------------------------------------------
-moves:
-    jsr spush1
-
 copys:
     lda 0, y
     sta tos + 0
     lda 1, y
+
 keeps:
     sta tos + 1
     jmp next
@@ -1282,22 +1337,23 @@ fetchw:
 ;---------------------------------------------------------------------
 ; ( -- rp )
 def_word "rp@", "rpat", 0
-    ldy #(spt)
-    jmp moves
+    jsr spush1
+    ldy #(rpt)
+    jmp copys
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
     jsr spush1
     ldy #(spt)
-    jmp moves
+    jmp copys
 
 ;---------------------------------------------------------------------
 ; ( -- mode )
 def_word "s@", "stat", 0 
     jsr spush1
     ldy #(mode)
-    jmp moves
+    jmp copys
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
