@@ -279,17 +279,14 @@ debug = 1
 ;---------------------------------------------------------------------
 .macro showrefer reg
     pha
-    lda (reg), y
-    sta wrk + 0
-    iny
-    lda (reg), y
-    sta wrk + 1
     iny 
-
-    lda wrk + 1
+    lda (reg), y
     jsr puthex
-    lda wrk + 0
+    dey
+    lda (reg), y
     jsr puthex
+    iny 
+    iny 
     pla
 
 .endmacro
@@ -358,10 +355,12 @@ shownils:
     pha
     tya
     pha
+    
     ldy #0
+    
     shows '('
 
-@loop_shownils:
+@loop:
     shows ' '
     
     ; MSB
@@ -379,7 +378,7 @@ shownils:
     iny
 
     cpy #32
-    bne @loop_shownils
+    bne @loop
 
     shows ' '
     shows ')'
@@ -396,11 +395,57 @@ showsts:
     
     jsr shownils
 
-    jsr showrs
+    jsr showrp
 
     jsr showsp
 
     jsr showdic
+
+    rts
+
+;----------------------------------------------------------------------
+; show compiled list address
+showlist:
+
+    shows ' '
+
+    shows '['
+    
+@loop:
+    shows ' '
+
+    lda (fst), y
+    sta wrk + 0
+    iny 
+
+    lda (fst), y
+    sta wrk + 1
+    iny 
+
+    jsr puthex
+    lda wrk + 0
+    jsr puthex
+    
+    lda wrk + 1
+
+; ends ?
+
+; was a null ? 
+    beq @ends
+
+; was a exit ?
+    cmp #>exit
+    bne @loop
+
+    lda wrk + 0
+    cmp #<exit
+    bne @loop
+
+@ends:
+
+    shows ' '
+
+    shows ']'
 
     rts
 
@@ -427,40 +472,6 @@ showname:
     bne @loop
 
     iny
-
-    rts
-
-;----------------------------------------------------------------------
-; show compiled list address
-showlist:
-
-    shows ' '
-
-    shows '['
-    
-@loop:
-    shows ' '
-
-    showrefer fst
-
-; was a null ? no code in page 0 !
-    lda wrk + 1
-    beq @ends
-
-; was a exit ?
-    lda wrk + 1
-    cmp #>exit
-    bne @loop
-
-    lda wrk + 0
-    cmp #<exit
-    bne @loop
-
-@ends:
-
-    shows ' '
-
-    shows ']'
 
     rts
 
@@ -537,7 +548,7 @@ showdic:
     ldy #(trd) ; into
     jsr copyfrom
 
-    shows ' '
+    shows '_'
 
     showbulk trd
 
@@ -643,7 +654,7 @@ dumph:
     rts
     
 ;----------------------------------------------------------------------
-showrs:
+showrp:
     
     saveregs
 
@@ -719,7 +730,7 @@ showsp:
     rts
 
 ;----------------------------------------------------------------------
-; showsp terminal input buffer
+; terminal input buffer
 showtib:
     lda #'_'
     jsr putchar
@@ -790,6 +801,8 @@ quit:
 ; mode is 'interpret' == \0
     sty mode + 0
     
+    jmp parse
+
     .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
@@ -797,46 +810,40 @@ quit:
 teste:
 
     shows '0'
+
     jsr showsts
 
-    lda #21
+    lda #$21
     sta tos+0
 
-    lda #43
+    lda #$43
     sta tos+1
 
     shows '1'
 
-    ; jsr showsts
+    jsr showsts
 
-    jsr spush1
-
-    jsr spush1
-
-    jsr spush1
+    ldx #(tos)
 
     shows '2'
-    ; jsr showsts
 
-    jsr spull1
+    jsr incwx
 
-    jsr spull1
-
-    jsr spull1
+    jsr showsts
 
     shows '3'
-    ; jsr showsts
+    
+    jsr decwx
 
-    jsr rpush1
-
-    jsr rpush1
-
-    jsr rpush1
+    jsr showsts
     
     shows '4'
-    ;jsr showsts
 
-    jmp 0000
+    inc tos+0
+
+    jsr showsts
+
+   ; jmp 0000
 
 ;---------------------------------------------------------------------
 ; the outer loop
@@ -852,6 +859,9 @@ parse:
     sta ipt + 1
     lda #<parse_
     sta ipt + 0
+
+    ldy #(ipt)
+    jsr rpush 
 
 ; get a token
     jsr token
