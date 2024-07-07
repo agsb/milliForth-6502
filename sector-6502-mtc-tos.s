@@ -308,6 +308,7 @@ debug = 1
     pha
     tya
     pha
+
     ldy #0
 @loop_savenils:
     lda $00E0, y
@@ -315,6 +316,7 @@ debug = 1
     iny
     cpy #32
     bne @loop_savenils
+
     pla
     tay
     pla
@@ -326,6 +328,7 @@ debug = 1
     pha
     tya
     pha
+
     ldy #0
 @loop_loadnils:
     lda $00C0, y
@@ -333,6 +336,7 @@ debug = 1
     iny
     cpy #32
     bne @loop_loadnils
+
     pla
     tay
     pla
@@ -372,6 +376,7 @@ shownils:
 
     shows ' '
     shows ')'
+
     pla
     tay
     pla
@@ -380,6 +385,10 @@ shownils:
 
 ;---------------------------------------------------------------------
 showsts:
+
+    saveregs
+
+    savenils
 
     shows 10
     
@@ -390,6 +399,10 @@ showsts:
     jsr showsp
 
     jsr showdic
+
+    loadnils
+
+    loadregs
 
     rts
 
@@ -499,10 +512,6 @@ showord:
 ;---------------------------------------------------------------------
 showdic:
 
-    saveregs
-
-    savenils
-
     shows 10
 
     shows '{'
@@ -553,10 +562,6 @@ showdic:
     shows '}'
 
     shows 10
-
-    loadnils
-
-    loadregs
 
     rts
 
@@ -740,6 +745,9 @@ showtib:
 ;----------------------------------------------------------------------
 
 cold:
+;   disable interrupts
+    sei
+
 ;   clear BCD
     cld
 
@@ -789,49 +797,7 @@ quit:
 ; mode is 'interpret' == \0
     sty mode + 0
     
-    jmp parse
-
     .byte $2c   ; mask next two bytes, nice trick !
-
-;---------------------------------------------------------------------
-
-teste:
-
-    shows '0'
-
-    jsr showsts
-
-    lda #$21
-    sta tos+0
-
-    lda #$43
-    sta tos+1
-
-    shows '1'
-
-    jsr showsts
-
-    ldx #(tos)
-
-    shows '2'
-
-    jsr incwx
-
-    jsr showsts
-
-    shows '3'
-    
-    jsr decwx
-
-    jsr showsts
-    
-    shows '4'
-
-    inc tos+0
-
-    jsr showsts
-
-   ; jmp 0000
 
 ;---------------------------------------------------------------------
 ; the outer loop
@@ -843,6 +809,7 @@ parse_:
 ; like a begin-again, false nest
 parse:
 
+
     lda #>parse_
     sta ipt + 1
     lda #<parse_
@@ -851,19 +818,12 @@ parse:
     ldy #(ipt)
     jsr rpush 
 
+    showbulk ipt 
+
     shows '~'
 
 ; get a token
     jsr token
-
-    jmp find 
-
-    lda snd + 0
-    sta fst + 0
-    lda snd + 1
-    sta fst + 1
-
-    jsr putstr
 
 find:
 ; load last
@@ -1215,9 +1175,9 @@ rets:
     rts
 
 ;---------------------------------------------------------------------
+;
 ; generics 
 ;
-
 ;---------------------------------------------------------------------
 rpull1:
     ldy #(tos)
@@ -1229,11 +1189,6 @@ rpush1:
     jmp rpush
 
 ;---------------------------------------------------------------------
-spull2:
-    ldy #(wrk)
-    jmp spull
-
-;---------------------------------------------------------------------
 spull1:
     ldy #(tos)
     jmp spull
@@ -1242,6 +1197,11 @@ spull1:
 spush1:
     ldy #(tos)
     jmp spush
+
+;---------------------------------------------------------------------
+spull2:
+    ldy #(wrk)
+    jmp spull
 
 ;---------------------------------------------------------------------
 copys:
@@ -1451,12 +1411,11 @@ def_word "exit", "exit", 0
 unnest:
     shows ' '
     shows 'U'
+    shows ' '
     
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
     jsr rpull
-
-    shows ' '
 
     showbulk ipt 
 
@@ -1477,8 +1436,6 @@ nest:
     shows ' '
     shows 'N'
     shows ' '
-
-    showbulk ipt 
     
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
@@ -1489,19 +1446,21 @@ nest:
     lda wrk + 1
     sta ipt + 1
 
+    showbulk ipt 
+
     jmp next
 
 ; wrk is NULL
 link:
     shows ' '
-
     shows 'J'
-    
     shows ' '
 
     showbulk ipt 
 
-    lda ipt + 0
+; prepare for jump
+
+lda ipt + 0
     sta wrk + 0
     lda ipt + 1
     sta wrk + 1
@@ -1510,12 +1469,9 @@ link:
     ldy #(ipt)
     jsr rpull
 
-    jsr showsts
-
 jump:
-    jmp wrk
 
-ends:
+    jmp (wrk)
 
 ;----------------------------------------------------------------------
 ; print a 8-bit HEX
@@ -1536,9 +1492,6 @@ puthex:
     adc #$06
 @ends:
     jmp putchar
-
-; for anything above is not a primitive
-.align $100
 
 ;----------------------------------------------------------------------
 ; print a counted string
