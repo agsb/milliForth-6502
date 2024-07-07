@@ -548,11 +548,9 @@ showdic:
     ldy #(trd) ; into
     jsr copyfrom
 
-    shows '_'
+    shows ' '
 
     showbulk trd
-
-    shows ' '
 
     jsr showord
 
@@ -863,6 +861,8 @@ parse:
     ldy #(ipt)
     jsr rpush 
 
+    shows '~'
+
 ; get a token
     jsr token
 
@@ -1032,7 +1032,7 @@ getline:
     sta toin + 0
 
 ;---------------------------------------------------------------------
-; in place. TIB changed every token
+; in place every token
 token:
 ; last position on tib
     ldy toin + 0
@@ -1410,7 +1410,7 @@ create:
     ldy #(last)
     jsr comma
 
-; get token
+; get following token
     jsr token
 
 ; copy size and name
@@ -1439,7 +1439,6 @@ create:
 ;
 ; using MITC, minimum indirect thread code
 ;
-
 ;---------------------------------------------------------------------
 ; R( a -- ) drop top of return stack
 def_word "exit", "exit", 0
