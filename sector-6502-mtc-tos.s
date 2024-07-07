@@ -31,7 +31,7 @@
 ;
 ;   Remarks:
 ;
-;       this code uses Minimal Indirect Thread Code, no DTC.
+;       this code uses Minimal (Indirect?) Thread Code, no DTC.
 ;
 ;       if PAD not used, data stack could be 52 cells; 
 ;
@@ -47,19 +47,23 @@
 ;
 ;       only 7-bit ASCII characters, plus \n, no controls;
 ;
+;       words are case-sensitivy no longer than 15 characters;
+;
 ;       no multiuser, no multitask, no faster;
 ;
 ;   For 6502:
 ;
 ;       is a 8-bit processor with 16-bit address space;
 ;
-;       in address space, most significant byte is the page count;
+;       the most significant byte is the page count;
 ;
 ;       page zero and page one hardware reserved;
 ;
 ;       hardware stack not used for this Forth;
 ;
-;       page zero is used as pseudo registers
+;       page zero is used as pseudo registers;
+;
+;       do not mess with two underscore variables;
 ;
 ;   For stacks:
 ;
@@ -75,7 +79,8 @@
 ;   [page0][page1][page2][core ... forth dictionary ...here...]
 ;   
 ;   at page2: 
-;   [tib 40 cells>] [<spt 36 cells] [pad 16 cells>] [<rpt 36 cells]
+;
+;   $00|tib> ... <spt..sp0|$98|pad> ... <rpt..rp0|$FF
 ;
 ;----------------------------------------------------------------------
 ;
@@ -115,21 +120,6 @@ makelabel "", label
 /*
 NOTES:
 
-04/07/2024
-
-    erase all indirect references for offset pseudo registers
-
-    using TOS in a pseudo register
-
-26/06/2024
-
-   In debug mode, It's still a mess, don't get lost !!!
-
-    something wrong at end of execution of compound words, 
-    exit should break the sequence of references
-    the nest and unnest for deep-search seems work well
-
-    guilty by abuse of pla/pha 
 
 */
 
@@ -866,6 +856,15 @@ parse:
 ; get a token
     jsr token
 
+    jmp find 
+
+    lda snd + 0
+    sta fst + 0
+    lda snd + 1
+    sta fst + 1
+
+    jsr putstr
+
 find:
 ; load last
     lda last + 1
@@ -1502,8 +1501,6 @@ link:
 
     showbulk ipt 
 
-    jsr showsts
-
     lda ipt + 0
     sta wrk + 0
     lda ipt + 1
@@ -1540,6 +1537,40 @@ puthex:
 @ends:
     jmp putchar
 
+; for anything above is not a primitive
+.align $100
+
+;----------------------------------------------------------------------
+; print a counted string
+putstr:
+    php
+    pha
+    tya
+    pha
+    txa
+    pha
+
+
+    ldy #0
+    lda (fst), y
+    tax
+@loop:
+    iny 
+    lda (fst), y
+    jsr putchar
+    dex
+    bne @loop
+    
+    pla
+    tax
+    pla
+    tay
+    pla
+    plp
+
+    rts
+
+;----------------------------------------------------------------------
 ; for anything above is not a primitive
 .align $100
 
