@@ -1,1 +1,2 @@
-sh mk x sector-6502-mitcd
+    rm *.obj *.dep *.map *.lbl *.lbs *.lbf 2> err 
+    rm *.ram *.rom *.out *.bhx *.asm *.lst 2> err

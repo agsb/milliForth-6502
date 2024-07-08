@@ -35,7 +35,7 @@
 ;
 ;       if PAD not used, data stack could be 52 cells; 
 ;
-;       words must be between spaces, before and after, must;
+;       words must be between spaces, before and after;
 ;
 ;       no line wrap then use a maximum of 72 bytes of tib;
 ;
@@ -188,7 +188,8 @@ here:   .word $0 ; next free cell in heap dictionary, aka dpt
 
 ; future expansion
 back:   .word $0 ; hold 'here while compile
-base:   .word $0 ; base radix
+tout:   .word $0 ; next token in tib
+
 head:   .word $0 ; heap forward, also DP
 tail:   .word $0 ; heap backward
 
@@ -1425,10 +1426,23 @@ next:
     ldy #(wrk)
     jsr copyfrom
 
-; historical JMP @(W)+
     
 pick:
-; minimal test, no words at page 0
+;
+; historical JMP @(W)++
+; case indirect thread code, 
+;   ldx #(wrk)
+;   ldy #(snd)
+;   jsr copyfrom
+;
+;   lda snd + 1
+;   cmp #>init
+;   bmi link
+;
+; historical JMP (W)
+; case direct thread code
+;
+; minimal test, no words at page 0, 
     lda wrk + 1
     beq link
 
