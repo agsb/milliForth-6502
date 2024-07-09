@@ -120,9 +120,9 @@ makelabel "", label
 /*
 NOTES:
 
+    not finished.
 
 */
-
 ;----------------------------------------------------------------------
 
 hcount .set 0
@@ -771,12 +771,6 @@ cold:
     lda #<init
     sta here + 0
 
-; self pointer
-;    lda #>nil
-;    sta nil + 1
-;    lda #<nil
-;    sta nil + 0
-
 ;---------------------------------------------------------------------
 quit:
 ; reset stacks
@@ -810,7 +804,6 @@ parse_:
 ; like a begin-again, false nest
 parse:
 
-
     lda #>parse_
     sta ipt + 1
     lda #<parse_
@@ -818,8 +811,6 @@ parse:
 
     ldy #(ipt)
     jsr rpush 
-
-    showbulk ipt 
 
     shows '~'
 
@@ -849,6 +840,9 @@ find:
     lda trd + 1
     sta fst + 1
 
+    shows ' '
+    showbulk ipt 
+
 ; update link 
     ldx #(fst) ; from 
     ldy #(trd) ; into
@@ -864,6 +858,7 @@ find:
 ; compare chars
 @equal:
     lda (snd), y
+
 ; space ends
     cmp #32  
     beq @done
@@ -905,11 +900,8 @@ eval:
 compile:
 
     shows ' '
-
     shows 'C'
-
     shows ' '
-
     showbulk fst
 
     jsr comma
@@ -919,11 +911,8 @@ compile:
 execute:
 
     shows ' '
-
     shows 'E'
-
     shows ' '
-
     showbulk fst
 
     jsr showsts
@@ -1219,18 +1208,16 @@ keeps:
 ; primitives, a address, c byte ascii, w signed word, u unsigned word 
 ;
 ;---------------------------------------------------------------------
-; ( -- c )
+; ( -- c ) ; tos + 1 unchanged
 def_word "key", "key", 0
     jsr spush1
     jsr getchar
     sta tos + 0
-    ; tos + 1 unchanged
     jmp next
     
 ;---------------------------------------------------------------------
-; ( c -- )
+; ( c -- ) ; tos + 1 unchanged
 def_word "emit", "emit", 0
-    ; tos + 1 unchanged
     lda tos + 0
     jsr putchar
 this:    
@@ -1238,9 +1225,12 @@ this:
     jmp next
 
 ;---------------------------------------------------------------------
-; shift right
-; ( w -- w/2 )
-def_word "2/", "asr", 0
+; ( w -- w/2 ) ; shift right
+def_word "2/", "shr", 0
+    ; asr 
+    ;lda tos + 1
+    ;asl a
+    ;ror tos + 1
     lsr tos + 1
     ror tos + 0
     jmp next
@@ -1338,6 +1328,7 @@ def_word ";", "semis", FLAG_IMM
 
     shows ' '
     shows 'K'
+    shows ' '
 
 ; compound words must ends with exit
 finish:
@@ -1364,6 +1355,7 @@ def_word ":", "colon", 0
 
     shows ' '
     shows 'W'
+    shows ' '
 
 create:
 ; copy last into (here)
@@ -1382,6 +1374,7 @@ create:
     sta (here), y
     iny
     bne @loop
+
 @ends:
 ; update here 
     tya
@@ -1405,8 +1398,6 @@ def_word "exit", "exit", 0
     shows ' '
     shows 'V'
     
-    jsr showsts
-
 ; heart beat:
 
 unnest:
@@ -1426,22 +1417,7 @@ next:
     ldy #(wrk)
     jsr copyfrom
 
-    
 pick:
-;
-; historical JMP @(W)++
-; case indirect thread code, 
-;   ldx #(wrk)
-;   ldy #(snd)
-;   jsr copyfrom
-;
-;   lda snd + 1
-;   cmp #>init
-;   bmi link
-;
-; historical JMP (W)
-; case direct thread code
-;
 ; minimal test, no words at page 0, 
     lda wrk + 1
     beq link
