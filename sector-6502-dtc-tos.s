@@ -416,6 +416,9 @@ showlist:
 
     shows '['
     
+    lda #0
+    tax
+
 @loop:
     shows ' '
 
@@ -430,15 +433,24 @@ showlist:
     jsr puthex
     lda wrk + 0
     jsr puthex
-    
+
+@istwo:
+    cpy #02
+    bne  @isone
+
+; was a magic ?
+    lda wrk + 0
+    cmp #$EA
+    bne @ends
     lda wrk + 1
+    cmp #$4C
+    bne @ends
 
-; ends ?
+    beq @loop
 
-; was a null ? 
-    beq @ends
-
+@isone:
 ; was a exit ?
+    lda wrk + 1
     cmp #>exit
     bne @loop
 
@@ -798,20 +810,16 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 
-; parse is a headless primitive, need a 0x0
-parse_: 
+; like a begin-again, false nest
+parse_:
     .word parse
 
-; like a begin-again, false nest
 parse:
 
     lda #>parse_
     sta ipt + 1
     lda #<parse_
     sta ipt + 0
-
-    ldy #(ipt)
-    jsr rpush 
 
     shows '~'
 
@@ -840,9 +848,6 @@ find:
 ; msb linked list
     lda trd + 1
     sta fst + 1
-
-    shows ' '
-    showbulk ipt 
 
 ; update link 
     ldx #(fst) ; from 
@@ -882,9 +887,6 @@ find:
     jsr addwx
     
 eval:
-;  wherever 
-    ldy #(fst)
-
     ; if execute is FLAG_IMM
     ; lda mode + 1
     ; ora mode + 0
@@ -905,6 +907,7 @@ compile:
     shows ' '
     showbulk fst
 
+    ldy #(fst)
     jsr comma
 
     jmp next
@@ -918,7 +921,7 @@ execute:
 
     jsr showsts
 
-    jmp next
+    jmp (fst)
 
 ;---------------------------------------------------------------------
 error:
@@ -1052,19 +1055,6 @@ decwx:
     dec 0, x
     rts
 
-
-;---------------------------------------------------------------------
-/*
-    must review
-
-    before: 
-        ldx #(rpt - nil) , sta (nil, x) , nil = nil
-    
-    after:
-        ldx #(rpt) , sta (0,x) , no nil
-
-*/
-
 ;---------------------------------------------------------------------
 ; push a cell 
 ; from a page zero address indexed by Y
@@ -1112,6 +1102,9 @@ pull:
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
+wcomma:
+    ldy #(wrk)
+
 comma: 
     ldx #(here)
 
@@ -1337,9 +1330,8 @@ finish:
     sta wrk + 0
     lda #>exit
     sta wrk + 1
-    
-    ldy #(wrk)
-    jsr comma
+
+    jsr wcomma
 
     jmp next
 
@@ -1382,19 +1374,19 @@ create:
     ldx #(here)
     jsr addwx
 
-; puts the call 
-    lda #<magic
+; puts the nop call 
+    lda #$EA
     sta wrk + 0
-    lda #>magic
+    lda #$4C
     sta wrk + 1
-    ldy #(wrk)
-    jsr comma
+    jsr wcomma
+
     lda #<nest
     sta wrk + 0
     lda #>nest
     sta wrk + 1
     ldy #(wrk)
-    jsr comma
+    jsr wcomma
 
 ; done
     jmp next
@@ -1408,10 +1400,7 @@ create:
 ; using DTC, direct thread code
 ;
 ;---------------------------------------------------------------------
-; R( a -- ) drop top of return stack
-def_word "exit", "exit", 0
-    .word unnest
-
+def_word "exit", "exit", FLAG_IMM
 unnest:
     shows ' '
     shows 'U'
@@ -1436,20 +1425,30 @@ next:
     jsr copyfrom
     jmp (wrk)
 
+enter:
 nest:
     shows ' '
     shows 'N'
     shows ' '
+    showbulk ipt 
     
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
     jsr rpush
 
-    pha
+; next 6502 trick, must increase return address of a jsr
+    pla
     sta ipt + 0
-    pha
+    pla
     sta ipt + 1
 
+    shows '+'
+    showbulk ipt 
+
+    ldx #(ipt)
+    jsr incwx
+    
+    shows '+'
     showbulk ipt 
 
     jmp next

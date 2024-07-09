@@ -21,8 +21,9 @@
 
 ### Alternatives
 
-1)  direct, better footprint, need a 'call' in cfa 
-    for each compound word
+1)  Direct, better footprint, 
+    each compound word needs start with a "call NEST" and 
+    ends with 'EXIT
 
 EXIT:
 UNNEST:
