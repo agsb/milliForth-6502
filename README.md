@@ -53,15 +53,15 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - no multiuser, no multitask, no faster;
 - uses 32 bytes of _page zero_;
 - only update _latest_ at end of word definition, so the word is hidden while defined;
-- stacks moves like the hardware stack
-- words must be between spaces, before and after is wise;
 - redefine a word does not change previous uses;
+- stacks moves like the hardware stack;
+- words must be between spaces, before and after is wise;
 - uses 7-bit ASCII characters;
-- from ANSI X3.215-1994[^6]
+- approuch as ANSI X3.215-1994[^6]
 
 ### Notes
 
-    Look up at Notes [^7]
+    Look up at Notes[^7]
 
 11/06/2024:
     return to minimal thread indirect code
@@ -164,3 +164,5 @@ the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 [^5]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
 [^6]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
 [^7]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/main/Notes.md
+
+
