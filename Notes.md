@@ -1,4 +1,15 @@
+
+## Coding
+
+- still no _'OK'_ or _'??'_;
+- still no backspace routine for \b; 
+- still no cancel line routine for \u; 
+
 ## Time table 
+
+_09/07/2024
+
+    Made a version for DTC-TOS for parallel debugs
 
 _04/07/2024_
 

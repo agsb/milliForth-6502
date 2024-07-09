@@ -61,7 +61,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Notes
 
-    look up Notes[^7]
+    Look up at Notes [^7]
 
 11/06/2024:
     return to minimal thread indirect code
@@ -70,10 +70,6 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 24/01/2024:
     for comparison with x86 code, 
     rewrite using standart direct thread code as inner dispatcher;
-
-- still no include a _'OK'_ or _'??'_;
-- still no include a backspace routine for \b; 
-- still no include a empty line routine for \u; 
 
 ## Coding
 
@@ -128,7 +124,7 @@ Order in dictionary:
    
    at page2, without 'rush over'
 
-   tib 40 cells>, <spt 36 cells, pad 16 cells>,  <rpt 36 cells.
+   [tib 40 cells> <spt 36 cells, pad 16 cells>  <rpt 36 cells].
 
 ## Language
 
@@ -167,4 +163,4 @@ the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 [^4]: The minforth: https://github.com/meithecatte/miniforth
 [^5]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
 [^6]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
-[^7]: Notes and Times: 
+[^7]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/main/Notes.md
