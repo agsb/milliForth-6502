@@ -25,9 +25,7 @@ the miniForth and milliForth use Direct Thread Code (DTC)
 
 the FIG-Forth for 6502 uses Indirect Thread Code (ITC) 
 
-This Forth for 6502, will be done using two models:
-
-     with classic DTC and with Minimal Indirect Thread Code (MITC)
+This Forth for 6502, will be done using two models: with classic DTC and with Minimal Indirect Thread Code (MITC)
 
 (later we will compare both, but DTC will win in less size) 
 
@@ -39,7 +37,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Changes:
 
-- as Forth-1994[^6]: FALSE is $0000 and TRUE is $FFFF ;
+- as Forth-1994[^5]: FALSE is $0000 and TRUE is $FFFF ;
 - all tib (80 bytes), pad (16 cells), data (36 cells) and 
     return (36 cells) stacks are in page $200 ; 
 - tib and pad grows forward, stacks grows backwards ;
@@ -57,15 +55,15 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - stacks moves like the hardware stack;
 - words must be between spaces, before and after is wise;
 - uses 7-bit ASCII characters;
-- approuch as ANSI X3.215-1994[^6]
+- approuch as ANSI X3.215-1994[^5]
 
 ### Notes
 
-    Look up at Notes[^7]
+Look up at Notes[^6]
 
 11/06/2024:
     return to minimal thread indirect code
-    using Minimal Thread Indirect Code_ as inner dispatcher[^5];
+    using Minimal Thread Indirect Code_ as inner dispatcher[^7];
 
 24/01/2024:
     for comparison with x86 code, 
@@ -161,8 +159,8 @@ the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 [^2]: The inspirational sectorForth: https://github.com/cesarblum/sectorforth/
 [^3]: Mind-blowing sectorLISP: https://justine.lol/sectorlisp2/, https://github.com/jart/sectorlisp
 [^4]: The minforth: https://github.com/meithecatte/miniforth
-[^5]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
-[^6]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
-[^7]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/main/Notes.md
+[^5]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
+[^6]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/main/Notes.md
+[^7]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
 
 
