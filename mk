@@ -17,7 +17,7 @@ a)
 
     sort -k 2 < $2.lbl > $2.lbs
 
-    grep 'f_' $2.lbs > $2.lbf
+    grep -E '?_' $2.lbs > $2.lbf
 
     ;;
 

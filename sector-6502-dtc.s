@@ -187,12 +187,12 @@ fth:    .word $0 ; fourth
 ; default Forth variables, order matters for HELLO.forth !
 
 mode:   .word $0 ; state, only lsb used
-toin:   .word $0 ; toin, only lsb used
+toin:   .word $0 ; toin next free byte in TIB
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell in heap dictionary, aka dpt
 
+tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
-tout:   .word $0 ; next token in tib
 
 ; future expansion
 head:   .word $0 ; heap forward, also DP
@@ -820,31 +820,34 @@ parse:
     jsr token
 
 find:
+; fst this link
+; snd next link
+
 ; load last
     lda last + 1
-    sta trd + 1
+    sta snd + 1
     lda last + 0
-    sta trd + 0
+    sta snd + 0
     
 @loop:
 ; lsb linked list
-    lda trd + 0
+    lda snd + 0
     sta fst + 0
 
 ; verify null
-    ora trd + 1
+    ora snd + 1
     bne @each
     jmp error ; end of dictionary, no more words to search, quit
 
 @each:    
 
 ; msb linked list
-    lda trd + 1
+    lda snd + 1
     sta fst + 1
 
-; update link 
+; update next link 
     ldx #(fst) ; from 
-    ldy #(trd) ; into
+    ldy #(snd) ; into
     jsr copyfrom
 
 ; compare words
@@ -1119,7 +1122,7 @@ copyfrom:
 
 ;---------------------------------------------------------------------
 ; for lib6502  emulator
-; always does echo
+; still always does echo
 getchar:
     lda $E000
 
@@ -1164,11 +1167,6 @@ rpush1:
     jmp rpush
 
 ;---------------------------------------------------------------------
-spush1:
-    ldy #(fst)
-    jmp spush
-
-;---------------------------------------------------------------------
 spull2:
     ldy #(snd)
     jsr spull
@@ -1179,18 +1177,9 @@ spull1:
     jmp spull
 
 ;---------------------------------------------------------------------
-copys:
-    lda 0, y
-    sta fst + 0
-    lda 1, y
-
-keeps:
-    sta fst + 1
-
-this:
-    jsr spush1
-
-    jmp next
+spush1:
+    ldy #(fst)
+    jmp spush
 
 ;---------------------------------------------------------------------
 ;
@@ -1199,33 +1188,67 @@ this:
 ;---------------------------------------------------------------------
 def_word "dump", "dumpw", 0
 
-    lda #<init
-    sta wrk + 0
-    lda #>init
-    sta wrk + 1
-    ldy #0
-
-@loop:
     shows ' '
-    lda (wrk), y
+
+    lda here + 1
     jsr puthex
-    iny
-    cpy #32
-    bne @loop
+    lda here + 0
+    jsr puthex
     
     shows 10
 
+    lda #>init
+    sta wrk + 1
+    jsr puthex
+    lda #<init
+    sta wrk + 0
+    jsr puthex
+    
+    shows ':'
+
+    ldy #$FF
+
+@loop:
+    iny
+    shows ' '
+    lda (wrk), y
+    jsr puthex
+    cpy #$20
+    bne @loop
+    
     tya
     ldx #(wrk)
     jsr addwx
+
     ldy #0
+
+    shows 10
+
+    lda wrk + 1
+    jsr puthex
+    lda wrk + 0
+    jsr puthex
+    shows ':'
+
+; zzzzz
 
     lda wrk + 1
     cmp here + 1
     bmi @loop
+
     lda wrk + 0
     cmp here + 0
     bmi @loop
+
+    shows '?'
+    lda wrk + 0
+    jsr puthex
+    
+    shows '?'
+    lda here + 0
+    jsr puthex
+
+    shows 10
 
     jmp next
 
@@ -1270,12 +1293,19 @@ def_word "cr", "cr", 0
     jmp next
 
 ;---------------------------------------------------------------------
-; ( -- c ) ; tos + 1 unchanged
-def_word "key", "key", 0
-    jsr getchar
+copys:
+    lda 0, y
     sta fst + 0
-    jmp this
-    
+    lda 1, y
+
+keeps:
+    sta fst + 1
+
+this:
+    jsr spush1
+
+    jmp next
+
 ;---------------------------------------------------------------------
 ; ( c -- ) ; tos + 1 unchanged
 def_word "emit", "emit", 0
@@ -1284,6 +1314,13 @@ def_word "emit", "emit", 0
     jsr putchar
     jmp next
 
+;---------------------------------------------------------------------
+; ( -- c ) ; tos + 1 unchanged
+def_word "key", "key", 0
+    jsr getchar
+    sta fst + 0
+    jmp this
+    
 ;---------------------------------------------------------------------
 ; ( w -- w/2 ) ; shift right
 def_word "2/", "shr", 0
@@ -1294,8 +1331,7 @@ def_word "2/", "shr", 0
     jsr spull1
     lsr fst + 1
     ror fst + 0
-    jsr spush1
-    jmp next
+    jmp this
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
@@ -1465,8 +1501,6 @@ create:
 ;   ipt is IP, wrk is W
 ;
 ; for reference: nest ak enter or docol, unnest is exit or semis;
-;
-; using DTC, direct thread code
 ;
 ;---------------------------------------------------------------------
 def_word "exit", "exit", FLAG_IMM
