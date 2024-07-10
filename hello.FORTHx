@@ -9,16 +9,7 @@
 : latest s@ 4 + ; 
 : here s@ 6 + ; 
 : invert dup nand ; 
-
- S=
-
- R= 
- 
- see 
-  
- dump
-
- dup 
-
- dup dup
+0 
+dup 
+dup dup
 

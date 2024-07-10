@@ -33,6 +33,8 @@
 ;
 ;       this code uses Direct Thread Code, aka DTC.
 ;
+;       no TOS register, all in stacks
+;
 ;       if PAD not used, data stack could be 52 cells; 
 ;
 ;       words must be between spaces, before and after;
@@ -63,8 +65,6 @@
 ;
 ;       page zero is used as pseudo registers;
 ;
-;       do not mess with two underscore variables;
-;
 ;   For stacks:
 ;
 ;   "when the heap moves forward, move the stack backward" 
@@ -81,6 +81,10 @@
 ;   at page2: 
 ;
 ;   $00|tib> ... <spt..sp0|$98|pad> ... <rpt..rp0|$FF
+;
+;   For Devs:
+;
+;       never mess with two underscore variables;
 ;
 ;----------------------------------------------------------------------
 ;
@@ -102,7 +106,7 @@
 .endmacro
 
 ; header for primitives
-; the entry point for dictionary is f_~name~
+; the entry point for dictionary is h_~name~
 ; the entry point for code is ~name~
 .macro def_word name, label, flag
 makelabel "h_", label
@@ -118,7 +122,7 @@ makelabel "", label
 /*
 NOTES:
 
-    not finished.
+    not finished yet :)
 
 */
 ;----------------------------------------------------------------------
@@ -167,16 +171,16 @@ magic = $4CEA
 nil:  ; empty fixed reference
 
 ; do not touch those
-tos:    .word $0 ; top of data stack
+ipt:    .word $0 ; instruction pointer
 spt:    .word $0 ; data stack base,
 rpt:    .word $0 ; return stack base
-ipt:    .word $0 ; instruction pointer
+wrk:    .word $0 ; work
 
 ; free for use
-wrk:    .word $0 ; work
 fst:    .word $0 ; first
 snd:    .word $0 ; second
 trd:    .word $0 ; third
+fth:    .word $0 ; fourth
 
 ; * = $F0
 
@@ -187,10 +191,10 @@ toin:   .word $0 ; toin, only lsb used
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell in heap dictionary, aka dpt
 
-; future expansion
 back:   .word $0 ; hold 'here while compile
 tout:   .word $0 ; next token in tib
 
+; future expansion
 head:   .word $0 ; heap forward, also DP
 tail:   .word $0 ; heap backward
 
@@ -240,24 +244,6 @@ debug = 1
 .endmacro
 
 ;---------------------------------------------------------------------
-.macro showchr 
-    pha
-    lda (nil), y
-    jsr putchar
-    pla
-
-.endmacro
-
-;---------------------------------------------------------------------
-.macro showhex
-    pha
-    lda (nil), y
-    jsr puthex
-    pla
-
-.endmacro
-
-;---------------------------------------------------------------------
 .macro showbulk reg
     pha
     lda reg + 1
@@ -277,8 +263,6 @@ debug = 1
     dey
     lda (reg), y
     jsr puthex
-    iny 
-    iny 
     pla
 
 .endmacro
@@ -469,6 +453,7 @@ showlist:
 ;----------------------------------------------------------------------
 showname:
 
+    
     shows ' '
     
     lda (fst), y
@@ -614,7 +599,7 @@ showstk:
 
 ;----------------------------------------------------------------------
 ; show hard stack
-dumph:
+showhs:
 
     php
     pha
@@ -625,29 +610,31 @@ dumph:
 
     tsx
 
-    lda #'S'
+    lda #'H'
     jsr putchar
+    
+    lda #'='
+    jsr putchar
+
+    inx
+    inx
+    inx
+    inx
+    inx
+
     txa
     jsr puthex
 
-    lda #' '
-    jsr putchar
-
-    inx
-    inx
-    inx
-    inx
-
 @loop:
 
+    lda #' '
+    jsr putchar
     txa
     jsr puthex
     lda #':'
     jsr putchar
     lda $100, x
     jsr puthex
-    lda #' '
-    jsr putchar
     inx
     bne @loop
 
@@ -687,6 +674,8 @@ showrp:
 
     showrefer rpt
 
+    iny 
+    iny 
     dex
     dex
     bne @loop
@@ -724,6 +713,8 @@ showsp:
 
     showrefer spt
 
+    iny 
+    iny 
     dex
     dex
     bne @loop
@@ -810,7 +801,8 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 
-; like a begin-again, false nest
+; like a begin-again
+
 parse_:
     .word parse
 
@@ -821,7 +813,8 @@ parse:
     lda #<parse_
     sta ipt + 0
 
-    shows '~'
+    shows 10
+;    shows '~'
 
 ; get a token
     jsr token
@@ -863,7 +856,7 @@ find:
 
 ; compare chars
 @equal:
-    lda (snd), y
+    lda (tout), y
 
 ; space ends
     cmp #32  
@@ -919,7 +912,7 @@ execute:
     shows ' '
     showbulk fst
 
-    jsr showsts
+  ;  jsr showsts
 
     jmp (fst)
 
@@ -956,8 +949,6 @@ getline:
 ; drop rts of try
     pla
     pla
-
-    shows 10
 
 ; leave first byte
     ldy #1
@@ -1017,9 +1008,9 @@ token:
     sta tib, y  ; store size for counted string 
 
 ; setup token, pass pointer
-    sty snd + 0
+    sty tout + 0
     lda #>tib
-    sta snd + 1
+    sta tout + 1
     sta toin + 1
     rts
 
@@ -1164,37 +1155,41 @@ rets:
 ;
 ;---------------------------------------------------------------------
 rpull1:
-    ldy #(tos)
-    jmp rpull
+    ldy #(fst)
+    jsr rpull
 
 ;---------------------------------------------------------------------
 rpush1:
-    ldy #(tos)
+    ldy #(fst)
     jmp rpush
 
 ;---------------------------------------------------------------------
-spull1:
-    ldy #(tos)
-    jmp spull
-
-;---------------------------------------------------------------------
 spush1:
-    ldy #(tos)
+    ldy #(fst)
     jmp spush
 
 ;---------------------------------------------------------------------
 spull2:
-    ldy #(wrk)
+    ldy #(snd)
+    jsr spull
+
+;---------------------------------------------------------------------
+spull1:
+    ldy #(fst)
     jmp spull
 
 ;---------------------------------------------------------------------
 copys:
     lda 0, y
-    sta tos + 0
+    sta fst + 0
     lda 1, y
 
 keeps:
-    sta tos + 1
+    sta fst + 1
+
+this:
+    jsr spush1
+
     jmp next
 
 ;---------------------------------------------------------------------
@@ -1202,20 +1197,91 @@ keeps:
 ; primitives, a address, c byte ascii, w signed word, u unsigned word 
 ;
 ;---------------------------------------------------------------------
+def_word "dump", "dumpw", 0
+
+    lda #<init
+    sta wrk + 0
+    lda #>init
+    sta wrk + 1
+    ldy #0
+
+@loop:
+    shows ' '
+    lda (wrk), y
+    jsr puthex
+    iny
+    cpy #32
+    bne @loop
+    
+    shows 10
+
+    tya
+    ldx #(wrk)
+    jsr addwx
+    ldy #0
+
+    lda wrk + 1
+    cmp here + 1
+    bmi @loop
+    lda wrk + 0
+    cmp here + 0
+    bmi @loop
+
+    jmp next
+
+;---------------------------------------------------------------------
+def_word "S=", "spshow", 0
+
+    jsr showsp
+    jmp next
+
+;---------------------------------------------------------------------
+def_word "R=", "rpshow", 0
+
+    jsr showrp
+    jmp next
+
+;---------------------------------------------------------------------
+def_word "see", "see", 0
+
+    jsr showdic
+    jmp next
+
+;---------------------------------------------------------------------
+def_word ".", "dot", 0
+
+    jsr spull1
+    
+    lda fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+    
+    jsr spush1
+
+    jmp next
+
+;---------------------------------------------------------------------
+def_word "cr", "cr", 0
+
+    lda 10
+    jsr putchar
+    
+    jmp next
+
+;---------------------------------------------------------------------
 ; ( -- c ) ; tos + 1 unchanged
 def_word "key", "key", 0
-    jsr spush1
     jsr getchar
-    sta tos + 0
-    jmp next
+    sta fst + 0
+    jmp this
     
 ;---------------------------------------------------------------------
 ; ( c -- ) ; tos + 1 unchanged
 def_word "emit", "emit", 0
-    lda tos + 0
-    jsr putchar
-this:    
     jsr spull1
+    lda wrk + 0
+    jsr putchar
     jmp next
 
 ;---------------------------------------------------------------------
@@ -1225,8 +1291,10 @@ def_word "2/", "shr", 0
     ;lda tos + 1
     ;asl a
     ;ror tos + 1
-    lsr tos + 1
-    ror tos + 0
+    jsr spull1
+    lsr fst + 1
+    ror fst + 0
+    jsr spush1
     jmp next
 
 ;---------------------------------------------------------------------
@@ -1234,31 +1302,32 @@ def_word "2/", "shr", 0
 def_word "+", "plus", 0
     jsr spull2
     clc
-    lda tos + 0
-    adc wrk + 0
-    sta tos + 0
-    lda tos + 1
-    adc wrk + 1
+    lda snd + 0
+    adc fst + 0
+    sta fst + 0
+    lda snd + 1
+    adc fst + 1
     jmp keeps
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
     jsr spull2
-    lda tos + 0
-    and wrk + 0
+    lda snd + 0
+    and fst + 0
     eor #$FF
-    sta tos + 0
-    lda tos + 1
-    and wrk + 1
+    sta fst + 0
+    lda snd + 1
+    and fst + 1
     eor #$FF
     jmp keeps
 
 ;---------------------------------------------------------------------
 ; ( 0 -- $FFFF) | ( n -- $0000)
 def_word "0#", "zeroq", 0
-    lda tos + 1
-    ora tos + 0
+    jsr spull1
+    lda fst + 1
+    ora fst + 0
     beq istrue  ; is \0
 isfalse:
     lda #$00
@@ -1266,7 +1335,7 @@ isfalse:
 istrue:
     lda #$FF
 rest:
-    sta tos + 0
+    sta fst + 0
     jmp keeps
 
 ;---------------------------------------------------------------------
@@ -1274,38 +1343,36 @@ rest:
 def_word "!", "store", 0
 storew:
     jsr spull2
-    ldx #(tos) 
-    ldy #(wrk) 
+    ldx #(snd) 
+    ldy #(fst) 
     jsr copyinto
-    jmp this
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
 def_word "@", "fetch", 0
 fetchw:
-    ldx #(tos)
-    ldy #(wrk)
+    jsr spull1
+    ldx #(fst)
+    ldy #(snd)
     jsr copyfrom
     jmp copys
 
 ;---------------------------------------------------------------------
 ; ( -- rp )
 def_word "rp@", "rpat", 0
-    jsr spush1
     ldy #(rpt)
     jmp copys
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
-    jsr spush1
     ldy #(spt)
     jmp copys
 
 ;---------------------------------------------------------------------
 ; ( -- mode )
 def_word "s@", "stat", 0 
-    jsr spush1
     ldy #(mode)
     jmp copys
 
@@ -1361,7 +1428,7 @@ create:
 ; copy size and name
     ldy #0
 @loop:    
-    lda (snd), y
+    lda (tout), y
     cmp #32    ; stops at space
     beq @ends
     sta (here), y
@@ -1374,11 +1441,12 @@ create:
     ldx #(here)
     jsr addwx
 
-; puts the nop call 
+; puts the nop call, a cell of 2 bytes 
     lda #$EA
     sta wrk + 0
     lda #$4C
     sta wrk + 1
+
     jsr wcomma
 
     lda #<nest
@@ -1386,6 +1454,7 @@ create:
     lda #>nest
     sta wrk + 1
     ldy #(wrk)
+
     jsr wcomma
 
 ; done
@@ -1405,18 +1474,17 @@ unnest:
     shows ' '
     shows 'U'
     shows ' '
+    showbulk ipt 
     
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
     jsr rpull
 
-    showbulk ipt 
 
 next:
     shows ' '
     shows 'X'
     shows ' '
-    
     showbulk ipt 
 
 ; wrk = (ipt) ; ipt += 2
@@ -1432,18 +1500,41 @@ nest:
     shows ' '
     showbulk ipt 
     
+
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
     jsr rpush
 
-; next 6502 trick, must increase return address of a jsr
+    ; jsr showsts 
+
+; zzzz
+    
+; pull (ip),  6502 trick: must increase return address of a jsr
+
+    tsx
+    shows '+'
+    inx
+    lda $100, x
+    jsr puthex
+    shows '+'
+    inx
+    lda $100, x
+    jsr puthex
+    shows '+'
+    inx
+    lda $100, x
+    jsr puthex
+    shows '+'
+    inx
+    lda $100, x
+    jsr puthex
+
+    pla 
+
     pla
     sta ipt + 0
     pla
     sta ipt + 1
-
-    shows '+'
-    showbulk ipt 
 
     ldx #(ipt)
     jsr incwx
