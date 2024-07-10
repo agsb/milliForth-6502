@@ -1206,15 +1206,15 @@ def_word "dump", "dumpw", 0
     
     shows ':'
 
-    ldy #$FF
+    ldy #$00
 
 @loop:
-    iny
     shows ' '
     lda (wrk), y
     jsr puthex
+    iny
     cpy #$20
-    bne @loop
+    bmi @loop
     
     tya
     ldx #(wrk)
@@ -1232,21 +1232,12 @@ def_word "dump", "dumpw", 0
 
 ; zzzzz
 
-    lda wrk + 1
-    cmp here + 1
-    bmi @loop
-
     lda wrk + 0
     cmp here + 0
+    lda wrk + 1
+    sbc here + 1
+    eor wrk + 1
     bmi @loop
-
-    shows '?'
-    lda wrk + 0
-    jsr puthex
-    
-    shows '?'
-    lda here + 0
-    jsr puthex
 
     shows 10
 
