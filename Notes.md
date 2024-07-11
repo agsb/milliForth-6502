@@ -7,6 +7,13 @@
 
 ## Time table 
 
+_11/07/2024_
+
+    The original hello_world.forth file states that : dup sp@ @ ; 
+    then sp must point to actual TOS, and movements are                                           
+           push is 'decrease and store'                                
+           pull is 'fetch and increase'                                
+
 _09/07/2024
 
     Made a version for DTC-TOS for parallel debugs

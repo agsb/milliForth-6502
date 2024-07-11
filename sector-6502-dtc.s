@@ -69,7 +69,10 @@
 ;
 ;   "when the heap moves forward, move the stack backward" 
 ;
-;   push is 'store and decrease', pull is 'increase and fetch',
+;   as hardware stacks do: 
+;      push is 'store and decrease', pull is 'increase and fetch',
+;
+;   but see the note for Devs.
 ;
 ;   common memory model organization of Forth: 
 ;   [tib->...<-spt: user forth dictionary :here->pad...<-rpt]
@@ -84,7 +87,14 @@
 ;
 ;   For Devs:
 ;
-;       never mess with two underscore variables;
+;   the hello_world.forth file states that stacks works
+;       to allow : dup sp@ @ ; then sp must point to actual TOS
+;   
+;   The movements will be:
+;       push is 'decrease and store'
+;       pull is 'fetch and increase'
+
+;    Never mess with two underscore variables;
 ;
 ;----------------------------------------------------------------------
 ;
@@ -517,22 +527,22 @@ showdic:
 
 ; load lastest link
     lda last + 0
-    sta trd + 0
+    sta snd + 0
     lda last + 1
-    sta trd + 1
+    sta snd + 1
 
 @loop:
 
 ; update link list
-    lda trd + 0
+    lda snd + 0
     sta fst + 0
     
 ; verify is zero
-    ora trd + 1
+    ora snd + 1
     beq @ends ; end of dictionary, no more words to search, quit
 
 ; update link list
-    lda trd + 1
+    lda snd + 1
     sta fst + 1
 
     shows 10
@@ -541,14 +551,14 @@ showdic:
 
     showbulk fst
 
-; get that link, wrk = [fst]
+; get that link, snd = (fst)
     ldx #(fst) ; from 
-    ldy #(trd) ; into
+    ldy #(snd) ; into
     jsr copyfrom
 
     shows ' '
 
-    showbulk trd
+    showbulk snd
 
     jsr showord
 
@@ -567,34 +577,16 @@ showdic:
 ;----------------------------------------------------------------------
 showbck:
 
-; search backwards
+; search a name backwards from cfa
 
     ldx #(fst)
 
 @loop:
     jsr decwx
     lda (0, x)
-    and #$7F
+    and #$7F    ; may be immediate ^.^
     cmp #' '
     bpl @loop
-
-    jsr decwx
-    jsr decwx
-    
-    rts
-
-;----------------------------------------------------------------------
-showstk:
-
-    lda #' '
-    jsr putchar
-
-    tsx
-    inx
-    inx
-    txa
-    jsr puthex
-
     rts
 
 ;----------------------------------------------------------------------
@@ -622,6 +614,7 @@ showhs:
     inx
     inx
     inx
+
     inx
 
     txa
@@ -669,7 +662,7 @@ showrp:
     lsr
     jsr puthex
 
-    ldy #1
+    ldy #0
 
 @loop:
     shows ' '
@@ -710,7 +703,7 @@ showsp:
     lsr
     jsr puthex
 
-    ldy #1
+    ldy #0
 
 @loop:
     shows ' '
@@ -785,6 +778,8 @@ quit:
     ldy #>tib
     sty spt + 1
     sty rpt + 1
+    sty toin + 1
+    sty tout + 1
 
     ldy #<sp0
     sty spt + 0
@@ -818,10 +813,12 @@ parse:
     sta ipt + 0
 
     shows 10
-;    shows '~'
+    shows '~'
 
 ; get a token
     jsr token
+
+    ; jsr showsts 
 
 find:
 ; fst this link
@@ -864,14 +861,12 @@ find:
 ; compare chars
 @equal:
     lda (tout), y
-
 ; space ends
     cmp #32  
     beq @done
 ; verify 
     sec
     sbc (fst), y     
-
 ; clean 7-bit ascii
     and #$7F        
     bne @loop
@@ -905,7 +900,7 @@ compile:
     shows ' '
     shows 'C'
     shows ' '
-    showbulk fst
+;  showbulk fst
 
     ldy #(fst)
     jsr comma
@@ -917,9 +912,7 @@ execute:
     shows ' '
     shows 'E'
     shows ' '
-    showbulk fst
-
-  ;  jsr showsts
+;  showbulk fst
 
     jmp (fst)
 
@@ -957,16 +950,16 @@ getline:
     pla
     pla
 
-; leave first byte
+; leave at 0
     ldy #1
 @loop:  
     jsr getchar
+    and #$7F        ; 7-bit ascii only
     cmp #10         ; unix \n
     beq @ends
-    and #$7F        ; 7-bit ascii only
     sta tib, y
     iny
-    cmp tib_end
+    cpy #tib_end
     bne @loop
 
 ; clear all if y eq \0
@@ -975,7 +968,7 @@ getline:
     lda #32
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
-; mark eot with \0
+; mark eol with \0
     iny
     lda #0
     sta tib, y
@@ -994,7 +987,7 @@ token:
     beq @skip
 ; keep start 
     dey
-    sty toin + 1    
+    sty tout + 0    
 
 @scan:
 ; scan spaces
@@ -1008,17 +1001,14 @@ token:
 ; sizeof
     tya
     sec
-    sbc toin + 1
+    sbc tout + 0
 ; keep it
-    ldy toin + 1
+    ldy tout + 0
     dey
     sta tib, y  ; store size for counted string 
-
-; setup token, pass pointer
     sty tout + 0
-    lda #>tib
-    sta tout + 1
-    sta toin + 1
+
+; setup token
     rts
 
 ;---------------------------------------------------------------------
@@ -1067,12 +1057,12 @@ spush:
 ;---------------------------------------------------------------------
 ; classic stack backwards
 push:
+    jsr decwx
     lda 1, y
     sta (0, x)
     jsr decwx
     lda 0, y
     sta (0, x)
-    jsr decwx
     rts ; extra ***
 
 ;---------------------------------------------------------------------
@@ -1089,18 +1079,19 @@ spull:
 ;---------------------------------------------------------------------
 ; classic stack backwards
 pull:
-    jsr incwx
     lda (0, x)
     sta  0, y
     jsr incwx
     lda (0, x)
     sta  1, y
+    jsr incwx
     rts
 
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
 wcomma:
+    sta wrk + 1
     ldy #(wrk)
 
 comma: 
@@ -1163,7 +1154,7 @@ rets:
 ;---------------------------------------------------------------------
 rpull1:
     ldy #(fst)
-    jsr rpull
+    jmp rpull
 
 ;---------------------------------------------------------------------
 rpush1:
@@ -1201,8 +1192,10 @@ this:
 
 ;---------------------------------------------------------------------
 ;
-; primitives, a address, c byte ascii, w signed word, u unsigned word 
-;
+; primitives, 
+; a address, c byte ascii, w signed word, u unsigned word 
+; cstr counted string < 256, strz  string with nul ends
+; 
 ;---------------------------------------------------------------------
 ; extras
 ;---------------------------------------------------------------------
@@ -1249,6 +1242,8 @@ def_word "dump", "dumpw", 0
     lda wrk + 0
     jsr puthex
     shows ':'
+
+; thanks, @https://codebase64.org/doku.php?id=base:16-bit_absolute_comparison
 
     lda wrk + 0
     cmp here + 0
@@ -1304,9 +1299,9 @@ def_word "cr", "cr", 0
 ;---------------------------------------------------------------------
 def_word "qr", "qr", 0
 
-    lda #$34
+    lda #$43
     sta fst + 1
-    lda #$12
+    lda #$21
     sta fst + 0
     jmp this
 
@@ -1316,7 +1311,7 @@ def_word "qr", "qr", 0
 ; ( c -- ) ; tos + 1 unchanged
 def_word "emit", "emit", 0
     jsr spull1
-    lda wrk + 0
+    lda fst + 0
     jsr putchar
     jmp next
 
@@ -1438,8 +1433,6 @@ finish:
     lda #<exit
     sta wrk + 0
     lda #>exit
-    sta wrk + 1
-
     jsr wcomma
 
     jmp next
@@ -1483,20 +1476,16 @@ create:
     ldx #(here)
     jsr addwx
 
-; puts the nop call, a cell of 2 bytes 
+; inserts the nop call 
     lda #$EA
     sta wrk + 0
     lda #$20
-    sta wrk + 1
-
     jsr wcomma
 
+; inserts the reference
     lda #<nest
     sta wrk + 0
     lda #>nest
-    sta wrk + 1
-    ldy #(wrk)
-
     jsr wcomma
 
 ; done
@@ -1514,18 +1503,17 @@ unnest:
     shows ' '
     shows 'U'
     shows ' '
-    showbulk ipt 
+;    showbulk ipt 
     
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
     jsr rpull
 
-
 next:
     shows ' '
     shows 'X'
     shows ' '
-    showbulk ipt 
+;    showbulk ipt 
 
 ; wrk = (ipt) ; ipt += 2
     ldx #(ipt)
@@ -1539,14 +1527,14 @@ nest:
     shows ' '
     shows 'N'
     shows ' '
-    showbulk ipt 
+ ;   showbulk ipt 
     
 
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
     jsr rpush
 
-    jsr showsts 
+  ;  jsr showsts 
 
 ; pull (ip),  6502 trick: must increase return address of a jsr
 
@@ -1589,7 +1577,6 @@ putstr:
     pha
     txa
     pha
-
 
     ldy #0
     lda (fst), y
