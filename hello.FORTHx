@@ -5,11 +5,42 @@
 : 2 1 1 + ; 
 : 4 2 2 + ;
 : 6 4 2 + ;
+: state s@ ; 
 : >in s@ 2 + ; 
 : latest s@ 4 + ; 
 : here s@ 6 + ; 
 : invert dup nand ; 
-0 
-dup 
-dup dup
 
+ sp@
+ rp@
+ s@
+
+ S= 
+ 
+ qr
+
+ S=
+
+ dup 
+
+ S=
+
+ dup dup 
+
+ S=
+
+ 0
+
+ S=
+
+ 1
+
+ S=
+
+ 2
+
+ S=
+
+ 4
+
+S=

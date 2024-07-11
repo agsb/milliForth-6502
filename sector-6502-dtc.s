@@ -408,7 +408,7 @@ showlist:
 
     shows ' '
 
-    shows '['
+    shows '('
     
     lda #0
     tax
@@ -456,7 +456,7 @@ showlist:
 
     shows ' '
 
-    shows ']'
+    shows ')'
 
     rts
 
@@ -587,6 +587,10 @@ showbck:
     and #$7F    ; may be immediate ^.^
     cmp #' '
     bpl @loop
+
+    ldy #0
+    jsr showname
+
     rts
 
 ;----------------------------------------------------------------------
@@ -677,8 +681,6 @@ showrp:
 
 @ends:
 
-    shows 10
-
     loadregs
 
     rts
@@ -717,8 +719,6 @@ showsp:
     bne @loop
 
 @ends:
-
-    shows 10
 
     loadregs
 
@@ -812,7 +812,7 @@ parse:
     lda #<parse_
     sta ipt + 0
 
-    shows 10
+  ;  shows 10
     shows '~'
 
 ; get a token
@@ -897,9 +897,9 @@ eval:
 
 compile:
 
-    shows ' '
-    shows 'C'
-    shows ' '
+;    shows ' '
+;    shows 'C'
+;    shows ' '
 ;  showbulk fst
 
     ldy #(fst)
@@ -909,9 +909,9 @@ compile:
 
 execute:
 
-    shows ' '
-    shows 'E'
-    shows ' '
+;    shows ' '
+;    shows 'E'
+;    shows ' '
 ;  showbulk fst
 
     jmp (fst)
@@ -1199,6 +1199,16 @@ this:
 ;---------------------------------------------------------------------
 ; extras
 ;---------------------------------------------------------------------
+def_word "dump-on", "dumpon", 0
+    dec fth
+    jmp next
+
+def_word "dump-off", "dumpoff", 0
+    lda #0
+    sta fth
+    jmp next
+
+;---------------------------------------------------------------------
 def_word "dump", "dumpw", 0
 
     shows ' '
@@ -1424,9 +1434,9 @@ def_word ";", "semis", FLAG_IMM
     lda #0
     sta mode + 0
 
-    shows ' '
-    shows 'K'
-    shows ' '
+;    shows ' '
+;    shows 'K'
+;    shows ' '
 
 ; compound words must ends with exit
 finish:
@@ -1448,9 +1458,9 @@ def_word ":", "colon", 0
     lda #1
     sta mode + 0
 
-    shows ' '
-    shows 'W'
-    shows ' '
+;    shows ' '
+;    shows 'W'
+;    shows ' '
 
 create:
 ; copy last into (here)
@@ -1510,9 +1520,9 @@ unnest:
     jsr rpull
 
 next:
-    shows ' '
-    shows 'X'
-    shows ' '
+;    shows ' '
+;    shows 'X'
+;    shows ' '
 ;    showbulk ipt 
 
 ; wrk = (ipt) ; ipt += 2
@@ -1520,6 +1530,26 @@ next:
     ldy #(wrk)
     jsr copyfrom
 
+    lda fth
+    beq jump
+    
+    shows 10
+    shows ' '
+    showbulk ipt
+    shows '*'
+    showbulk wrk
+    shows ' '
+
+    lda wrk + 0
+    sta fst + 0
+    lda wrk + 1
+    sta fst + 1
+    jsr showbck
+
+    jsr showrp
+    jsr showsp
+
+jump:
     jmp (wrk)
 
 enter:
