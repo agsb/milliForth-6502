@@ -158,7 +158,7 @@ pad = sp0 + 1
 rp0 = $FF
 
 ; magic NOP (EA) JMP (4C) cell
-magic = $4CEA
+magic = $20EA
 
 ;----------------------------------------------------------------------
 ; no values here or must be a BSS
@@ -427,7 +427,7 @@ showlist:
     cmp #$EA
     bne @ends
     lda wrk + 1
-    cmp #$4C
+    cmp #$20
     bne @ends
 
     beq @loop
@@ -610,6 +610,8 @@ showhs:
 
     tsx
 
+    shows 10
+
     lda #'H'
     jsr putchar
     
@@ -692,6 +694,8 @@ showrp:
 showsp:
     
     saveregs
+
+    shows 10
 
     shows 'S'
 
@@ -1182,9 +1186,25 @@ spush1:
     jmp spush
 
 ;---------------------------------------------------------------------
+copys:
+    lda 0, y
+    sta fst + 0
+    lda 1, y
+
+keeps:
+    sta fst + 1
+
+this:
+    jsr spush1
+
+    jmp next
+
+;---------------------------------------------------------------------
 ;
 ; primitives, a address, c byte ascii, w signed word, u unsigned word 
 ;
+;---------------------------------------------------------------------
+; extras
 ;---------------------------------------------------------------------
 def_word "dump", "dumpw", 0
 
@@ -1230,8 +1250,6 @@ def_word "dump", "dumpw", 0
     jsr puthex
     shows ':'
 
-; zzzzz
-
     lda wrk + 0
     cmp here + 0
     lda wrk + 1
@@ -1256,7 +1274,7 @@ def_word "R=", "rpshow", 0
     jmp next
 
 ;---------------------------------------------------------------------
-def_word "see", "see", 0
+def_word "words", "words", 0
 
     jsr showdic
     jmp next
@@ -1284,19 +1302,16 @@ def_word "cr", "cr", 0
     jmp next
 
 ;---------------------------------------------------------------------
-copys:
-    lda 0, y
-    sta fst + 0
-    lda 1, y
+def_word "qr", "qr", 0
 
-keeps:
+    lda #$34
     sta fst + 1
+    lda #$12
+    sta fst + 0
+    jmp this
 
-this:
-    jsr spush1
-
-    jmp next
-
+;---------------------------------------------------------------------
+; core 
 ;---------------------------------------------------------------------
 ; ( c -- ) ; tos + 1 unchanged
 def_word "emit", "emit", 0
@@ -1471,7 +1486,7 @@ create:
 ; puts the nop call, a cell of 2 bytes 
     lda #$EA
     sta wrk + 0
-    lda #$4C
+    lda #$20
     sta wrk + 1
 
     jsr wcomma
@@ -1516,6 +1531,7 @@ next:
     ldx #(ipt)
     ldy #(wrk)
     jsr copyfrom
+
     jmp (wrk)
 
 enter:
@@ -1530,31 +1546,9 @@ nest:
     ldy #(ipt)
     jsr rpush
 
-    ; jsr showsts 
+    jsr showsts 
 
-; zzzz
-    
 ; pull (ip),  6502 trick: must increase return address of a jsr
-
-    tsx
-    shows '+'
-    inx
-    lda $100, x
-    jsr puthex
-    shows '+'
-    inx
-    lda $100, x
-    jsr puthex
-    shows '+'
-    inx
-    lda $100, x
-    jsr puthex
-    shows '+'
-    inx
-    lda $100, x
-    jsr puthex
-
-    pla 
 
     pla
     sta ipt + 0
@@ -1564,9 +1558,6 @@ nest:
     ldx #(ipt)
     jsr incwx
     
-    shows '+'
-    showbulk ipt 
-
     jmp next
 
 ;----------------------------------------------------------------------

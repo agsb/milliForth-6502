@@ -10,15 +10,24 @@
 : here s@ 6 + ; 
 : invert dup nand ; 
 
+ s@
+
  S=
 
- R= 
+ sp@
+
+ S=
+
+ rp@
+
+ S= 
  
- see 
-  
- dump
+ qr
+
+ S=
 
  dup 
 
- dup dup
+ S=
+
 
