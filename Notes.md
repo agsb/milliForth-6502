@@ -1,11 +1,24 @@
 
 ## Coding
 
-- still no _'OK'_ or _'??'_;
+ done - still no _'OK'_ or _'NO'_;
 - still no backspace routine for \b; 
 - still no cancel line routine for \u; 
 
 ## Time table 
+
+_15/07/2024_
+
+    first compiled run with full hello_world.FORTH ! 
+    but ." is still looping
+
+    all words with IMMEDIATE flag are working
+    all stack and heap moves are working
+    all dictionary are working
+
+    what was ? really ? 
+    the sp@ and rp@ are indirect (spt) and (rpt)
+    but s@ is absolute direct #<stat, as VARIABLE
 
 _11/07/2024_
 
