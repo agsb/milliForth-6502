@@ -198,7 +198,7 @@ fth:    .word $0 ; fourth
 
 ; default Forth variables, order matters for HELLO.forth !
 
-mode:   .word $0 ; state, only lsb used
+stat:   .word $0 ; state, only lsb used
 toin:   .word $0 ; toin next free byte in TIB
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell in heap dictionary, aka dpt
@@ -793,8 +793,8 @@ quit:
     sty tib + 0
 ; clear cursor
     sty toin + 0
-; mode is 'interpret' == \0
-    sty mode + 0
+; stat is 'interpret' == \0
+    sty stat + 0
     
     .byte $2c   ; mask next two bytes, nice trick !
 
@@ -804,7 +804,17 @@ quit:
 ; like a begin-again
 
 parse_:
-    .word parse
+    .word okey
+;---------------------------------------------------------------------
+okey:
+    lda #' '
+    jsr putchar
+    lda #'O'
+    jsr putchar
+    lda #'K'
+    jsr putchar
+    lda #10
+    jsr putchar
 
 parse:
 
@@ -857,7 +867,7 @@ find:
     ldy #0
 ; save the flag, first byte is size and flag 
     lda (fst), y
-    sta mode + 1
+    sta stat + 1
 
 ; compare chars
 @equal:
@@ -884,16 +894,16 @@ find:
     
 eval:
     ; if execute is FLAG_IMM
-    ; lda mode + 1
-    ; ora mode + 0
+    ; lda stat + 1
+    ; ora stat + 0
     ; bmi execute
 
 ; executing ? if == \0
-    lda mode + 0   
+    lda stat + 0   
     beq execute
 
 ; immediate ? if < \0
-    lda mode + 1   
+    lda stat + 1   
     bmi execute      
 
 compile:
@@ -928,16 +938,6 @@ error:
     lda #10
     jsr putchar
     jmp quit
-
-;---------------------------------------------------------------------
-okey:
-    lda #'O'
-    jsr putchar
-    lda #'K'
-    jsr putchar
-    lda #10
-    jsr putchar
-    jmp parse
 
 ;---------------------------------------------------------------------
 try:
@@ -1355,12 +1355,6 @@ def_word "2/", "shr", 0
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
     jsr spull2
-
-    ;showbulk snd
-    ;shows '&'
-    ;showbulk fst
-    ;shows '&'
-
     clc
     lda snd + 0
     adc fst + 0
@@ -1419,26 +1413,30 @@ fetchw:
     jmp copys
 
 ;---------------------------------------------------------------------
-; ( -- rp )
-def_word "rp@", "rpat", 0
-    lda #>rpt
-    bcc mays
+; ( -- stat )
+def_word "s@", "state", 0 
+    lda #<stat
+    sta fst + 0
+    lda #>stat
+mays:
+    sta fst + 1
+    jmp this 
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
-    lda #>spt
+    lda spt + 0
+    sta fst + 0
+    lda spt + 1
     bcc mays
 
 ;---------------------------------------------------------------------
-; ( -- mode )
-def_word "s@", "stat", 0 
-    lda #>mode
-mays:
-    sta fst + 1
-    lda #00
+; ( -- rp )
+def_word "rp@", "rpat", 0
+    lda rpt + 0
     sta fst + 0
-    jmp this
+    lda rpt + 1
+    bcc mays 
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -1447,9 +1445,9 @@ def_word ";", "semis", FLAG_IMM
     sta last + 0
     lda back + 1 
     sta last + 1
-; mode is 'interpret'
+; stat is 'interpret'
     lda #0
-    sta mode + 0
+    sta stat + 0
 
 ;    shows ' '
 ;    shows 'K'
@@ -1471,9 +1469,9 @@ def_word ":", "colon", 0
     sta back + 0 
     lda here + 1
     sta back + 1 
-; mode is 'compile'
+; stat is 'compile'
     lda #1
-    sta mode + 0
+    sta stat + 0
 
 ;    shows ' '
 ;    shows 'W'
