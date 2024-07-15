@@ -160,14 +160,14 @@ tib_end = $40
 
 ; data stack, 36 cells,
 ; moves backwards and push decreases before copy
-sp0 = $98
+sp0 = $99
 
 ; pad, 16 cells, forward
 pad = sp0 + 1
 
 ; return stack, 36 cells, 
 ; moves backwards and push decreases before copy
-rp0 = $FF
+rp0 = $00
 
 ; magic NOP (EA) JMP (4C) cell
 magic = $20EA
