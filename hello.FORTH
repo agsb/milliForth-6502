@@ -58,15 +58,14 @@
 
 : [ 1 s@ ! ; 
 
-words
-
 dump-on
 
 immediate 
 
 dump-off 
 
-words
-
 : ] 0 s@ ! ; 
 
+words
+
+bye

@@ -1419,7 +1419,7 @@ def_word "sp@", "spat", 0
     lda spt + 0
     sta fst + 0
     lda spt + 1
-    bcc mays
+    jmp mays
 
 ;---------------------------------------------------------------------
 ; ( -- rp )
@@ -1427,7 +1427,7 @@ def_word "rp@", "rpat", 0
     lda rpt + 0
     sta fst + 0
     lda rpt + 1
-    bcc mays 
+    jmp mays 
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
