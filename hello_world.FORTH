@@ -79,11 +79,13 @@
 
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ; 
 
-6 4 + >r 6 dup . r> dup .
+: S' sp@ dup dup dup .. @  .. 2 + dup .. @ .. 4 + dup .. @ .. ;
 
-: S' >r >r .. r> .. r> .. ;
+sp@ .. 
 
-6 4 2 S' . . .
+6 4 2 0 
+
+sp@ .. 
 
 : begin here @ ; immediate 
 

@@ -7,6 +7,12 @@
 
 ## Time table 
 
+_17/07/2024_
+
+    All words using sp till >r r> are working
+    but any using r> r> breaks. 
+    Need review 
+
 _15/07/2024_
 
     first compiled run with full hello_world.FORTH ! 
