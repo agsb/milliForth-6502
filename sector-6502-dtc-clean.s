@@ -464,6 +464,8 @@ parse_:
 
 ;---------------------------------------------------------------------
 okey:
+;    lda #10 
+;    jsr putchar
 ;    lda #' '
 ;    jsr putchar
 ;    lda #'O'
@@ -571,10 +573,10 @@ execute:
 ;---------------------------------------------------------------------
 ; wipe later
 error:
-    ;lda #'#'
-    ;jsr putchar
-    ;lda #10
-    ;jsr putchar
+    lda #'?'
+    jsr putchar
+    lda #10
+    jsr putchar
     jmp quit
 
 ;---------------------------------------------------------------------
@@ -658,13 +660,16 @@ token:
 ; for lib6502  emulator
 getchar:
     lda $E000
-byes:
-    rts
+    ; no echoes ? uncomment
+    ; rts 
 putchar:
     sta $E000
+; EOF ?
     cmp #$FF
-    bne byes
-; EOF for emulator  
+    beq byes
+    rts
+; exit for emulator  
+byes:
     jmp $0000
 
 ;---------------------------------------------------------------------
@@ -805,6 +810,48 @@ spull1:
 ; cstr counted string < 256, strz  string with nul ends
 ; 
 ;---------------------------------------------------------------------
+;----------------------------------------------------------------------
+; extras
+;----------------------------------------------------------------------
+; ( -- ) ae exit forth
+def_word "bye", "bye", 0
+    jmp byes
+
+;----------------------------------------------------------------------
+; ( -- ) ae exit forth
+def_word "abort", "abort", 0
+    jmp error
+
+;----------------------------------------------------------------------
+; ( u -- ) print tos in hexadecimal, swaps order
+def_word ".", "dot", 0
+    jsr spull1
+    lda fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+    jmp next
+
+;----------------------------------------------------------------------
+; code a byte in ASCII hexadecimal 
+puthex:
+    pha
+    lsr
+    ror
+    ror
+    ror
+    jsr @conv
+    pla
+@conv:
+    and #$0F
+    clc
+    ora #$30
+    cmp #$3A
+    bcc @ends
+    adc #$06
+@ends:
+    jmp putchar
+
 ;---------------------------------------------------------------------
 ; core 
 ;---------------------------------------------------------------------
@@ -1044,7 +1091,7 @@ nest:   ; enter
     jmp next
 
 ;----------------------------------------------------------------------
-; for anything above is not a primitive
+; anything above is not a primitive
 .align $100
 
 init:   
