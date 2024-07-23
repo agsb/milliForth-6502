@@ -7,6 +7,10 @@
 
 ## Time table 
 
+_23/07/2024_ 
+
+    working in .S and .R
+
 _17/07/2024_
 
     All words using sp till >r r> are working
