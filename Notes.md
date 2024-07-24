@@ -7,6 +7,23 @@
 
 ## Time table 
 
+_24/07/2024_ 
+
+    cosmetic pretty format sector-x86.s
+
+    included in extras: 
+        bye abort sp0 .S rp0 .R FALSE TRUE
+
+    OK: *pull *push 
+
+    OK: dup drop swap over 
+
+    OK: nand + and or = <> invert - 
+
+    OK: @ ! 
+
+    >r and r> still bugged
+
 _23/07/2024_ 
 
     working in .S and .R

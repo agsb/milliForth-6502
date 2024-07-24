@@ -702,26 +702,11 @@ def_word ".R", "rplist", 0
 ;----------------------------------------------------------------------
 ;  ae list a sequence of references
 list:
-
     sec
     sbc fst + 0
     lsr
-
     tax
-
-    lda fst + 1
     jsr puthex
-    lda fst + 0
-    jsr puthex
-
-    lda #' '
-    jsr putchar
-
-    txa
-    jsr puthex
-
-    lda #' '
-    jsr putchar
 
     txa
     beq @ends
