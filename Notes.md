@@ -9,6 +9,9 @@
 
 _24/07/2024_ 
 
+    reorder pseudo registers at page zero to allow
+        sp! rp! from offset by s@
+
     cosmetic pretty format sector-x86.s
 
     included in extras: 
