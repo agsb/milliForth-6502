@@ -22,8 +22,8 @@
 ;
 ;   Changes:
 ;
-;   all data (36 cells) and return (36 cells) stacks, PIC (32 bytes)
-;       and TIB (80 bytes) are in same page $200, 256 bytes; 
+;   all data (36 cells) and return (36 cells) stacks, TIB (80 bytes) 
+;       and PIC (32 bytes) are in same page $200, 256 bytes; 
 ;
 ;   TIB and PIC grows forward, stacks grows backwards;
 ;
@@ -33,7 +33,7 @@
 ;
 ;   only IMMEDIATE flag used as $80, no hide, no compile, no extras;
 ;
-;   As Forth-1994: FALSE is $0000 ; TRUE is $FFFF ;
+;   As ANSI Forth 1994: FALSE is $0000 ; TRUE is $FFFF ;
 ;
 ;   Remarks:
 ;
@@ -88,9 +88,16 @@
 ;   this 6502 Forth memory model blocked in pages of 256 bytes:
 ;   [page0][page1][page2][core ... forth dictionary ...here...]
 ;   
-;       at page2: 
+;   At page2: 
 ;
-;       $00|tib> .. <spt..sp0|$98| .. <rpt..rp0|$E0|pic> ..|$FF
+;   |$00 tib> .. $50| <spt..sp0 $98| <rpt..rp0 $E0|pic> ..$FF|
+;
+;   At page 3:
+;
+;   |$0300 cold, warm, forth code, init: here> heap ... tail ????| 
+;
+;   PIC is a transient area of 32 bytes 
+;   PAD could be allocated from here
 ;
 ;   For Devs:
 ;
@@ -100,13 +107,16 @@
 ;   The movements will be:
 ;       push is 'decrease and store'
 ;       pull is 'fetch and increase'
-
+;
 ;   Never mess with two underscore variables;
 ;
-;   No smudge, colon saves "here" into "back" and 
-;              semis loads "lastest" from "back";
+;   Not using smudge, 
+;       colon saves "here" into "back" and 
+;       semis loads "lastest" from "back";
 ;
-;   Carefull inspect if any label ends with $FF and move it;
+;   Do not risk put stacks with $FF as zero0 limit
+;
+;   Must carefull inspect if any label ends with $FF and move it;
 ;
 ;   This source is for Ca65.
 ;
@@ -674,6 +684,8 @@ def_word "spz", "spz", 0
     sec
     lda #sp0
     sbc spt + 0
+    clc
+    ror
     sta fst + 0
     lda #0
     jmp keeps
@@ -684,6 +696,8 @@ def_word "rpz", "rpz", 0
     sec
     lda #rp0
     sbc rpt + 0
+    clc
+    ror
     sta fst + 0
     lda #0
     jmp keeps

@@ -1,119 +1,57 @@
 
 : dup sp@ @ ; 
 
-dup . 
-
 : -1 s@ s@ nand s@ nand ; 
-
--1 .
 
 : 0 -1 dup nand ; 
 
-0 .
-
 : 1 -1 dup + dup nand ; 
-
-1 . 
 
 : 2 1 1 + ; 
 
-2 .
-
 : 4 2 2 + ; 
-
-4 . 
 
 : 6 2 4 + ; 
 
-6 .
-
 : 8 4 4 + ; 
-
-8 .
 
 : 10 6 4 + ;
 
-10 .
-
 : 12 6 6 + ;
-
-12 .
-
-0 0# .
-
-1 0# .
 
 : >in s@ 2 + ; 
 
->in .
-
 : latest s@ 4 + ; 
-
-latest .
 
 : here s@ 6 + ; 
 
-here .
-
 : invert dup nand ; 
-
-0 invert .
 
 : and nand invert ; 
 
-10 6 and .
-
 : - invert 1 + + ; 
-
-4 6 - .
-
-6 4 - .
 
 : <> - 0# ; 
 
-6 6 <> .
-
-6 4 <> .
-
 : = <> invert ; 
-
-6 6 = .
-
-6 4 = .
 
 : drop dup - + ; 
 
-1 2 drop .
-
 : over sp@ 2 + @ ; 
-
-1 2 over .
 
 : swap over over sp@ 6 + ! sp@ 2 + ! ; 
 
-1 2 swap . 
-
 : 2dup over over ; 
-
-1 2 2dup . .
 
 : 2drop drop drop ; 
 
-6 1 2 2drop .
-
 : or invert swap invert and invert ; 
-
-2 4 or .
 
 : , here @ ! here @ 2 + here ! ; 
 
 : 2* dup + ; 
 
-4 2* .
-
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ; 
-
-80h .
 
 : immediate latest @ 2 + dup @ 80h or swap ! ; 
 
@@ -153,7 +91,10 @@ here .
 : R' rp@ + @ .. drop ;
 : R" 0 R' ex bl 2 R' 4 R' 6 R' 8 R' ;
 
-: SR' cr ex sp@ .. @ .. drop drop cr rp@ .. @ .. drop drop ;
+: SR' cr ex spz .. drop 
+      sp@ .. @ .. drop drop 
+      cr ex rpz .. drop 
+      rp@ .. @ .. drop drop ;
 
 SR' 
 
@@ -209,7 +150,9 @@ SR'
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup ,  
   ['] = , ['] ?branch , here @ - , ['] 2drop , ; immediate 
 
-0 6 do ex cr loop
+: myloop 6 0 do ex cr loop drop ;
+
+myloop
 
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ; 
 
