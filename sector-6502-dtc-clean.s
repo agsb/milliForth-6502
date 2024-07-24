@@ -199,23 +199,7 @@ magic = $20EA
 
 * = $E0
 
-; default pseudo registers
-
 nil:  ; empty for fixed reference
-
-; do not touch 
-ipt:    .word $0 ; instruction pointer
-spt:    .word $0 ; data stack base,
-rpt:    .word $0 ; return stack base
-wrk:    .word $0 ; work
-
-; free for use
-fst:    .word $0 ; first
-snd:    .word $0 ; second
-trd:    .word $0 ; third
-fth:    .word $0 ; fourth
-
-* = $F0
 
 ; default Forth variables, order matters for HELLO.forth !
 
@@ -223,6 +207,24 @@ stat:   .word $0 ; state at lsb, last size+flag at msb
 toin:   .word $0 ; toin next free byte in TIB
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell in heap dictionary, aka dpt
+
+; default pseudo registers
+
+spt:    .word $0 ; data stack base,
+rpt:    .word $0 ; return stack base
+ipt:    .word $0 ; instruction pointer
+wrk:    .word $0 ; work
+
+* = $F0
+
+; free for use
+
+fst:    .word $0 ; first
+snd:    .word $0 ; second
+trd:    .word $0 ; third
+fth:    .word $0 ; fourth
+
+; internal for use
 
 tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
@@ -770,7 +772,7 @@ seet:
 
 ;----------------------------------------------------------------------
 ; ( -- w ) ae deep of data stack
-def_word "spz", "spz", 0
+def_word "sp0", "spz", 0
     sec
     lda #sp0
     sbc spt + 0
@@ -782,7 +784,7 @@ stks:
 
 ;----------------------------------------------------------------------
 ; ( -- w ) ae deep of return stack
-def_word "rpz", "rpz", 0
+def_word "rp0", "rpz", 0
     sec
     lda #rp0
     sbc rpt + 0
