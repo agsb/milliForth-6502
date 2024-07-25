@@ -43,19 +43,18 @@ ends:
     rts
        
 ```
- 
-2. the proposal of a new primitive **&**, called perse, to allow access to next following cell on dictionary.
-   allow
+1. the primitives
    
-       : dp@ s@ 2 2 2 + + ;
-       : sp@ dp@ 2 + ;
-       : rp@ sp@ 2 + ;
-       : ip@ rp@ 2 + ;
-   
-       : lit  ip@ @ @ ;
-       : here dp@ @ ;
-
-4. the re-introduce of user area concept as 
+        +       ( w1 w2 -- w1+w2 ) unsigned addition
+        2/      ( w -- w>>1 )  shift right one bit
+        nand    ( w1 w2 -- NOT(w1 AND w2) )  not and 
+        0#      ( 0 -- 0x0000 | w -- 0xFFFF ) test is tos is diferent of zero
+        @       ( a -- w )  fetch the value at reference
+        !       ( w a -- )  store the value in reference
+        &       ( -- a )  return next ip reference
+        s@      ( -- a )  return veriable _state_ absolute reference
+        
+1. the re-introduce of user area concept as 
 
         state,     the state of Forth, compile or execute
         toin,      a pointer to next free byte in terminal input buffer
@@ -65,4 +64,36 @@ ends:
         rpt,       a pointer to actual top of return stack
         ipt,       a pointer to next following cell in dictionary
 
-5. the changes on hello-world.FORTH to my-hello-world.FORTH, to incorporate the modifications and recreate some words.
+2. the changes on hello-world.FORTH to my-hello-world.FORTH, to incorporate the modifications and recreate some words.
+ 
+3. new words
+    
+       : dp@ s@ 2 2 2 + + ;
+   
+       : sp@ dp@ 2 + ;
+
+       : rp@ sp@ 2 + ;
+
+       : ip@ rp@ 2 + ; 
+       
+       : ip+ ip@ @ 2 + ip@ ! ;
+
+       : dp+ dp@ @ 2 + dp@ ! ;
+
+       : rp+ rp@ @ 2 + rp@ ! ;
+
+       : rp- rp@ @ 2 - rp@ ! ;
+   
+       : >r rp- rp@ @ ! ;
+   
+       : r> rp@ @ @ rp+ ;
+
+       : lit ip@ @ @ ip+ ;
+   
+       : here dp@ @ ;
+
+       : , here ! dp+ ;
+
+       : allot here + dp@ ! ;
+
+4. the new primitive **&**, called perse, to allow access to follow next reference on dictionary.
