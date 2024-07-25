@@ -1,10 +1,13 @@
 # A milliForth for 6502
 
-_"A Forth in 336 bytes — the smallest real programming language ever, as of yet."_
+_"A Forth in 336 bytes — the smallest real programming 
+language ever, as of yet."_
 
-The milliForth[^1] is very similar to sectorForth[^2], and smaller than sector Lisp[^3]
+The milliForth[^1] is very similar to sectorForth[^2], 
+and smaller than sector Lisp[^3]
 
-The miniForth[^4] is another Forth to use in a boot sector of less than 512 bytes.
+The miniForth[^4] is another Forth to use in a boot sector 
+of less than 512 bytes.
 
 ## Bytes?
 
@@ -12,8 +15,9 @@ Yes, bytes. But the code is for a x86 CPU.
 
 How minimal could be it for a classic 6502 CPU ?
 
-Two essentially different CPUs, a 16-bit x86 based on complex registers and opcodes, 
-and a 8-bit 6502 using page zero as registers and page one as hardware stack.
+Two essentially different CPUs, a 16-bit x86 based on complex 
+registers and opcodes, and a 8-bit 6502 using page zero 
+as registers and page one as hardware stack.
 
 (Still in development)
 
@@ -25,7 +29,9 @@ the miniForth and milliForth use Direct Thread Code (DTC)
 
 the FIG-Forth for 6502 uses Indirect Thread Code (ITC) 
 
-This Forth for 6502, will be done using two models: with classic DTC and with Minimal Indirect Thread Code (MITC)
+This Forth for 6502, will be done using two models: 
+    
+    with classic DTC and with Minimal Indirect Thread Code (MITC)
 
 (later we will compare both, but DTC will win in less size) 
 
@@ -38,9 +44,9 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 ### Changes:
 
 - as Forth-1994[^5]: FALSE is $0000 and TRUE is $FFFF ;
-- all tib (80 bytes), pad (16 cells), data (36 cells) and 
+- all tib (80 bytes), pic (16 cells), data (36 cells) and 
     return (36 cells) stacks are in page $200 ; 
-- tib and pad grows forward, stacks grows backwards ;
+- tib and pic grows forward, stacks grows backwards ;
 - no overflow or underflow checks ;
 - only immediate flag used as $80, no extras flags ;
 
@@ -50,7 +56,8 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - hardware stack (page $100) not used as forth stack, free for use;
 - no multiuser, no multitask, no faster;
 - uses 32 bytes of _page zero_;
-- only update _latest_ at end of word definition, so the word is hidden while defined;
+- only update _latest_ at end of word definition, 
+    so the word is hidden while defined;
 - redefine a word does not change previous uses;
 - stacks moves like the hardware stack;
 - words must be between spaces, before and after is wise;
@@ -97,9 +104,9 @@ Order in dictionary:
     $000    page zero       ; cpu reserved
     $100    hardware stack  ; cpu reserved
     $200    TIB             ; terminal input buffer, 80 bytes
-    $298    data stack      ; data stack, 36 cells
-    $299    PAD             ; reserved for scratch, 16 cells
-    $2FF    return stack    ; return stack, 36 cells
+    $298*   data stack      ; data stack, 36 cells, backwards
+    $2E0*   return stack    ; return stack, 36 cells, backwards
+    $2E0    PIC             ; reserved for scratch, 16 cells
     $300    _main_          ; start of Forth
     $???    _init_          ; start of compose dictionary
 ```
@@ -122,7 +129,7 @@ Order in dictionary:
    
    at page2, without 'rush over'
 
-   [tib 40 cells> <spt 36 cells, pad 16 cells>  <rpt 36 cells].
+   [tib 40 cells> <spt 36 cells| <rpt 36 cells|pic 16 cells> ] .
 
 ## Language
 
