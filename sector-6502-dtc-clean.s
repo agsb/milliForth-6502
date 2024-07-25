@@ -945,17 +945,25 @@ def_word "s@", "state", 0
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
-    lda spt + 0
+    ; lda spt + 0
+    ; sta fst + 0
+    ; lda spt + 1
+    ; jmp keeps 
+    lda #<spt
     sta fst + 0
-    lda spt + 1
+    lda #>spt
     jmp keeps 
 
 ;---------------------------------------------------------------------
 ; ( -- rp )
 def_word "rp@", "rpat", 0
-    lda rpt + 0
+    ;lda rpt + 0
+    ;sta fst + 0
+    ;lda rpt + 1
+    ;jmp keeps 
+    lda #<rpt
     sta fst + 0
-    lda rpt + 1
+    lda #>rpt
     jmp keeps 
 
 ;---------------------------------------------------------------------

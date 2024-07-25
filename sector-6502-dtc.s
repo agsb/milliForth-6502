@@ -957,6 +957,12 @@ def_word "&", "perse", 0
     jmp this
 
 ;---------------------------------------------------------------------
+; ( a -- ) execute a jump to a reference at top of data stack
+def_word "exec", "exec", 0 
+    jsr spull1
+    jmp (fst)
+
+;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
 def_word "s@", "state", 0 
     lda #<stat

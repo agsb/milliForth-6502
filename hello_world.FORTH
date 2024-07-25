@@ -8,6 +8,7 @@
 : >in s@ 2 + ;
 : latest s@ 4 + ;
 : here s@ 6 + ;
+
 : invert dup nand ;
 : and nand invert ;
 : - invert 1 + + ;
