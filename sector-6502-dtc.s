@@ -548,6 +548,7 @@ addwx:
     sta 0, x
     bcc @ends
     inc 1, x
+    clc
 @ends:
     rts
 
@@ -637,16 +638,6 @@ pull:
 ; generics 
 ;
 ;---------------------------------------------------------------------
-rpush1:
-    ldy #(fst)
-    jmp rpush
-
-;---------------------------------------------------------------------
-rpull1:
-    ldy #(fst)
-    jmp rpull
-
-;---------------------------------------------------------------------
 spush1:
     ldy #(fst)
     jmp spush
@@ -654,7 +645,7 @@ spush1:
 ;---------------------------------------------------------------------
 spull2:
     ldy #(snd)
-    jsr spull
+    jmp spull
 
 ;---------------------------------------------------------------------
 spull1:
@@ -669,9 +660,8 @@ spull1:
 ; 
 ;----------------------------------------------------------------------
 
-/*
-
-extras = 0
+; uncomment to include the extras (sic)
+extras = 1 
 
 .ifdef extras
 
@@ -774,39 +764,10 @@ seet:
     bne @loop1
 
 @ends:
+    clc     ; keep branchs
     tya
     lsr
     rts
-
-;----------------------------------------------------------------------
-; ( -- w ) ae deep of data stack
-def_word "sp0", "spz", 0
-    sec
-    lda #sp0
-    sbc spt + 0
-stks:
-    lsr
-    sta fst + 0
-    lda #0
-    jmp keeps
-
-;----------------------------------------------------------------------
-; ( -- w ) ae deep of return stack
-def_word "rp0", "rpz", 0
-    sec
-    lda #rp0
-    sbc rpt + 0
-    jmp stks
-
-;----------------------------------------------------------------------
-; ( -- 0x0000) push false on stack
-def_word "FALSE", "false", 0
-    jmp isfalse
-
-;----------------------------------------------------------------------
-; ( -- 0x0000) push false on stack
-def_word "TRUE", "true", 0
-    jmp istrue
 
 ;----------------------------------------------------------------------
 ; ( u -- ) print tos in hexadecimal, swaps order
@@ -830,17 +791,15 @@ puthex:
     pla
 @conv:
     and #$0F
-    clc
     ora #$30
     cmp #$3A
     bcc @ends
     adc #$06
+    clc
 @ends:
     jmp putchar
 
 .endif
-
-*/
 
 ;---------------------------------------------------------------------
 ; core 
@@ -881,6 +840,7 @@ def_word "+", "plus", 0
     sta fst + 0
     lda snd + 1
     adc fst + 1
+    ; keep the branches clear
     jmp keeps
 
 ;---------------------------------------------------------------------
@@ -948,13 +908,13 @@ fetchw:
 
 ;---------------------------------------------------------------------
 ; ( -- a ) return next dictionary address
-def_word "&", "perse", 0 
-    ldy #(ipt)
-    jsr spush
-    ldx #(ipt)
-    lda #2
-    jsr incwx
-    jmp this
+;def_word "&", "perse", 0 
+;    ldy #(ipt)
+;    jsr spush
+;    ldx #(ipt)
+;    lda #2
+;    jsr incwx
+;    jmp this
 
 ;---------------------------------------------------------------------
 ; ( a -- ) execute a jump to a reference at top of data stack
@@ -972,19 +932,19 @@ def_word "s@", "state", 0
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
-def_word "sp@", "spat", 0
-    lda spt + 0
-    sta fst + 0
-    lda spt + 1
-    jmp keeps 
+;def_word "sp@", "spat", 0
+;    lda spt + 0
+;    sta fst + 0
+;    lda spt + 1
+;    jmp keeps 
 
 ;---------------------------------------------------------------------
 ; ( -- rp )
-def_word "rp@", "rpat", 0
-    lda rpt + 0
-    sta fst + 0
-    lda rpt + 1
-    jmp keeps 
+;def_word "rp@", "rpat", 0
+;    lda rpt + 0
+;    sta fst + 0
+;    lda rpt + 1
+;    jmp keeps 
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -1037,6 +997,7 @@ create:
 
 @ends:
 ; update here 
+    clc     ; keep branchs
     tya
     ldx #(here)
     jsr addwx

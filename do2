@@ -1,1 +1,1 @@
-sh doit $1 < hello.FORTH > z2
+sh doit $1 < my-hello-world.FORTH > z2

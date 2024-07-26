@@ -7,10 +7,18 @@
 
 ## Time table 
 
+_26/07/2024_ 
+
+    no more need sp@ rp@ as primitives
+
+    review for change (jmp for bcc), todo
+    
+    using my-hello-world.FORTH as base dictionary
+
 _24/07/2024_ 
 
     reorder pseudo registers at page zero to allow
-        sp! rp! from offset by s@
+        sp@ sp! rp@ rp! from offset by s@
 
     cosmetic pretty format sector-x86.s
 
