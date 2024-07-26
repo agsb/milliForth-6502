@@ -31,7 +31,7 @@
 ;
 ;   the header order is LINK, SIZE+FLAG, NAME.
 ;
-;   only IMMEDIATE flag used as $80, no hide, no compile, no extras;
+;   only IMMEDIATE flag used as $80, no hide, no compile;
 ;
 ;   As ANSI Forth 1994: FALSE is $0000 ; TRUE is $FFFF ;
 ;
@@ -1054,6 +1054,8 @@ nest:   ; enter
     jsr incwx
     
     jmp next
+
+ends:
 
 ;----------------------------------------------------------------------
 ; anything above is not a primitive

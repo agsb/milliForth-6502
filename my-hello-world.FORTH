@@ -11,17 +11,13 @@
 : 8 4 4 + ;
 : 10 6 4 + ;
 
-2 . 4 . 6 . 8 . 10 .
-
-.S
-
-bye
-
 : state s@ ;
 : >in s@ 2 + ;
 : latest s@ 4 + ;
 : here s@ 6 + ;
 
+: sp0 s@ 8 + ;
+: rp0 s@ 10 + ;
 : sp@ s@ 8 + @ ;
 : rp@ s@ 10 + @ ;
 : sp! s@ 8 + ! ;
@@ -59,6 +55,13 @@ dup .S
 drop .S
 drop .S
 swap .S
+
+state .
+>in .
+latest .
+here .
+sp0 .
+rp0 .
 
 bye
 
