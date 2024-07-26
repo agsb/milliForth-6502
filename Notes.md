@@ -11,9 +11,11 @@ _26/07/2024_
 
     no more need sp@ rp@ as primitives
 
-    review for change (jmp for bcc), todo
-    
+    add a primitive for exec ( jmp to reference at TOS )
+
     using my-hello-world.FORTH as base dictionary
+    
+    need review for change (jmp for bcc), todo
 
 _24/07/2024_ 
 

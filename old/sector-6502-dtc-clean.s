@@ -199,23 +199,7 @@ magic = $20EA
 
 * = $E0
 
-; default pseudo registers
-
 nil:  ; empty for fixed reference
-
-; do not touch 
-ipt:    .word $0 ; instruction pointer
-spt:    .word $0 ; data stack base,
-rpt:    .word $0 ; return stack base
-wrk:    .word $0 ; work
-
-; free for use
-fst:    .word $0 ; first
-snd:    .word $0 ; second
-trd:    .word $0 ; third
-fth:    .word $0 ; fourth
-
-* = $F0
 
 ; default Forth variables, order matters for HELLO.forth !
 
@@ -223,6 +207,24 @@ stat:   .word $0 ; state at lsb, last size+flag at msb
 toin:   .word $0 ; toin next free byte in TIB
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell in heap dictionary, aka dpt
+
+; default pseudo registers
+
+spt:    .word $0 ; data stack base,
+rpt:    .word $0 ; return stack base
+ipt:    .word $0 ; instruction pointer
+wrk:    .word $0 ; work
+
+* = $F0
+
+; free for use
+
+fst:    .word $0 ; first
+snd:    .word $0 ; second
+trd:    .word $0 ; third
+fth:    .word $0 ; fourth
+
+; internal for use
 
 tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
@@ -635,16 +637,6 @@ pull:
 ; generics 
 ;
 ;---------------------------------------------------------------------
-rpush1:
-    ldy #(fst)
-    jmp rpush
-
-;---------------------------------------------------------------------
-rpull1:
-    ldy #(fst)
-    jmp rpull
-
-;---------------------------------------------------------------------
 spush1:
     ldy #(fst)
     jmp spush
@@ -702,11 +694,26 @@ def_word ".R", "rplist", 0
 ;----------------------------------------------------------------------
 ;  ae list a sequence of references
 list:
+
     sec
     sbc fst + 0
     lsr
+
     tax
+
+    lda fst + 1
     jsr puthex
+    lda fst + 0
+    jsr puthex
+
+    lda #' '
+    jsr putchar
+
+    txa
+    jsr puthex
+
+    lda #' '
+    jsr putchar
 
     txa
     beq @ends
@@ -755,7 +762,7 @@ seet:
 
 ;----------------------------------------------------------------------
 ; ( -- w ) ae deep of data stack
-def_word "spz", "spz", 0
+def_word "sp0", "spz", 0
     sec
     lda #sp0
     sbc spt + 0
@@ -767,7 +774,7 @@ stks:
 
 ;----------------------------------------------------------------------
 ; ( -- w ) ae deep of return stack
-def_word "rpz", "rpz", 0
+def_word "rp0", "rpz", 0
     sec
     lda #rp0
     sbc rpt + 0
@@ -928,17 +935,25 @@ def_word "s@", "state", 0
 ;---------------------------------------------------------------------
 ; ( -- sp )
 def_word "sp@", "spat", 0
-    lda spt + 0
+    ; lda spt + 0
+    ; sta fst + 0
+    ; lda spt + 1
+    ; jmp keeps 
+    lda #<spt
     sta fst + 0
-    lda spt + 1
+    lda #>spt
     jmp keeps 
 
 ;---------------------------------------------------------------------
 ; ( -- rp )
 def_word "rp@", "rpat", 0
-    lda rpt + 0
+    ;lda rpt + 0
+    ;sta fst + 0
+    ;lda rpt + 1
+    ;jmp keeps 
+    lda #<rpt
     sta fst + 0
-    lda rpt + 1
+    lda #>rpt
     jmp keeps 
 
 ;---------------------------------------------------------------------

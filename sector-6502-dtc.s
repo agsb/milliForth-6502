@@ -548,7 +548,7 @@ addwx:
     sta 0, x
     bcc @ends
     inc 1, x
-    clc
+    clc     ; keep branchs
 @ends:
     rts
 
@@ -640,14 +640,12 @@ pull:
 ;---------------------------------------------------------------------
 spull2:
     ldy #(snd)
-    .byte $2c   ; mask next two bytes, nice trick !
-    ; jmp spull
+    jsr spull
 
 ;---------------------------------------------------------------------
 spull1:
     ldy #(fst)
-    .byte $2c   ; mask next two bytes, nice trick !
-    ; jmp spull
+    jmp spull
 
 ;---------------------------------------------------------------------
 spush1:
@@ -797,7 +795,7 @@ puthex:
     cmp #$3A
     bcc @ends
     adc #$06
-    clc
+    clc     ; keep branchs
 @ends:
     jmp putchar
 
@@ -842,7 +840,7 @@ def_word "+", "plus", 0
     sta fst + 0
     lda snd + 1
     adc fst + 1
-    ; keep the branches clear
+    clc ; keep branches 
     jmp keeps
 
 ;---------------------------------------------------------------------
