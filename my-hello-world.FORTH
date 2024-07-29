@@ -16,16 +16,18 @@
 : latest s@ 4 + ;
 : here s@ 6 + ;
 
-: sp0 s@ 8 + ;
-: rp0 s@ 10 + ;
+: spt s@ 8 + ;
 : sp@ s@ 8 + @ ;
-: rp@ s@ 10 + @ ;
 : sp! s@ 8 + ! ;
-: rp! r@ 10 + ! ;
+
+: rpt s@ 10 + ;
+: rp@ s@ 10 + @ ;
+: rp! s@ 10 + ! ;
 
 : dup sp@ @ ;
 : invert dup nand ;
 : - invert 1 + + ;
+
 : <> - 0# ;
 : = <> invert ;
 : drop dup - + ;
@@ -56,14 +58,22 @@ drop .S
 drop .S
 swap .S
 
++ . .S 
+- . .S
++ . .S
+- . .S
+
 state .
 >in .
 latest .
 here .
-sp0 .
-rp0 .
 
-bye
+spt  .
+sp@ .
+
+rpt  .
+rp@ .
+
 
 : , here @ ! here @ 2 + here ! ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
@@ -78,6 +88,18 @@ bye
 : >rexit rp@ ! ;
 : >r rp@ @ swap rp@ ! >rexit ;
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
+
+: >r rp@ 2 - rp! rp@ ! ;
+: r> rp@ @ rp@ 2 + rp! ;
+
+10 8 .S .R
+
+>r .S .R
+i
+r> .S .R
+
+bye 
+
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
 : begin here @ ; immediate
@@ -88,14 +110,13 @@ bye
 : do here @ ['] >r , ['] >r , ; immediate
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup , ['] = , 
     ['] ?branch , here @ - , ['] 2drop , ; immediate
-
-
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
 : c@ @ ffh and ;
 : type 0 do dup c@ emit 1 + loop drop ;
 : in> >in @ c@ >in dup @ 1 + swap ! ;
 : bl lit [ 1 2* 2* 2* 2* 2* , ] ;
+
 : parse in> drop >in @ swap 0 begin over in> <> while 1 + repeat 
     swap bl = if >in dup @ 1 - swap ! then ;
 : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;

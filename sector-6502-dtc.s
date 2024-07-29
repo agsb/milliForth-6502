@@ -224,7 +224,7 @@ snd:    .word $0 ; second
 trd:    .word $0 ; third
 fth:    .word $0 ; fourth
 
-; internal for use
+; reserved
 
 tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
