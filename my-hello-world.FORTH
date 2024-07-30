@@ -17,12 +17,12 @@
 : here s@ 6 + ;
 
 : spt s@ 8 + ;
-: sp@ s@ 8 + @ ;
-: sp! s@ 8 + ! ;
+: sp@ spt @ ;
+: sp! spt ! ;
 
 : rpt s@ 10 + ;
-: rp@ s@ 10 + @ ;
-: rp! s@ 10 + ! ;
+: rp@ rpt @ ;
+: rp! rpt ! ;
 
 : dup sp@ @ ;
 : invert dup nand ;
@@ -40,16 +40,7 @@
 : 2* dup + ;
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 
-: 3 2 1 + ;
-: 5 3 2 + ;
-: 7 5 2 + ;
-: 9 7 2 + ;
-: 8 4 4 + ;
-: 10 6 4 + ;
-
--1 dup .S
-
-10 9 8 7 6 5 4 3 2 1 0 -1 .S 
+80h 10 8 6 4 2 1 0 -1 .S 
 
 swap .S
 over .S
@@ -58,15 +49,14 @@ drop .S
 drop .S
 swap .S
 
-+ . .S 
-- . .S
-+ . .S
-- . .S
+: 5 1 4 + ;
 
-state .
->in .
-latest .
-here .
+0 5 - . .S
+5 0 - . .S
+1 2 - . .S
+2 1 - . .S
+0 1 - . .S
+1 0 - . .S
 
 spt  .
 sp@ .
@@ -74,6 +64,8 @@ sp@ .
 rpt  .
 rp@ .
 
+
+bye
 
 : , here @ ! here @ 2 + here ! ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;

@@ -79,7 +79,7 @@
 ;   as hardware stacks do: 
 ;      push is 'store and decrease', pull is 'increase and fetch',
 ;
-;   but see the note for Devs.
+;   but see the notes for Devs.
 ;
 ;   common memory model organization of Forth: 
 ;   [tib->...<-spt: user forth dictionary :here->pad...<-rpt]
@@ -114,11 +114,14 @@
 ;       colon saves "here" into "back" and 
 ;       semis loads "lastest" from "back";
 ;
-;   Do not risk put stacks with $FF as zero0 limit
+;   Do not risk to put stacks with $FF also no routine endings with.
 ;
 ;   Must carefull inspect if any label ends with $FF and move it;
 ;
 ;   This source is for Ca65.
+;
+;   Stacks represented as (S: w3 w2 w1 -- u2 u1)
+;       before -- after, lower to upper, top at right
 ;
 ;----------------------------------------------------------------------
 ;
@@ -250,7 +253,11 @@ tail:   .word $0 ; heap backward
 ;
 * = $300
 
+main:
+
 ;----------------------------------------------------------------------
+; common
+;
 cold:
 ;   disable interrupts
     sei
@@ -266,7 +273,7 @@ cold:
     cli
 
 ;----------------------------------------------------------------------
-forget:
+warm:
 ; link list of headers
     lda #>h_exit
     sta last + 1
@@ -280,7 +287,8 @@ forget:
     sta here + 0
 
 ;---------------------------------------------------------------------
-; zzzz must review 'abort 'quit code
+; must review 'abort and 'quit code
+; together to save bytes
 quit:
 ; reset
     ldy #>tib
@@ -318,8 +326,6 @@ okey:
     lda stat + 0
     bne parse
 
-    lda #10 
-    jsr putchar
     lda #' '
     jsr putchar
     lda #'O'
@@ -329,8 +335,9 @@ okey:
     lda #10
     jsr putchar
 
+;---------------------------------------------------------------------
+; place a hook
 parse:
-
     lda #>parse_
     sta ipt + 1
     lda #<parse_
@@ -420,13 +427,13 @@ compile:
 
 execute:
 
-; DTC exec
-
     jmp (fst)
 
 ;---------------------------------------------------------------------
 ; wipe later
 error:
+    lda #'?'
+    jsr putchar
     lda #'?'
     jsr putchar
     lda #10
@@ -447,16 +454,22 @@ getline:
     pla
     pla
 
-; leave at 0
+; leave the first
     ldy #1
 @loop:  
     jsr getchar
-    and #$7F        ; zzz 7-bit ascii only
-    cmp #10         ; unix \n
+; zzz 7-bit ascii only
+    and #$7F        
+; unix \n
+    cmp #10         
     beq @ends
+; no controls
+    cmp #' '
+    bmi @loop
+; valid
     sta tib, y
     iny
-    ; cpy #tib_end    ; zzz
+    cpy #tib_end
     bne @loop
 
 ; clear all if y eq \0
@@ -501,6 +514,7 @@ token:
     tya
     sec
     sbc tout + 0
+
 ; keep it
     ldy tout + 0
     dey
@@ -538,6 +552,15 @@ decwx:
 
 ;---------------------------------------------------------------------
 ; increment a word in page zero. offset by X
+;incwx:
+;    inc 0, x
+;    bne @ends
+;    inc 1, x
+;@ends:
+;    rts
+
+;---------------------------------------------------------------------
+; increment a word in page zero. offset by X
 incwx:
     lda #01
 ;---------------------------------------------------------------------
@@ -551,15 +574,6 @@ addwx:
     clc     ; keep branchs
 @ends:
     rts
-
-;---------------------------------------------------------------------
-; increment a word in page zero. offset by X
-;incwx:
-;    inc 0, x
-;    bne @ends
-;    inc 1, x
-;@ends:
-;    rts
 
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
@@ -608,7 +622,7 @@ push:
     jsr decwx
     lda 0, y
     sta (0, x)
-    rts ; extra ***
+    rts ; 
 
 ;---------------------------------------------------------------------
 ; pull a cell 
@@ -630,8 +644,8 @@ pull:
     jsr incwx
     lda (0, x)
     sta  1, y
-    jsr incwx
-    rts
+    jmp incwx
+    ;  rts zzzz
 
 ;---------------------------------------------------------------------
 ;
@@ -654,9 +668,10 @@ spush1:
 
 ;---------------------------------------------------------------------
 ;
-; primitives, 
+; the primitives, 
+; for stacks uses
 ; a address, c byte ascii, w signed word, u unsigned word 
-; cstr counted string < 256, strz  string with nul ends
+; cs counted string < 256, sz string with nul ends
 ; 
 ;----------------------------------------------------------------------
 
@@ -744,8 +759,9 @@ list:
     rts
 
 ;----------------------------------------------------------------------
-;  ae seek a reference in a sequence of references
-seet:
+;  ae seek for 'exit to ends a sequence of references
+;  max of 254 references in list
+seek:
     ldy #0
 @loop1:
     iny
@@ -764,7 +780,7 @@ seet:
     bne @loop1
 
 @ends:
-    clc     ; keep branchs
+    ; clc     ; keep branchs
     tya
     lsr
     rts
@@ -777,6 +793,7 @@ def_word ".", "dot", 0
     jsr puthex
     lda fst + 0
     jsr puthex
+    jsr spush1
     jmp next
 
 ;----------------------------------------------------------------------
@@ -802,6 +819,46 @@ puthex:
 .endif
 
 ;---------------------------------------------------------------------
+;
+; extensions
+;
+;---------------------------------------------------------------------
+; uncomment to include the extensions (sic)
+extensions = 1 
+
+.ifdef extensions
+
+; ( -- a ) return next dictionary address
+def_word "&", "perse", 0 
+    ldy #(ipt)
+    jsr spush
+    ldx #(ipt)
+    lda #2
+    jsr incwx
+    jmp this
+
+;---------------------------------------------------------------------
+; ( a -- ) execute a jump to a reference at top of data stack
+def_word "exec", "exec", 0 
+    jsr spull1
+    jmp (fst)
+
+;---------------------------------------------------------------------
+; ( a -- ) execute a jump to reference at ipt
+def_word "duck", "duck", 0 
+    jmp (ipt)
+
+;---------------------------------------------------------------------
+; ( w -- w/2 ) ; shift right
+def_word "2/", "shr", 0
+    jsr spull1
+    lsr fst + 1
+    ror fst + 0
+    jmp this
+
+.endif
+
+;---------------------------------------------------------------------
 ; core 
 ;---------------------------------------------------------------------
 ; ( c -- ) ; tos + 1 unchanged
@@ -818,18 +875,6 @@ def_word "key", "key", 0
     sta fst + 0
     jmp this
     
-;---------------------------------------------------------------------
-; ( w -- w/2 ) ; shift right
-def_word "2/", "shr", 0
-    ; asr 
-    ;lda tos + 1
-    ;asl a
-    ;ror tos + 1
-    jsr spull1
-    lsr fst + 1
-    ror fst + 0
-    jmp this
-
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
@@ -907,22 +952,6 @@ fetchw:
     jmp copys
 
 ;---------------------------------------------------------------------
-; ( -- a ) return next dictionary address
-;def_word "&", "perse", 0 
-;    ldy #(ipt)
-;    jsr spush
-;    ldx #(ipt)
-;    lda #2
-;    jsr incwx
-;    jmp this
-
-;---------------------------------------------------------------------
-; ( a -- ) execute a jump to a reference at top of data stack
-def_word "exec", "exec", 0 
-    jsr spull1
-    jmp (fst)
-
-;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
 def_word "s@", "state", 0 
     lda #<stat
@@ -985,7 +1014,7 @@ create:
 ; get following token
     jsr token
 
-; copy size and name
+; copy it
     ldy #0
 @loop:    
     lda (tout), y
@@ -997,7 +1026,7 @@ create:
 
 @ends:
 ; update here 
-    clc     ; keep branchs
+    ; clc     ; keep branchs
     tya
     ldx #(here)
     jsr addwx
@@ -1044,12 +1073,13 @@ nest:   ; enter
     ldy #(ipt)
     jsr rpush
 
-; pull (ip),  6502 trick: must increase return address rof a jsr
+; pull (ip),  
     pla
     sta ipt + 0
     pla
     sta ipt + 1
 
+; 6502 trick: must increase return address 
     ldx #(ipt)
     jsr incwx
     
@@ -1062,5 +1092,4 @@ ends:
 .align $100
 
 init:   
-
 
