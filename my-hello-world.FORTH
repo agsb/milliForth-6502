@@ -40,7 +40,7 @@
 : 2* dup + ;
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 
-80h 10 8 6 4 2 1 0 -1 .S 
+-1 0 1 2 4 6 8 10
 
 swap .S
 over .S
@@ -49,32 +49,50 @@ drop .S
 drop .S
 swap .S
 
-: 5 1 4 + ;
+drop drop drop drop drop drop
 
-0 5 - . .S
-5 0 - . .S
-1 2 - . .S
-2 1 - . .S
-0 1 - . .S
-1 0 - . .S
+.S
 
-spt  .
+10 6 - . .S drop
+6 10 - . .S drop
+
+10 6 + . .S drop
+6 10 + . .S drop
+
+spt .
 sp@ .
 
-rpt  .
+.S drop drop
+
+rpt .
 rp@ .
 
-
-bye
+.S drop drop
 
 : , here @ ! here @ 2 + here ! ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
 
+10
+
+.S
+
+here @ . ! .
+
+here @ . @ .
+
+.S
+
+
 : [ 1 s@ ! ; immediate
 : ] 0 s@ ! ;
 
-: branch rp@ @ dup @ + rp@ ! ;
+.R
+
+: branch rp@ @ dup @ + rp! ;
+
 : ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
+
+
 : lit rp@ @ dup 2 + rp@ ! @ ;
 : ['] rp@ @ dup 2 + rp@ ! @ ;
 : >rexit rp@ ! ;
@@ -87,7 +105,7 @@ bye
 10 8 .S .R
 
 >r .S .R
-i
+
 r> .S .R
 
 bye 

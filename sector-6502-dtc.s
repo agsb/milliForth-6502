@@ -828,6 +828,15 @@ extensions = 1
 
 .ifdef extensions
 
+;---------------------------------------------------------------------
+; ( w -- w/2 ) ; shift right
+def_word "2/", "shr", 0
+    jsr spull1
+    lsr fst + 1
+    ror fst + 0
+    jmp this
+
+;---------------------------------------------------------------------
 ; ( -- a ) return next dictionary address
 def_word "&", "perse", 0 
     ldy #(ipt)
@@ -848,46 +857,10 @@ def_word "exec", "exec", 0
 def_word "duck", "duck", 0 
     jmp (ipt)
 
-;---------------------------------------------------------------------
-; ( w -- w/2 ) ; shift right
-def_word "2/", "shr", 0
-    jsr spull1
-    lsr fst + 1
-    ror fst + 0
-    jmp this
-
 .endif
 
 ;---------------------------------------------------------------------
 ; core 
-;---------------------------------------------------------------------
-; ( c -- ) ; tos + 1 unchanged
-def_word "emit", "emit", 0
-    jsr spull1
-    lda fst + 0
-    jsr putchar
-    jmp next
-
-;---------------------------------------------------------------------
-; ( -- c ) ; tos + 1 unchanged
-def_word "key", "key", 0
-    jsr getchar
-    sta fst + 0
-    jmp this
-    
-;---------------------------------------------------------------------
-; ( w2 w1 -- w1 + w2 ) 
-def_word "+", "plus", 0
-    jsr spull2
-    clc
-    lda snd + 0
-    adc fst + 0
-    sta fst + 0
-    lda snd + 1
-    adc fst + 1
-    clc ; keep branches 
-    jmp keeps
-
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
@@ -902,20 +875,27 @@ def_word "nand", "nand", 0
     jmp keeps
 
 ;---------------------------------------------------------------------
-; ( 0 -- $0000) | ( n -- $FFFF)
-def_word "0#", "zeroq", 0
-    jsr spull1
-    lda fst + 1
-    ora fst + 0
-    bne istrue  ; is \0 ?
-isfalse:
-    lda #$00
-    .byte $2c   ; mask next two bytes, nice trick !
-istrue:
-    lda #$FF
-rest:
+; ( w2 w1 -- w1 + w2 ) 
+def_word "+", "plus", 0
+    jsr spull2
+    clc
+    lda snd + 0
+    adc fst + 0
     sta fst + 0
+    lda snd + 1
+    adc fst + 1
+    ; clc ; keep branches 
     jmp keeps
+
+;---------------------------------------------------------------------
+; ( a -- w ) ; w = [a]
+def_word "@", "fetch", 0
+fetchw:
+    jsr spull1
+    ldx #(fst)
+    ldy #(snd)
+    jsr copyfrom
+    ;   jmp copys
 
 ;---------------------------------------------------------------------
 copys:
@@ -932,24 +912,27 @@ this:
     jmp next
 
 ;---------------------------------------------------------------------
-; ( w a -- ) ; [a] = w
-def_word "!", "store", 0
-storew:
-    jsr spull2
-    ldx #(snd) 
-    ldy #(fst) 
-    jsr copyinto
-    jmp next
-
+; ( -- c ) ; tos + 1 unchanged
+def_word "key", "key", 0
+    jsr getchar
+    sta fst + 0
+    jmp this
+    
 ;---------------------------------------------------------------------
-; ( a -- w ) ; w = [a]
-def_word "@", "fetch", 0
-fetchw:
+; ( 0 -- $0000) | ( n -- $FFFF)
+def_word "0#", "zeroq", 0
     jsr spull1
-    ldx #(fst)
-    ldy #(snd)
-    jsr copyfrom
-    jmp copys
+    lda fst + 1
+    ora fst + 0
+    bne istrue  ; is \0 ?
+isfalse:
+    lda #$00
+    .byte $2c   ; mask next two bytes, nice trick !
+istrue:
+    lda #$FF
+rest:
+    sta fst + 0
+    jmp keeps
 
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
@@ -974,6 +957,24 @@ def_word "s@", "state", 0
 ;    sta fst + 0
 ;    lda rpt + 1
 ;    jmp keeps 
+
+;---------------------------------------------------------------------
+; ( c -- ) ; tos + 1 unchanged
+def_word "emit", "emit", 0
+    jsr spull1
+    lda fst + 0
+    jsr putchar
+    jmp next
+
+;---------------------------------------------------------------------
+; ( w a -- ) ; [a] = w
+def_word "!", "store", 0
+storew:
+    jsr spull2
+    ldx #(snd) 
+    ldy #(fst) 
+    jsr copyinto
+    jmp next
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
