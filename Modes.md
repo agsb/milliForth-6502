@@ -4,7 +4,7 @@
 ### Threads and nuts
 
  historical JMP @(W)++
- case indirect thread code, 
+ case on indirect thread code, 
 
    W = (IP)
    IP++
@@ -13,7 +13,7 @@
    JMP (X)
 
  historical JMP (W)
- case direct thread code
+ case on direct thread code
     
     W = (IP)
     IP++
@@ -27,18 +27,18 @@
 
 EXIT:
 UNNEST:
-    RP++
     IP = (RP)
+    RP += CELL
 
 NEXT:
     W = (IP)
-    IP++
+    IP += CELL
     JMP (W)
 
 ENTER:
 NEST:
+    RP -= CELL
     (RP) = IP
-    RP--
     POP IP 
     JMP NEXT
 
@@ -55,48 +55,50 @@ NEST:
 
 EXIT:
 UNNEST:
-    RP++
     IP = (RP)
+    RP += CELL
 
 NEXT:
     W = (IP)
-    IP++
+    IP += CELL
     TST W
     BEQ JUMP
 
 ENTER:
 NEST:
+    RP -= CELL
     (RP) = IP
-    RP--
     IP = W
     JMP NEXT
 
 JUMP:
-    RP++
+    W = IP
     IP = (RP)
+    RP += CELL
     JMP (W)
 
-; test every word, only jumps when 0x0
+; test every first reference in ever word, 
+; only jumps when 0x0
 ; just test and jump to next or to W
 
 3) a better alternative ?
 
 ; aka exit, semis, etc
 UNNEST:
-    RP++
     IP = (RP)
+    RP += CELL
 
 ; always next
 NEXT:
     W = (IP)
-    IP++
+    IP += CELL
     X = (W)
     W++
 
 ; aka enter, docol, dolst, etc
 NEST:
+    RP -= CELL
     (RP) = IP
-    RP--
     IP = W
 
 ; does not need the 0x0 at cfa, just compare tha reference

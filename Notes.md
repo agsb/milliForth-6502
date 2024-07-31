@@ -1,17 +1,41 @@
 
 ## Coding
 
- done - still no _'OK'_ or _'NO'_;
+    On milliforth sector-x86 the classic NEXT ('lodsw' and 'jmp ax')
+    is used as inner Forth heart beat, then SI is used as pointer to
+    next reference to evaluate.
+    But the SI register is not accessibily, so the next reference must
+    only can accessed by using lit [ ~some~ , ] while compiling.
+
+
+## Todo
+
+  done - still no _'OK'_ or _'NO'_;
 - still no backspace routine for \b; 
 - still no cancel line routine for \u; 
 
 ## Time table 
 
+_31/07/2024_ 
+
+    review of BRANCH LIT and etc, for use ipt as reference 
+        because when a primitive is executed the next reference
+        is at ipt, there is NO next reference in return stack,
+
 _26/07/2024_ 
 
     no more need sp@ rp@ as primitives
 
-    add a primitive for exec ( jmp to reference at TOS )
+    add a toggle for extensions:
+
+        a primitive 'duck', for jump to ip ( reference )
+        a primitive '&', perse, for get ip ( reference )
+
+    add a toggle for extras:
+
+        primitive '.', dot, for print TOS
+        primitive .S for show the data stack
+        primitive .R for show the return stack
 
     using my-hello-world.FORTH as base dictionary
     

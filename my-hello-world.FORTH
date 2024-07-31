@@ -25,7 +25,7 @@
 : rp@ rpt @ ;
 : rp! rpt ! ;
 
-: ipt s@ 10 + ;
+: ipt s@ 12 + ;
 : ip@ ipt @ ;
 : ip! ipt ! ;
 
@@ -52,19 +52,59 @@
 : [ 1 s@ ! ; immediate
 : ] 0 s@ ! ;
 
-: branch rp@ dup @ + rp! ;
-: ?branch 0# invert rp@ @ 2 - and rp@ + 2 + rp! ;
+: branch ip@ dup @ + ip! ;
 
-: lit rp@ @ dup 2 + rp! @ ;
-: ['] rp@ @ dup 2 + rp! @ ;
+: ?branch 0# invert ip@ @ 2 - and ip@ + 2 + ip! ;
 
-.S
+: lit ip@ @ dup 2 + ip! @ ;
 
-: xx lit [ 10 , ] ;
+: ['] ip@ @ dup 2 + ip! @ ;
 
-xx
+: if ['] ?branch , here @ 0 , ; immediate
 
-.S
+: then dup here @ swap - swap ! ; immediate
+
+: begin here @ ; immediate
+
+: again ['] branch , here @ - , ; immediate
+
+: until ['] ?branch , here @ - , ; immediate
+
+: spc 10 10 + 10 + 2 + emit ;
+
+: cr 10 emit ;
+
+10 . spc . cr .
+
+
+: dump 
+
+    .S
+    
+    begin
+        
+        spc
+
+        dup @ . drop
+
+        1 - 
+
+        over over -
+        
+        0#
+
+    until
+
+    drop drop 
+
+    .S 
+
+    ;
+
+s@ here @ dump 
+
+bye
+
 : >rexit rp@ ! ;
 : >r rp@ @ swap rp@ ! >rexit ;
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
@@ -86,7 +126,6 @@ bye
 : while ['] ?branch , here @ 0 , ; immediate
 : repeat swap ['] branch , here @ - , dup here @ swap - swap ! ; 
     immediate
-: until ['] ?branch , here @ - , ; immediate
 : do here @ ['] >r , ['] >r , ; immediate
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup , ['] = , 
     ['] ?branch , here @ - , ['] 2drop , ; immediate

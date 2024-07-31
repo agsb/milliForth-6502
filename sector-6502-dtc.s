@@ -204,7 +204,7 @@ magic = $20EA
 
 nil:  ; empty for fixed reference
 
-; default Forth variables, order matters for HELLO.forth !
+; internal Forth variables, order matters for HELLO.forth !
 
 stat:   .word $0 ; state at lsb, last size+flag at msb
 toin:   .word $0 ; toin next free byte in TIB
@@ -227,12 +227,12 @@ snd:    .word $0 ; second
 trd:    .word $0 ; third
 fth:    .word $0 ; fourth
 
-; reserved
+; used and reserved
 
 tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
 
-; future expansion
+; for future expansion
 head:   .word $0 ; heap forward, also DP
 tail:   .word $0 ; heap backward
 
@@ -761,6 +761,82 @@ list:
     bne @loop
 @ends:
     rts
+    
+;----------------------------------------------------------------------
+def_word "dump", "dump", 0
+
+; load last
+    lda last + 1
+    sta snd + 1
+    lda last + 0
+    sta snd + 0
+    
+@loop:
+; lsb linked list
+    lda snd + 0
+    sta fst + 0
+
+; verify \0x0
+    ora snd + 1
+    beq @ends
+
+@each:    
+
+; msb linked list
+    lda snd + 1
+    sta fst + 1
+
+    lda #10
+    jsr putchar
+
+; put address
+    lda #'>'
+    jsr putchar
+
+    lda fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+
+; update next link 
+    ldx #(fst) ; from 
+    ldy #(snd) ; into
+    jsr copyfrom
+
+    lda #' '
+    jsr putchar
+;4 put link
+    lda snd + 1
+    jsr puthex
+    lda snd + 0
+    jsr puthex
+
+    lda #' '
+    jsr putchar
+    ldy #0
+; put size + flag
+    lda (fst), y
+    jsr puthex
+
+    lda (fst), y
+    and #$7F
+    tax
+
+    lda #' '
+    jsr putchar
+; put name 
+ @loopn:
+    iny
+    lda (fst), y
+    jsr putchar
+    dex
+    bne @loopn
+
+    jmp @loop
+
+@ends:
+    jmp next
+    
 
 ;----------------------------------------------------------------------
 ;  ae seek for 'exit to ends a sequence of references
