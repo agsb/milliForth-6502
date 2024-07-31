@@ -10,6 +10,7 @@
 : 6 2 4 + ;
 : 8 4 4 + ;
 : 10 6 4 + ;
+: 12 6 6 + ;
 
 : state s@ ;
 : >in s@ 2 + ;
@@ -23,6 +24,12 @@
 : rpt s@ 10 + ;
 : rp@ rpt @ ;
 : rp! rpt ! ;
+
+: ipt s@ 10 + ;
+: ip@ ipt @ ;
+: ip! ipt ! ;
+
+: cr 10 emit ;
 
 : dup sp@ @ ;
 : invert dup nand ;
@@ -40,61 +47,24 @@
 : 2* dup + ;
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 
--1 0 1 2 4 6 8 10
-
-swap .S
-over .S
-dup .S
-drop .S
-drop .S
-swap .S
-
-drop drop drop drop drop drop
-
-.S
-
-10 6 - . .S drop
-6 10 - . .S drop
-
-10 6 + . .S drop
-6 10 + . .S drop
-
-spt .
-sp@ .
-
-.S drop drop
-
-rpt .
-rp@ .
-
-.S drop drop
-
 : , here @ ! here @ 2 + here ! ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
-
-10
-
-.S
-
-here @ . ! .
-
-here @ . @ .
-
-.S
-
-
 : [ 1 s@ ! ; immediate
 : ] 0 s@ ! ;
 
-.R
+: branch rp@ dup @ + rp! ;
+: ?branch 0# invert rp@ @ 2 - and rp@ + 2 + rp! ;
 
-: branch rp@ @ dup @ + rp! ;
+: lit rp@ @ dup 2 + rp! @ ;
+: ['] rp@ @ dup 2 + rp! @ ;
 
-: ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
+.S
 
+: xx lit [ 10 , ] ;
 
-: lit rp@ @ dup 2 + rp@ ! @ ;
-: ['] rp@ @ dup 2 + rp@ ! @ ;
+xx
+
+.S
 : >rexit rp@ ! ;
 : >r rp@ @ swap rp@ ! >rexit ;
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;

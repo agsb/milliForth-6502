@@ -699,6 +699,8 @@ def_word ".S", "splist", 0
     sta fst + 0
     lda spt + 1
     sta fst + 1
+    lda #'S'
+    jsr putchar
     lda #sp0
     jsr list
     jmp next
@@ -710,6 +712,8 @@ def_word ".R", "rplist", 0
     sta fst + 0
     lda rpt + 1
     sta fst + 1
+    lda #'R'
+    jsr putchar
     lda #rp0
     jsr list
     jmp next
@@ -788,6 +792,8 @@ seek:
 ;----------------------------------------------------------------------
 ; ( u -- ) print tos in hexadecimal, swaps order
 def_word ".", "dot", 0
+    lda #' '
+    jsr putchar
     jsr spull1
     lda fst + 1
     jsr puthex
