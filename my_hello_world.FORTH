@@ -74,51 +74,12 @@
 
 : cr 10 emit ;
 
-10 . spc . cr .
-
-
-: dump 
-
-    .S
-    
-    begin
-        
-        spc
-
-        dup @ . drop
-
-        1 - 
-
-        over over -
-        
-        0#
-
-    until
-
-    drop drop 
-
-    .S 
-
-    ;
-
-s@ here @ dump 
-
-bye
-
 : >rexit rp@ ! ;
 : >r rp@ @ swap rp@ ! >rexit ;
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
 
 : >r rp@ 2 - rp! rp@ ! ;
 : r> rp@ @ rp@ 2 + rp! ;
-
-10 8 .S .R
-
->r .S .R
-
-r> .S .R
-
-bye 
 
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
@@ -135,6 +96,10 @@ bye
 : type 0 do dup c@ emit 1 + loop drop ;
 : in> >in @ c@ >in dup @ 1 + swap ! ;
 : bl lit [ 1 2* 2* 2* 2* 2* , ] ;
+
+dump
+
+bye
 
 : parse in> drop >in @ swap 0 begin over in> <> while 1 + repeat 
     swap bl = if >in dup @ 1 - swap ! then ;

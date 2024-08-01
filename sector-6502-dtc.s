@@ -765,7 +765,7 @@ list:
 ;----------------------------------------------------------------------
 def_word "dump", "dump", 0
 
-; load last
+; load lastest
     lda last + 1
     sta snd + 1
     lda last + 0
@@ -780,17 +780,17 @@ def_word "dump", "dump", 0
     ora snd + 1
     beq @ends
 
-@each:    
-
 ; msb linked list
     lda snd + 1
     sta fst + 1
+
+@each:    
 
     lda #10
     jsr putchar
 
 ; put address
-    lda #'>'
+    lda #' '
     jsr putchar
 
     lda fst + 1
@@ -803,40 +803,108 @@ def_word "dump", "dump", 0
     ldy #(snd) ; into
     jsr copyfrom
 
+; put link
     lda #' '
     jsr putchar
-;4 put link
+
     lda snd + 1
     jsr puthex
     lda snd + 0
     jsr puthex
 
+; put size + flag, name
+    ldy #0
+    jsr show_name
+
+; update
+    iny
+    tya
+    ldx #(fst)
+    jsr addwx
+
+; put CFA
     lda #' '
     jsr putchar
+    lda fst + 1 
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+
+; thanks, @https://codebase64.org/doku.php?id=base:
+;   16-bit_absolute_comparison
+; check if primitive
+    lda fst + 0
+    cmp #<init
+    lda fst + 1
+    sbc #>init
+    eor fst + 1
+    bmi @loop
+
+; list references
     ldy #0
-; put size + flag
+    jsr show_refer
+
+@continue:
+    jmp @loop 
+
+@ends:
+    jmp next
+
+;----------------------------------------------------------------------
+show_refer:
+; put references PFA ... 
+@loop:
+    lda #' '
+    jsr putchar
+
+    iny 
     lda (fst), y
     jsr puthex
+    dey
+    lda (fst), y
+    jsr puthex
+
+; check if ends
+    lda (fst), y
+    cmp #<exit
+    bne @next
+    iny
+    lda (fst), y
+    cmp #>exit
+    beq @ends
+    dey
+@next:
+    iny
+    iny
+    bne @loop
+@ends:
+    rts
+
+;----------------------------------------------------------------------
+; put size and name 
+show_name:
+    lda #' '
+    jsr putchar
+
+    lda (fst), y
+    jsr puthex
+    
+    lda #' '
+    jsr putchar
 
     lda (fst), y
     and #$7F
     tax
 
-    lda #' '
-    jsr putchar
-; put name 
- @loopn:
+ @loop:
     iny
     lda (fst), y
     jsr putchar
     dex
-    bne @loopn
-
-    jmp @loop
+    bne @loop
 
 @ends:
-    jmp next
-    
+    rts
 
 ;----------------------------------------------------------------------
 ;  ae seek for 'exit to ends a sequence of references
