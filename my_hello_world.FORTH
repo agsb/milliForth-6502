@@ -90,17 +90,22 @@
 : do here @ ['] >r , ['] >r , ; immediate
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup , ['] = , 
     ['] ?branch , here @ - , ['] 2drop , ; immediate
+
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
 : c@ @ ffh and ;
-: type 0 do dup c@ emit 1 + loop drop ;
-: in> >in @ c@ >in dup @ 1 + swap ! ;
-: bl lit [ 1 2* 2* 2* 2* 2* , ] ;
+
+0fh .
+ffh .
+10 c@ .
 
 dump
 
 bye
 
+: type 0 do dup c@ emit 1 + loop drop ;
+: in> >in @ c@ >in dup @ 1 + swap ! ;
+: bl lit [ 1 2* 2* 2* 2* 2* , ] ;
 : parse in> drop >in @ swap 0 begin over in> <> while 1 + repeat 
     swap bl = if >in dup @ 1 - swap ! then ;
 : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;

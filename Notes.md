@@ -2,15 +2,33 @@
 ## Coding
 
     On milliforth sector-x86 the classic NEXT ('lodsw' and 'jmp ax')
-    is used as inner Forth heart beat, then SI is used as pointer to
-    next reference to evaluate.
-    But the SI register is not accessibily, so the next reference must
-    only can accessed by using lit [ ~some~ , ] while compiling.
+    is used as inner Forth heart beat. 
+
+    The register SI is ever used as pointer to next reference in same 
+    word. Whenm it is saved into and loaded from return stack ? 
+
+    All primitive words do not call any other word and ends with a 
+    jump to NEXT.
+
+    All composed words have a call to DOCOL, at start, to push SI, 
+    followed by a list of references of other words and ends with 
+    a reference to EXIT, to pull SI, from return stack, 
+
+    The return stack keep track of next references of the last words 
+    not for the actual word.
+
+    Meanwhile the SI register is not accessible, it is not exposed and 
+    the next reference can only be accessed while compiling, by using 
+    HERE. Eg. lit [ here @ 6 + , ] 
+
+    The primitives s@ sp@ rp@ acts as VARIABLES, place the contentes 
+    of of registers at data stack. Those are the addresses for STATE 
+    and, DATA and RETURN stack pointers.
 
 
 ## Todo
 
-  done - still no _'OK'_ or _'NO'_;
+  done  _'OK'_ or _'NO'_;
 - still no backspace routine for \b; 
 - still no cancel line routine for \u; 
 
@@ -18,7 +36,8 @@
 
 _31/07/2024_ 
 
-    review of BRANCH LIT and etc, for use ipt as reference 
+    review of those of use rp@ as BRANCH LIT and etc.
+        for use ipt as reference 
         because when a primitive is executed the next reference
         is at ipt, there is NO next reference in return stack,
 

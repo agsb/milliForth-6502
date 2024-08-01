@@ -60,6 +60,9 @@
 : in> >in @ c@ >in dup @ 1 + swap ! ;
 : bl lit [ 1 2* 2* 2* 2* 2* , ] ;
 
+0fh . ffh . 
+10 c@ .
+
 dump
 
 bye
