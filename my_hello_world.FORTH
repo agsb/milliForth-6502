@@ -10,76 +10,61 @@
 : 6 2 4 + ;
 : 8 4 4 + ;
 : 10 6 4 + ;
-: 12 6 6 + ;
 
 : state s@ ;
 : >in s@ 2 + ;
 : latest s@ 4 + ;
 : here s@ 6 + ;
 
-: spt s@ 8 + ;
-: sp@ spt @ ;
-: sp! spt ! ;
-
-: rpt s@ 10 + ;
-: rp@ rpt @ ;
-: rp! rpt ! ;
-
-: ipt s@ 12 + ;
-: ip@ ipt @ ;
-: ip! ipt ! ;
+: sp@ s@ 8 + ;
+: rp@ s@ 10 + ;
 
 : cr 10 emit ;
 
 : dup sp@ @ ;
 : invert dup nand ;
-: - invert 1 + + ;
+: negate invert 1 + ;
+: - negate + ;
 
 : <> - 0# ;
 : = <> invert ;
+
 : drop dup - + ;
 : over sp@ 2 + @ ;
 : swap over over sp@ 6 + ! sp@ 2 + ! ;
-: 2dup over over ;
-: 2drop drop drop ;
+: nip swap drop ;
+
 : and nand invert ;
 : or invert swap invert and invert ;
+
+: 2dup over over ;
+: 2drop drop drop ;
 : 2* dup + ;
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 
 : , here @ ! here @ 2 + here ! ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
+
 : [ 1 s@ ! ; immediate
 : ] 0 s@ ! ;
 
-: branch ip@ dup @ + ip! ;
+: branch rp@ @ dup @ + rp@ ! ;
+: ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
 
-: ?branch 0# invert ip@ @ 2 - and ip@ + 2 + ip! ;
-
-: lit ip@ @ dup 2 + ip! @ ;
-
-: ['] ip@ @ dup 2 + ip! @ ;
-
-: if ['] ?branch , here @ 0 , ; immediate
-
-: then dup here @ swap - swap ! ; immediate
-
-: begin here @ ; immediate
-
-: again ['] branch , here @ - , ; immediate
-
-: until ['] ?branch , here @ - , ; immediate
-
-: spc 10 10 + 10 + 2 + emit ;
-
-: cr 10 emit ;
+: lit rp@ @ dup 2 + rp! @ ;
+: ['] rp@ @ dup 2 + rp! @ ;
 
 : >rexit rp@ ! ;
 : >r rp@ @ swap rp@ ! >rexit ;
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
 
-: >r rp@ 2 - rp! rp@ ! ;
-: r> rp@ @ rp@ 2 + rp! ;
+10 8 .S .R
+
+>r .S .R
+
+r> .S .R
+
+bye 
 
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
@@ -87,25 +72,17 @@
 : while ['] ?branch , here @ 0 , ; immediate
 : repeat swap ['] branch , here @ - , dup here @ swap - swap ! ; 
     immediate
+: until ['] ?branch , here @ - , ; immediate
 : do here @ ['] >r , ['] >r , ; immediate
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , ['] 2dup , ['] = , 
     ['] ?branch , here @ - , ['] 2drop , ; immediate
-
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
 : c@ @ ffh and ;
-
-0fh .
-ffh .
-10 c@ .
-
-dump
-
-bye
-
 : type 0 do dup c@ emit 1 + loop drop ;
 : in> >in @ c@ >in dup @ 1 + swap ! ;
 : bl lit [ 1 2* 2* 2* 2* 2* , ] ;
+
 : parse in> drop >in @ swap 0 begin over in> <> while 1 + repeat 
     swap bl = if >in dup @ 1 - swap ! then ;
 : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;

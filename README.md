@@ -3,7 +3,7 @@
 _"A Forth in 336 bytes — the smallest real programming 
 language ever, as of yet."_
 
-The milliForth[^1] is very similar to sectorForth[^2], 
+The milliForth[^1] is a review of sectorForth[^2], 
 and smaller than sector Lisp[^3]
 
 The miniForth[^4] is another Forth to use in a boot sector 
@@ -31,13 +31,19 @@ the FIG-Forth for 6502 uses Indirect Thread Code (ITC)
 
 This Forth for 6502, will be done using two models: 
     
-    with classic DTC and with Minimal Indirect Thread Code (MITC)
+    with classic DTC as milli-Forth-x86 and
+    with Minimal Thread Code (MTC)
 
-(later we will compare both, but DTC will win in less size) 
+(later we will compare both, but DTC will win for less size) 
+
+this project is also used to test variations of Minimum Thread Code
+against a standart Direct Thread Code.
 
 ## Coding for 6502
 
-Using ca65 V2.19 - Git 7979f8a41. Focus in size not performance.
+Using ca65 V2.19 - Git 7979f8a41. 
+
+Focus in size not performance.
 
 The way at 6502 is use a page zero and lots of lda/sta bytes.
 
@@ -54,13 +60,12 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 - 6502 is a byte processor, no need 'pad' at end of even names;
 - hardware stack (page $100) not used as forth stack, free for use;
-- no multiuser, no multitask, no faster;
 - uses 32 bytes of _page zero_;
-- only update _latest_ at end of word definition, 
-    so the word is hidden while defined;
+- no multiuser, no multitask, no faster;
+- only update _latest_ at end of word definition; 
 - redefine a word does not change previous uses;
 - stacks moves like the hardware stack;
-- words must be between spaces, before and after is wise;
+- words must be between spaces, before and after ever ;
 - uses 7-bit ASCII characters;
 - approuch as ANSI X3.215-1994[^5]
 
@@ -68,33 +73,36 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 Look up at Notes[^6]
 
+11/08/2024:
+    return to direct thread code
+
 11/06/2024:
-    return to minimal thread indirect code
-    using Minimal Thread Indirect Code_ as inner dispatcher[^7];
+    adapt for minimal thread indirect code
 
 24/01/2024:
-    for comparison with x86 code, 
-    rewrite using standart direct thread code as inner dispatcher;
+    rewrite using standart direct thread code;
 
 ## Coding
 
 This version includes: 
 ```
 primitives:
-    sp@, rp@, s@, +, nand, @, !, :, ;, 0#, key, emit, 2/, exit,
+    s@, +, nand, @, !, :, ;, 0#, key, emit, exit,
+    
+    the sp@ and rp@ are derived from s@
 
 internals: 
     spush, spull, rpull, rpush, (stack code)
     copyfrom, copyinto, (heap code)
     incr, decr, add, etc (register mimics)
-    unnest, next, nest, pick, link, jump, (inner interpreter) 
+    unnest, next, nest, (dtc inner) 
+    pick, jump, (mtc inner) 
     cold, quit, token, skip, scan, getline, (boot and terminal)
     parse, find, compile, execute, exit (outer interpreter)
     getch, putch (depends on system, used minimal for emulator )
     
-Order in dictionary:
-    
-    exit : ; sp@ rp@ s@ @ ! 0# nand + asr emit key
+
+A my_hello_world.FORTH alternate version with dictionary for use;
 
 ```
 
@@ -143,7 +151,8 @@ For Forth language primer see
 
 ## Use
 
-_** Still not operational, using lib6502 for emulation and tests, Any sugestions ? **_
+_** Still not operational, 
+using lib6502 for emulation and tests, Any sugestions ? **_
 
 A crude small script for compile with ca65 is included.
 

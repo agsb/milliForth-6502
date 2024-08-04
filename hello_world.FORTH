@@ -27,6 +27,12 @@
 : over sp@ 2 + @ ;
 : swap over over sp@ 6 + ! sp@ 2 + ! ;
 
+10 . 8 .
+swap .S
+over .S 
+drop .S
+swap .S 
+
 : 2dup over over ;
 : 2drop drop drop ;
 : or invert swap invert and invert ;
@@ -43,8 +49,11 @@
 : >rexit rp@ ! ;
 : >r rp@ @ swap rp@ ! >rexit ;
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
+: rot >r swap r> swap ;
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
+: else ['] branch , here @ 0 , swap dup 
+    here @ swap - swap ! ; immediate
 : begin here @ ; immediate
 : while ['] ?branch , here @ 0 , ; immediate
 : repeat swap ['] branch , here @ - , 
