@@ -204,14 +204,15 @@ magic = $20EA
 
 nil:  ; empty for fixed reference
 
-; internal Forth variables, order matters for HELLO.forth !
+; as user variables
+; internal Forth, order matters for HELLO.forth !
 
 stat:   .word $0 ; state at lsb, last size+flag at msb
 toin:   .word $0 ; toin next free byte in TIB
 last:   .word $0 ; last link cell
 here:   .word $0 ; next free cell in heap dictionary, aka dpt
 
-; default pseudo registers
+; pointers registers
 
 spt:    .word $0 ; data stack base,
 rpt:    .word $0 ; return stack base
@@ -362,9 +363,10 @@ find:
     ora snd + 1
     bne @each
 
-.ifdef extras
-    js
+.ifdef numbers
+    jsr number
 .endif
+
     jmp error ; end of dictionary, no more words to search, quit
 
 @each:    
@@ -973,6 +975,10 @@ puthex:
 @ends:
     jmp putchar
 
+.endif
+
+
+.ifdef numbers
 ;----------------------------------------------------------------------
 ; code a ASCII $FFFF hexadecimal in a byte
 ;  

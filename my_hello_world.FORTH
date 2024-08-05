@@ -16,8 +16,8 @@
 : latest s@ 4 + ;
 : here s@ 6 + ;
 
-: sp@ s@ 8 + ;
-: rp@ s@ 10 + ;
+: sp@ s@ 8 + @ ;
+: rp@ s@ 10 + @ ;
 
 : cr 10 emit ;
 

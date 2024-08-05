@@ -28,13 +28,22 @@
 : swap over over sp@ 6 + ! sp@ 2 + ! ;
 
 10 . 8 .
+dup .S 
+drop .S
 swap .S
 over .S 
 drop .S
 swap .S 
 
+
 : 2dup over over ;
 : 2drop drop drop ;
+
+2dup .S
+2drop .S
+2drop .S 
+
+
 : or invert swap invert and invert ;
 : , here @ ! here @ 2 + here ! ;
 : 2* dup + ;
@@ -42,14 +51,26 @@ swap .S
 : immediate latest @ 2 + dup @ 80h or swap ! ;
 : [ 1 s@ ! ; immediate
 : ] 0 s@ ! ;
+
 : branch rp@ @ dup @ + rp@ ! ;
 : ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
 : lit rp@ @ dup 2 + rp@ ! @ ;
 : ['] rp@ @ dup 2 + rp@ ! @ ;
+: rot >r swap r> swap ;
 : >rexit rp@ ! ;
 : >r rp@ @ swap rp@ ! >rexit ;
 : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
-: rot >r swap r> swap ;
+
+: cr 10 emit ;
+
+: t1 rp@ @ swap rp@ cr .S cr .R ;
+
+10 cr .S cr .R t1 cr .S cr .R
+
+dump
+
+bye
+
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
 : else ['] branch , here @ 0 , swap dup 
