@@ -14,6 +14,9 @@
 : 8 6 2 + ;
 : 10 6 4 + ;
 
+: spt s@ 8 + ;
+: rpt s@ 10 + ;
+
 : sp@ s@ 8 + @ ;
 : rp@ s@ 10 + @ ;
 
@@ -37,36 +40,29 @@
 : [ 1 s@ ! ; immediate
 : ] 0 s@ ! ;
 
+: >rexit rp@ ! ;
+: >r rp@ @ swap rp@ ! >rexit ;
+: r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
+
 : branch rp@ @ dup @ + rp@ ! ;
 : ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
 
 : rot >r swap r> swap ;
+
 : cr 10 emit ;
 
-.R cr
-10 8 .S cr over .S cr rot .S cr 
-.R cr
-
 : lit rp@ @ dup 2 + rp@ ! @ ;
-
 : ['] rp@ @ dup 2 + rp@ ! @ ;
 
 : if ['] ?branch , here @ 0 , ; immediate
-
 : then dup here @ swap - swap ! ; immediate
-
 : else ['] branch , here @ 0 , swap dup 
     here @ swap - swap ! ; immediate
 
-dump
-
 : begin here @ ; immediate
-
 : while ['] ?branch , here @ 0 , ; immediate
-
 : repeat swap ['] branch , here @ - , 
     dup here @ swap - swap ! ; immediate
-
 : until ['] ?branch , here @ - , ; immediate
 
 : do here @ ['] >r , ['] >r , ; immediate
@@ -79,6 +75,8 @@ dump
 : c@ @ ffh and ;
 : in> >in @ c@ >in dup @ 1 + swap ! ;
 : bl lit [ 1 2* 2* 2* 2* 2* , ] ;
+
+10 8 6 .S cr over .S cr swap .S cr drop .S cr swap .S cr rot .S cr
 
 0fh . ffh . 
 10 c@ .
@@ -99,8 +97,4 @@ dump
 ." hello, world"
 
 bye
-
-: >rexit rp@ ! ;
-: >r rp@ @ swap rp@ ! >rexit ;
-: r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
 

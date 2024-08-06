@@ -217,7 +217,7 @@ here:   .word $0 ; next free cell in heap dictionary, aka dpt
 spt:    .word $0 ; data stack base,
 rpt:    .word $0 ; return stack base
 ipt:    .word $0 ; instruction pointer
-wrk:    .word $0 ; work
+wrd:    .word $0 ; word pointer
 
 * = $F0
 
@@ -228,12 +228,12 @@ snd:    .word $0 ; second
 trd:    .word $0 ; third
 fth:    .word $0 ; fourth
 
-; used and reserved
+; used, reserved
 
 tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
 
-; for future expansion
+; for future expansion, reserved
 head:   .word $0 ; heap forward, also DP
 tail:   .word $0 ; heap backward
 
@@ -339,11 +339,6 @@ okey:
 ;---------------------------------------------------------------------
 ; place a hook
 parse:
-    lda #>parse_
-    sta ipt + 1
-    lda #<parse_
-    sta ipt + 0
-
 ; get a token
     jsr token
 
@@ -365,6 +360,7 @@ find:
 
 .ifdef numbers
     jsr number
+    bcc parse
 .endif
 
     jmp error ; end of dictionary, no more words to search, quit
@@ -429,9 +425,14 @@ compile:
     ldy #(fst)
     jsr comma
 
-    jmp next
+    jmp parse
 
 execute:
+
+    lda #>parse_
+    sta ipt + 1
+    lda #<parse_
+    sta ipt + 0
 
     jmp (fst)
 
@@ -585,8 +586,8 @@ addwx:
 ; classic heap moves always forward
 ;
 wcomma:
-    sta wrk + 1
-    ldy #(wrk)
+    sta fst + 1
+    ldy #(fst)
 
 comma: 
     ldx #(here)
@@ -672,16 +673,6 @@ spull1:
 spush1:
     ldy #(fst)
     jmp spush
-
-;---------------------------------------------------------------------
-rpull1:
-    ldy #(fst)
-    jmp rpull
-
-;---------------------------------------------------------------------
-rpush1:
-    ldy #(fst)
-    jmp rpush
 
 ;---------------------------------------------------------------------
 ;
@@ -996,8 +987,7 @@ number:
 
     ldy #0
 
-    lda (tout), y
-    jsr @conv
+    jsr @very
     asl
     asl
     asl
@@ -1005,14 +995,12 @@ number:
     sta fst + 1
 
     iny 
-    lda (tout), y
-    jsr @conv
+    jsr @very
     ora fst + 1
     sta fst + 1
     
     iny 
-    lda (tout), y
-    jsr @conv
+    jsr @very
     asl
     asl
     asl
@@ -1020,25 +1008,28 @@ number:
     sta fst + 0
 
     iny 
-    lda (tout), y
-    jsr @conv
+    jsr @very
     ora fst + 0
     sta fst + 0
 
+    clc
     rts
 
-@conv:
+@very:
+    lda (tout), y
     sec
     sbc #$30
     bmi @erro
     cmp #10
     bcc @ends
     sbc #$07
-    cmp #16
-    bmi @ends
-@erro:
-    sec
+    ; any valid digit, A-Z, do not care 
 @ends:
+    rts
+@erro:
+    pla
+    pla
+    sec
     rts
 
 .endif
@@ -1062,13 +1053,21 @@ def_word "2/", "shr", 0
     jmp this
 
 ;---------------------------------------------------------------------
-; ( -- a ) return next dictionary address
+; ( w -- ) ( -- w ) from data stack into return stack
+def_word "lit", "lit", 0 
+    ldx #(ipt)
+    ldy #(fst)
+    jsr copyfrom
+    jmp this
+
+;---------------------------------------------------------------------
+; ( -- a ) return and bypass next cell reference 
 def_word "&", "perse", 0 
     ldy #(ipt)
     jsr spush
-    ldx #(ipt)
     lda #2
-    jsr incwx
+    ldx #(ipt)
+    jsr addwx
     jmp this
 
 ;---------------------------------------------------------------------
@@ -1078,9 +1077,33 @@ def_word "exec", "exec", 0
     jmp (fst)
 
 ;---------------------------------------------------------------------
-; ( a -- ) execute a jump to reference at ipt
+; ( a -- ) execute at ipt, ends a high level branch
 def_word "duck", "duck", 0 
     jmp (ipt)
+
+;---------------------------------------------------------------------
+rpull1:
+    ldy #(fst)
+    jmp rpull
+
+;---------------------------------------------------------------------
+rpush1:
+    ldy #(fst)
+    jmp rpush
+
+;---------------------------------------------------------------------
+; ( w -- ) ( -- w ) from data stack into return stack
+def_word ">r", "stor", 0 
+    jsr spull1
+    jsr rpush1
+    jmp next
+
+; ( -- w ) ( w -- ) from return stack into data stack
+def_word "r>", "rtos", 0 
+    jsr rpull1
+    jsr spush1
+    jmp next
+
 
 .endif
 
@@ -1168,19 +1191,6 @@ def_word "s@", "state", 0
     jmp keeps 
 
 ;---------------------------------------------------------------------
-; ( w -- ) ( -- w ) from data stack into return stack
-def_word ">r", "stor", 0 
-    jsr spull1
-    jsr rpush1
-    jmp next
-
-; ( -- w ) ( w -- ) from return stack into data stack
-def_word "r>", "rtos", 0 
-    jsr rpull1
-    jsr spush1
-    jmp next
-
-;---------------------------------------------------------------------
 ; ( -- sp )
 ;def_word "sp@", "spat", 0
 ;    lda spt + 0
@@ -1228,7 +1238,7 @@ def_word ";", "semis", FLAG_IMM
 ; compound words must ends with exit
 finish:
     lda #<exit
-    sta wrk + 0
+    sta fst + 0
     lda #>exit
     jsr wcomma
 
@@ -1272,13 +1282,13 @@ create:
 
 ; inserts the nop call 
     lda #$EA
-    sta wrk + 0
+    sta fst + 0
     lda #$20
     jsr wcomma
 
 ; inserts the reference
     lda #<nest
-    sta wrk + 0
+    sta fst + 0
     lda #>nest
     jsr wcomma
 
@@ -1287,9 +1297,12 @@ create:
 
 ;---------------------------------------------------------------------
 ; classic direct thread code
-;   ipt is IP, wrk is W
+;   ipt is IP, wrd is W
 ;
-; for reference: nest ak enter or docol, unnest is exit or semis;
+; for reference: 
+;
+;   nest aka enter or docol, 
+;   unnest aka exit or semis;
 ;
 ;---------------------------------------------------------------------
 def_word "exit", "exit", FLAG_IMM
@@ -1299,13 +1312,13 @@ unnest:
     jsr rpull
 
 next:
-; wrk = (ipt) ; ipt += 2
+; wrd = (ipt) ; ipt += 2
     ldx #(ipt)
-    ldy #(wrk)
+    ldy #(wrd)
     jsr copyfrom
 
 jump:
-    jmp (wrk)
+    jmp (wrd)
 
 nest:   ; enter
 ; push, *rp = ipt, rp -=2
