@@ -26,23 +26,8 @@
 : drop dup - + ;
 : over sp@ 2 + @ ;
 : swap over over sp@ 6 + ! sp@ 2 + ! ;
-
-10 . 8 .
-dup .S 
-drop .S
-swap .S
-over .S 
-drop .S
-swap .S 
-
-
 : 2dup over over ;
 : 2drop drop drop ;
-
-2dup .S
-2drop .S
-2drop .S 
-
 
 : or invert swap invert and invert ;
 : , here @ ! here @ 2 + here ! ;
@@ -54,36 +39,41 @@ swap .S
 
 : branch rp@ @ dup @ + rp@ ! ;
 : ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
-: lit rp@ @ dup 2 + rp@ ! @ ;
-: ['] rp@ @ dup 2 + rp@ ! @ ;
-: rot >r swap r> swap ;
-: >rexit rp@ ! ;
-: >r rp@ @ swap rp@ ! >rexit ;
-: r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
 
+: rot >r swap r> swap ;
 : cr 10 emit ;
 
-: t1 rp@ @ swap rp@ cr .S cr .R ;
+.R cr
+10 8 .S cr over .S cr rot .S cr 
+.R cr
 
-10 cr .S cr .R t1 cr .S cr .R
+: lit rp@ @ dup 2 + rp@ ! @ ;
+
+: ['] rp@ @ dup 2 + rp@ ! @ ;
+
+: if ['] ?branch , here @ 0 , ; immediate
+
+: then dup here @ swap - swap ! ; immediate
+
+: else ['] branch , here @ 0 , swap dup 
+    here @ swap - swap ! ; immediate
 
 dump
 
-bye
-
-: if ['] ?branch , here @ 0 , ; immediate
-: then dup here @ swap - swap ! ; immediate
-: else ['] branch , here @ 0 , swap dup 
-    here @ swap - swap ! ; immediate
 : begin here @ ; immediate
+
 : while ['] ?branch , here @ 0 , ; immediate
+
 : repeat swap ['] branch , here @ - , 
     dup here @ swap - swap ! ; immediate
+
 : until ['] ?branch , here @ - , ; immediate
+
 : do here @ ['] >r , ['] >r , ; immediate
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , 
     ['] 2dup , ['] = , ['] ?branch , 
     here @ - , ['] 2drop , ; immediate
+
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
 : c@ @ ffh and ;
@@ -95,7 +85,6 @@ bye
 
 dump
 
-bye
 
 : type 0 do dup c@ emit 1 + loop drop ;
 : parse in> drop >in @ swap 0 begin over in> 
@@ -105,4 +94,13 @@ bye
 : [char] ['] lit , bl word drop c@ , ; immediate
 : ." [char] " parse type ; immediate
 
+dump 
+
 ." hello, world"
+
+bye
+
+: >rexit rp@ ! ;
+: >r rp@ @ swap rp@ ! >rexit ;
+: r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
+

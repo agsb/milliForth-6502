@@ -674,6 +674,16 @@ spush1:
     jmp spush
 
 ;---------------------------------------------------------------------
+rpull1:
+    ldy #(fst)
+    jmp rpull
+
+;---------------------------------------------------------------------
+rpush1:
+    ldy #(fst)
+    jmp rpush
+
+;---------------------------------------------------------------------
 ;
 ; the primitives, 
 ; for stacks uses
@@ -1156,6 +1166,19 @@ def_word "s@", "state", 0
     sta fst + 0
     lda #>stat
     jmp keeps 
+
+;---------------------------------------------------------------------
+; ( w -- ) ( -- w ) from data stack into return stack
+def_word ">r", "stor", 0 
+    jsr spull1
+    jsr rpush1
+    jmp next
+
+; ( -- w ) ( w -- ) from return stack into data stack
+def_word "r>", "rtos", 0 
+    jsr rpull1
+    jsr spush1
+    jmp next
 
 ;---------------------------------------------------------------------
 ; ( -- sp )
