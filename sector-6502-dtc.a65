@@ -160,6 +160,8 @@ hcount .set 0
 
 H0000 = 0
 
+; MTC = 1
+
 ;---------------------------------------------------------------------
 /*
 NOTES:
@@ -205,7 +207,9 @@ magic = $20EA
 nil:  ; empty for fixed reference
 
 ; as user variables
-; internal Forth, order matters for HELLO.forth !
+; order matters for HELLO.forth !
+
+; internal Forth 
 
 stat:   .word $0 ; state at lsb, last size+flag at msb
 toin:   .word $0 ; toin next free byte in TIB
@@ -358,6 +362,7 @@ find:
     ora snd + 1
     bne @each
 
+; hexadecimal 16-bits
 .ifdef numbers
     jsr number
     bcc parse
@@ -1280,6 +1285,8 @@ create:
     ldx #(here)
     jsr addwx
 
+.ifndef MTC
+
 ; inserts the nop call 
     lda #$EA
     sta fst + 0
@@ -1291,6 +1298,8 @@ create:
     sta fst + 0
     lda #>nest
     jsr wcomma
+
+.endif
 
 ; done
     jmp next
@@ -1317,7 +1326,16 @@ next:
     ldy #(wrd)
     jsr copyfrom
 
+.ifdef MTC
+
+    lda #>init
+    cmp #(wrd+1)
+    bpl nest
+
+.endif
+
 jump:
+    clc         ; keep carry clean
     jmp (wrd)
 
 nest:   ; enter
