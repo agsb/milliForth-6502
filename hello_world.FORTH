@@ -56,9 +56,20 @@
 
 : rot >r swap r> swap ;
 
-
 : lit rp@ @ dup 2 + rp@ ! @ ;
 : ['] rp@ @ dup 2 + rp@ ! @ ;
+
+: >r rp @  @ swap rp @ ! rp @ 2 - rp ! rp @ ! ;
+
+: r> rp @ @ rp @ 2 + rp ! rp @ @ swap rp @ ! ;
+
+: z1 2 4 6 10 ? >r ? 8 ? r> ? ;
+
+z1 
+
+dump
+
+bye
 
 : zz rp@ ? @ ? dup ? 2 ? + ? rp@ ? ! ? @ ? ;
 
