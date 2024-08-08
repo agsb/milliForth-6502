@@ -34,6 +34,24 @@
 
 ## Time table 
 
+_08/08/2024_ 
+
+    eight primitives now: ! @ + nand : ; exit s@
+
+    include a pack of extra words, most for debug : 
+        2/      shift right non arithmetic ( w -- w/2 )
+        .       hexdump top cell of data stack ( w -- w )
+        .S      dumps the data stack ( -- )
+        .R      dumps the return stack ( -- )
+        words   list all words in dictionary, extense view
+        dump    dumps all memory of dictionary
+    
+    using explict sp@ rp@ 
+
+    tested all words with sp@, all correct
+
+    words with rp@ still do not work
+
 _31/07/2024_ 
 
     review of those of use rp@ as BRANCH LIT and etc.

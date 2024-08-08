@@ -776,9 +776,38 @@ list:
     rts
     
 ;----------------------------------------------------------------------
-; dumps dictionary
+; dumps the user dictionary
 
 def_word "dump", "dump", 0
+
+    lda #<init
+    sta fst + 0
+    lda #>init
+    sta fst + 1
+
+    ldx #(fst)
+    ldy #0
+
+@loop:
+    
+    lda (fst),y
+    jsr putchar
+    jsr incwx
+
+    lda fst + 0
+    cmp here + 0
+    bne @loop
+
+    lda fst + 1
+    cmp here + 1
+    bne @loop
+
+    jmp next 
+
+;----------------------------------------------------------------------
+; words in dictionary
+
+def_word "words", "words", 0
 
 ; load lastest
     lda last + 1
@@ -838,12 +867,12 @@ def_word "dump", "dump", 0
     jsr addwx
 
 ; put CFA
-    lda #' '
-    jsr putchar
-    lda fst + 1 
-    jsr puthex
-    lda fst + 0
-    jsr puthex
+;    lda #' '
+;    jsr putchar
+;    lda fst + 1 
+;    jsr puthex
+;    lda fst + 0
+;    jsr puthex
 
 ; thanks, @https://codebase64.org/doku.php?id=base:
 ;   16-bit_absolute_comparison
@@ -868,10 +897,27 @@ def_word "dump", "dump", 0
 ;----------------------------------------------------------------------
 show_refer:
 ; ae put references PFA ... 
+    lda fst + 0
+    sta trd + 0
+    lda fst + 1
+    sta trd + 1
+    ldx #(trd)
+
 @loop:
     lda #' '
     jsr putchar
 
+    lda trd + 1
+    jsr puthex
+    lda trd + 0
+    jsr puthex
+
+    jsr incwx
+    jsr incwx
+
+    lda #':'
+    jsr putchar
+    
     iny 
     lda (fst), y
     jsr puthex

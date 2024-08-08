@@ -14,11 +14,18 @@
 : 8 6 2 + ;
 : 10 6 4 + ;
 
-: spt s@ 8 + ;
-: rpt s@ 10 + ;
+: cr 10 emit ;
 
-: sp@ s@ 8 + @ ;
-: rp@ s@ 10 + @ ;
+: ? .S cr .R cr ;
+
+: sp s@ 8 + ;
+: rp s@ 10 + ;
+
+: sp@ sp @ ;
+: rp@ rp @ ;
+
+: sp! sp@ ! ;
+: rp! rp@ ! ;
 
 : dup sp@ @ ;
 : invert dup nand ;
@@ -49,10 +56,27 @@
 
 : rot >r swap r> swap ;
 
-: cr 10 emit ;
 
 : lit rp@ @ dup 2 + rp@ ! @ ;
 : ['] rp@ @ dup 2 + rp@ ! @ ;
+
+: zz rp@ ? @ ? dup ? 2 ? + ? rp@ ? ! ? @ ? ;
+
+: z0 zz [ 10 2 + , ] ? ;
+
+: z1 lit [ 10 2 + ? , ? ] ? ;
+
+z0 
+
+z1
+
+words 
+
+?
+
+dump
+
+bye
 
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
