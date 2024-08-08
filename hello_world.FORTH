@@ -47,27 +47,41 @@
 : [ 1 s@ ! ; immediate
 : ] 0 s@ ! ;
 
-: >rexit rp@ ! ;
-: >r rp@ @ swap rp@ ! >rexit ;
-: r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
+: \ 0 >in ! ;
 
-: branch rp@ @ dup @ + rp@ ! ;
-: ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
+\ : >rexit rp@ ! ;
+\ : >r rp@ @ swap rp@ ! >rexit ;
+\ : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
+\ : branch rp@ @ dup @ + rp@ ! ;
+\ : ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
+\ : lit rp@ @ dup 2 + rp@ ! @ ;
+\ : ['] rp@ @ dup 2 + rp@ ! @ ;
 
-: rot >r swap r> swap ;
+words
 
-: lit rp@ @ dup 2 + rp@ ! @ ;
-: ['] rp@ @ dup 2 + rp@ ! @ ;
-
-: >r rp @  @ swap rp @ ! rp @ 2 - rp ! rp @ ! ;
+: >r rp @ @ swap rp @ ! rp @ 2 - rp ! rp @ ! ;
 
 : r> rp @ @ rp @ 2 + rp ! rp @ @ swap rp @ ! ;
 
+: branch rp @ @ dup @ + rp @ ! ;
+
+: ?branch 0# invert rp @ @ @ 2 - and rp @ @ + 2 + rp @ ! ;
+
+: lit rp@ @ dup 2 + rp@ ! @ ;
+
+: ['] rp@ @ dup 2 + rp@ ! @ ;
+
+: rot >r swap r> swap ;
+
 : z1 2 4 6 10 ? >r ? 8 ? r> ? ;
+
+: z2 ? rot ? ;
 
 z1 
 
-dump
+z2 
+
+words
 
 bye
 

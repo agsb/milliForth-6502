@@ -25,6 +25,9 @@
     of of registers at data stack. Those are the addresses for STATE 
     and, DATA and RETURN stack pointers.
 
+    But to easy run better have a pure pointer as sp and rp, so can
+    derive sp@ == sp @ @ and sp! == sp @ ! 
+
 
 ## Todo
 
@@ -35,6 +38,13 @@
 ## Time table 
 
 _08/08/2024_ 
+
+    Beware the direction of stacks ! 
+
+    got both >r and r> working by copy code 
+        from https://github.com/benhoyt/third
+
+_06/08/2024_ 
 
     eight primitives now: ! @ + nand : ; exit s@
 
