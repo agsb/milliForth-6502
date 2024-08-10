@@ -39,7 +39,9 @@
 
 _10/08/2024_ 
 
-    Inverted flag for [ (0) and ] (1)
+    Using flag for [ (executing is 0) and ] (compiling is 1), 
+        to follow the classic sense. 
+        (was inverted in original milliforth hello_world.FORTH)
 
 _08/08/2024_ 
 
