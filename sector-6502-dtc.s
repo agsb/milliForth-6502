@@ -423,7 +423,7 @@ eval:
 
 ; immediate ? if < \0
     lda stat + 1   
-    bmi execute      
+    bmi immediate      
 
 compile:
 
@@ -432,8 +432,8 @@ compile:
 
     jmp parse
 
+immediate:
 execute:
-
     lda #>parse_
     sta ipt + 1
     lda #<parse_

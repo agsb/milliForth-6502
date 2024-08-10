@@ -37,6 +37,10 @@
 
 ## Time table 
 
+_10/08/2024_ 
+
+    Inverted flag for [ (0) and ] (1)
+
 _08/08/2024_ 
 
     Beware the direction of stacks ! 

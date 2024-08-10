@@ -44,8 +44,8 @@
 : 2* dup + ;
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
-: [ 1 s@ ! ; immediate
-: ] 0 s@ ! ;
+: [ 0 s@ ! ; immediate
+: ] 1 s@ ! ;
 
 : \ 0 >in ! ;
 
@@ -57,7 +57,6 @@
 \ : lit rp@ @ dup 2 + rp@ ! @ ;
 \ : ['] rp@ @ dup 2 + rp@ ! @ ;
 
-words
 
 : >r rp @ @ swap rp @ ! rp @ 2 - rp ! rp @ ! ;
 
@@ -73,33 +72,17 @@ words
 
 : rot >r swap r> swap ;
 
-: z1 2 4 6 10 ? >r ? 8 ? r> ? ;
-
-: z2 ? rot ? ;
-
-z1 
-
-z2 
+: z0 10 ? ;
+: z1 8 [ 4 , ] z0 ? ;
+: z2 6 z1 ? z1 ? ;
 
 words
 
-bye
+z2
 
-: zz rp@ ? @ ? dup ? 2 ? + ? rp@ ? ! ? @ ? ;
+? rot ? 
 
-: z0 zz [ 10 2 + , ] ? ;
-
-: z1 lit [ 10 2 + ? , ? ] ? ;
-
-z0 
-
-z1
-
-words 
-
-?
-
-dump
+words
 
 bye
 
