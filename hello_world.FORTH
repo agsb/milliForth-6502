@@ -73,16 +73,19 @@
 : rot >r swap r> swap ;
 
 : z0 10 ? ;
-: z1 8 [ 4 , ] z0 ? ;
+: z1 lit [ 4 , ] z0 ? ;
 : z2 6 z1 ? z1 ? ;
 
-words
+: xb rp @ @ dup ? 2 + ? rp @ ? ! @ ? ;
 
-z2
+: xa xb [ 10 , ] ? ;
 
-? rot ? 
+words 
 
-words
+xa 
+
+>r ? 8 6 r> over ? 
+
 
 bye
 

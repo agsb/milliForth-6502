@@ -37,6 +37,10 @@
 
 ## Time table 
 
+_12/08/2024_ 
+
+    branch lit OK
+
 _10/08/2024_ 
 
     Using flag for [ (executing is 0) and ] (compiling is 1), 
