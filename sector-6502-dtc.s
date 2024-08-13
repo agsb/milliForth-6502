@@ -261,7 +261,7 @@ tail:   .word $0 ; heap backward
 main:
 
 ;----------------------------------------------------------------------
-; common
+; common must
 ;
 cold:
 ;   disable interrupts
@@ -325,23 +325,16 @@ quit:
 
 parse_:
     .word okey
-
 ;---------------------------------------------------------------------
 okey:
-    lda stat + 0
-    bne parse
 
-    lda #' '
-    jsr putchar
-    lda #'O'
-    jsr putchar
-    lda #'K'
-    jsr putchar
-    lda #10
-    jsr putchar
+;    lda #'O'
+;    jsr putchar
+;    lda #'K'
+;    jsr putchar
+;    lda #10
+;    jsr putchar
 
-;---------------------------------------------------------------------
-; place a hook
 parse:
 ; get a token
     jsr token
@@ -362,13 +355,7 @@ find:
     ora snd + 1
     bne @each
 
-; hexadecimal 16-bits
-.ifdef numbers
-    jsr number
-    bcc parse
-.endif
-
-    jmp error ; end of dictionary, no more words to search, quit
+    jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
 
@@ -440,17 +427,6 @@ execute:
     sta ipt + 0
 
     jmp (fst)
-
-;---------------------------------------------------------------------
-; wipe later
-error:
-    lda #'?'
-    jsr putchar
-    lda #'?'
-    jsr putchar
-    lda #10
-    jsr putchar
-    jmp quit
 
 ;---------------------------------------------------------------------
 try:
@@ -689,7 +665,7 @@ spush1:
 ;----------------------------------------------------------------------
 
 ; uncomment to include the extras (sic)
-extras = 1 
+; extras = 1 
 
 .ifdef extras
 
@@ -865,14 +841,6 @@ def_word "words", "words", 0
     tya
     ldx #(fst)
     jsr addwx
-
-; put CFA
-;    lda #' '
-;    jsr putchar
-;    lda fst + 1 
-;    jsr puthex
-;    lda fst + 0
-;    jsr puthex
 
 ; thanks, @https://codebase64.org/doku.php?id=base:
 ;   16-bit_absolute_comparison
@@ -1091,7 +1059,7 @@ number:
 ;
 ;---------------------------------------------------------------------
 ; uncomment to include the extensions (sic)
-extensions = 1 
+; extensions = 1 
 
 .ifdef extensions
 
@@ -1405,7 +1373,7 @@ ends:
 
 ;----------------------------------------------------------------------
 ; anything above is not a primitive
-.align $100
+; .align $100
 
 init:   
 

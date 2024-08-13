@@ -21,21 +21,15 @@
 : sp s@ 8 + ;
 : rp s@ 10 + ;
 
-: sp@ sp @ ;
-: rp@ rp @ ;
-
-: sp! sp@ ! ;
-: rp! rp@ ! ;
-
-: dup sp@ @ ;
+: dup sp @ @ ;
 : invert dup nand ;
 : and nand invert ;
 : - invert 1 + + ;
 : <> - 0# ;
 : = <> invert ;
 : drop dup - + ;
-: over sp@ 2 + @ ;
-: swap over over sp@ 6 + ! sp@ 2 + ! ;
+: over sp @ 2 + @ ;
+: swap over over sp @ 6 + ! sp @ 2 + ! ;
 : 2dup over over ;
 : 2drop drop drop ;
 
@@ -103,6 +97,8 @@
 words
 
 ." hello, world"
+
+10 8 6 swap over ?
 
 bye
 

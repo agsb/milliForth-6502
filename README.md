@@ -31,7 +31,8 @@ the FIG-Forth for 6502 uses Indirect Thread Code (ITC)
 
 This Forth for 6502, will be done using two models: 
     
-    with classic DTC as milli-Forth-x86 and
+    with classic DTC as milli-Forth-x86 ~ 652 bytes
+    and
     with Minimal Thread Code (MTC)
 
 (later we will compare both, but DTC will win for less size) 

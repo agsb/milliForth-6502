@@ -39,7 +39,7 @@
 
 _12/08/2024_ 
 
-    branch lit OK
+    all words runnig ok
 
 _10/08/2024_ 
 
