@@ -1,110 +1,87 @@
 
-# This file is a stub
+# Forth Thread modes easy way
 
-### Threads and nuts
+## Threads and nuts
 
- historical JMP @(W)++
- case on indirect thread code, 
+ the historical _JMP @(W)++_ does indirect thread code, by
 
-   W = (IP)
-   IP++
-   X = (W)
-   W++
-   JMP (X)
+    W = (IP)
+    IP++
+    X = (W)
+    W++
+    JMP (X)
 
- historical JMP (W)
- case on direct thread code
+ And _JMP (W)_ case on direct thread code
     
     W = (IP)
     IP++
     JMP (W)
 
-### Alternatives
+## Alternatives
 
-1)  Direct, better footprint, 
-    each compound word needs start with a "call NEST" and 
-    ends with 'EXIT
+### Direct Thread Code (DTC)
+
+In DTC, each compound word needs start with a "call ENTER" and ends with a reference to EXIT
 
 EXIT:
 UNNEST:
+
     IP = (RP)
     RP += CELL
 
 NEXT:
+    
     W = (IP)
     IP += CELL
     JMP (W)
 
 ENTER:
 NEST:
+
     RP -= CELL
     (RP) = IP
     POP IP 
     JMP NEXT
+    
+any_WORD:
 
-;
-; in all compount: CALL NEST, list references, EXIT
-; it does 3 jumps (to W, to NEST, to NEXT) and a push-pull in SP
-;
-; a call: (sp)-- = ++pc; pc = address
-; a return: ps = ++(sp)
-; a push: (sp)-- = ip 
-; a pull: ip = ++(sp)
+    CALL ENTER
+    list of references
+    EXIT
+   
+Note, each compound word does 3 jumps (in NEXT to W, in WORD to ENTER, in ENTER to NEXT) and a push-pull in SP
 
-2) Minimal D T C
+### Minimal Thread Code (MTC)
+
+In MTC, each word is tested but only jumps if reference address is bellow _init_ of compound dictionary. 
+
+No extra jumps and in 16-bit CPUs, the test could be done just comparing the MSB bytes.
 
 EXIT:
 UNNEST:
+
     IP = (RP)
     RP += CELL
 
 NEXT:
+
     W = (IP)
     IP += CELL
-    TST W
-    BEQ JUMP
 
+    TST W
+    CMP _INIT_
+    BNE NEST
+    
+JUMP:
+
+    JMP (W)
+    
 ENTER:
 NEST:
+    
     RP -= CELL
     (RP) = IP
+    
     IP = W
     JMP NEXT
-
-JUMP:
-    W = IP
-    IP = (RP)
-    RP += CELL
-    JMP (W)
-
-; test every first reference in ever word, 
-; only jumps when 0x0
-; just test and jump to next or to W
-
-3) a better alternative ?
-
-; aka exit, semis, etc
-UNNEST:
-    IP = (RP)
-    RP += CELL
-
-; always next
-NEXT:
-    W = (IP)
-    IP += CELL
-    X = (W)
-    W++
-
-; aka enter, docol, dolst, etc
-NEST:
-    RP -= CELL
-    (RP) = IP
-    IP = W
-
-; does not need the 0x0 at cfa, just compare tha reference
-MESH:
-    TST X
-    CMP MSB(INIT)
-    BPL NEXT
-    JMP (X)
 
