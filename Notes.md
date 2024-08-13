@@ -42,16 +42,18 @@ _12/08/2024_
 
     all words from my_hello_word.FORTH runnig ok
 
-    extras: toogle inside
+    extentions: toogle inside
         2/    shift right ( w -- w/2 )
         exec  jumps to reference at top of data stack
 
-    extensions: (toogle inside)
+    extras: (toogle inside)
         .
         .S
         .R
         dump
         words
+        bye
+        abort
         
 _10/08/2024_ 
 
