@@ -49,15 +49,6 @@
 
 : \ 0 >in ! ;
 
-\ : >rexit rp@ ! ;
-\ : >r rp@ @ swap rp@ ! >rexit ;
-\ : r> rp@ 2 + @ rp@ @ rp@ 2 + ! lit [ here @ 6 + , ] rp@ ! ;
-\ : branch rp@ @ dup @ + rp@ ! ;
-\ : ?branch 0# invert rp@ @ @ 2 - and rp@ @ + 2 + rp@ ! ;
-\ : lit rp@ @ dup 2 + rp@ ! @ ;
-\ : ['] rp@ @ dup 2 + rp@ ! @ ;
-
-
 : >r rp @ @ swap rp @ ! rp @ 2 - rp ! rp @ ! ;
 
 : r> rp @ @ rp @ 2 + rp ! rp @ @ swap rp @ ! ;
@@ -72,44 +63,28 @@
 
 : rot >r swap r> swap ;
 
-: z0 10 ? ;
-: z1 lit [ 4 , ] z0 ? ;
-: z2 6 z1 ? z1 ? ;
-
-: xb rp @ @ dup ? 2 + ? rp @ ? ! @ ? ;
-
-: xa xb [ 10 , ] ? ;
-
 : if ['] ?branch , here @ 0 , ; immediate
+
 : then dup here @ swap - swap ! ; immediate
+
 : else ['] branch , here @ 0 , swap dup 
     here @ swap - swap ! ; immediate
 
-: z0 if 10 . else 8 . then . ;
-
 : begin here @ ; immediate
+
+: again ['] branch , here @ - , ; immediate
+
+: until ['] ?branch , here @ - , ; immediate
+
 : while ['] ?branch , here @ 0 , ; immediate
 
 : repeat swap ['] branch , here @ - , 
     dup here @ swap - swap ! ; immediate
 
-: until ['] ?branch , here @ - , ; immediate
-
-: z1 10 10 + begin 1 swap - . dup 0# until . ;
-
-words
-
-z1 
-
-bye
-
-
 : do here @ ['] >r , ['] >r , ; immediate
 : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , 
     ['] 2dup , ['] = , ['] ?branch , 
     here @ - , ['] 2drop , ; immediate
-
-: zz 0 10 0 do dup 1 + . loop ? ;
 
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
