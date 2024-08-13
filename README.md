@@ -1,6 +1,6 @@
 # A milliForth for 6502
 
-_"A Forth in 336 bytes — the smallest real programming 
+_"A Forth in 340 bytes — the smallest real programming 
 language ever, as of yet."_
 
 The milliForth[^1] is a review of sectorForth[^2], 
@@ -11,40 +11,36 @@ of less than 512 bytes.
 
 ## Bytes?
 
-Yes, bytes. But the code is for a x86 CPU. 
+Yes, bytes. But the code is for a x86 16-bit CPU. 
 
-How minimal could be it for a classic 6502 CPU ?
+How minimal could be it for a classic 6502 8-bit CPU ?
 
 Two essentially different CPUs, a 16-bit x86 based on complex 
 registers and opcodes, and a 8-bit 6502 using page zero 
 as registers and page one as hardware stack.
 
-(Still in development)
-
 ## Inner Interpreter
 
-As inner interpreter,
+The FIG-Forth (1980) for 6502 uses Indirect Thread Code (ITC) as inner interpreter. 
 
-the miniForth and milliForth use Direct Thread Code (DTC) 
-
-the FIG-Forth for 6502 uses Indirect Thread Code (ITC) 
+The miniForth, sectorforth and milliForth use Direct Thread Code (DTC) 
 
 This Forth for 6502, will be done using two models: 
     
-    with classic DTC as milli-Forth-x86 ~ 652 bytes
+    with classic DTC as milli-Forth-x86 ~ now with 640 bytes
     and
-    with Minimal Thread Code (MTC)
+    with Minimal Thread Code (MTC) ~ (still wait)
 
 (later we will compare both, but DTC will win for less size) 
 
-this project is also used to test variations of Minimum Thread Code
+This project is also used to test variations of Minimum Thread Code
 against a standart Direct Thread Code.
 
 ## Coding for 6502
 
-Using ca65 V2.19 - Git 7979f8a41. 
-
 Focus in size not performance.
+
+Using ca65 V2.19 - Git 7979f8a41. 
 
 The way at 6502 is use a page zero and lots of lda/sta bytes.
 
@@ -55,7 +51,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
     return (36 cells) stacks are in page $200 ; 
 - tib and pic grows forward, stacks grows backwards ;
 - no overflow or underflow checks ;
-- only immediate flag used as $80, no extras flags ;
+- only immediate flag used as $80, no more flags ;
 
 ### Remarks:
 
@@ -75,13 +71,13 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 Look up at Notes[^6]
 
 11/08/2024:
-    return to direct thread code
+    return to direct thread code:
 
 11/06/2024:
     adapt for minimal thread indirect code
 
 24/01/2024:
-    rewrite using standart direct thread code;
+    write using standart direct thread code
 
 ## Coding
 
@@ -90,18 +86,17 @@ This version includes:
 primitives:
     s@, +, nand, @, !, :, ;, 0#, key, emit, exit,
     
-    the sp@ and rp@ are derived from s@
+    the sp@ and rp@ are derived from s@ in the my_hello_world.FORTH
 
 internals: 
     spush, spull, rpull, rpush, (stack code)
     copyfrom, copyinto, (heap code)
     incr, decr, add, etc (register mimics)
     unnest, next, nest, (dtc inner) 
-    pick, jump, (mtc inner) 
+    * pick, jump, (mtc inner) 
     cold, quit, token, skip, scan, getline, (boot and terminal)
-    parse, find, compile, execute, exit (outer interpreter)
-    getch, putch (depends on system, used minimal for emulator )
-    
+    parse, find, compile, execute, (outer interpreter)
+    getch, putch, byes (depends on system, used minimal for emulator )
 
 A my_hello_world.FORTH alternate version with dictionary for use;
 
@@ -150,10 +145,12 @@ implemented is intentionally very similar, being the 'minimal FORTH'."_
 For Forth language primer see 
 [Starting Forth](https://www.forth.com/starting-forth/)
 
+For Forth from inside howto see
+[JonasForth](http://git.annexia.org/?p=jonesforth.git;a=blob_plain;f=jonesforth.S;hb=refs/heads/master)
+
 ## Use
 
-_** Still not operational, 
-using lib6502 for emulation and tests, Any sugestions ? **_
+_** 12/08/2024 DTC model operational, using lib6502 for emulation and tests **_
 
 A crude small script for compile with ca65 is included.
 
@@ -172,10 +169,11 @@ the originals files are edited for lines with less than 80 bytes
 the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
 
 ## References
+
 [^1]: The original milliForth: https://github.com/fuzzballcat/milliForth 
 [^2]: The inspirational sectorForth: https://github.com/cesarblum/sectorforth/
 [^3]: Mind-blowing sectorLISP: https://justine.lol/sectorlisp2/, https://github.com/jart/sectorlisp
-[^4]: The minforth: https://github.com/meithecatte/miniforth
+[^4]: The miniforth: https://github.com/meithecatte/miniforth
 [^5]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
 [^6]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/main/Notes.md
 [^7]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
