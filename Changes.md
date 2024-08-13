@@ -2,7 +2,9 @@ _this file is still a stub_
 
 # Adapt and survive
 
-Due lack of registers and complex instructions, present in x86, the 6502 milliforth review the original code for use of references at page zero and memory access modes.
+    Due lack of registers and complex instructions, present in x86, 
+    the 6502 milliforth review the original code for use 
+    of references at page zero and memory access modes.
 
 ```
   in x86:
@@ -24,8 +26,8 @@ in x86:
 is 6502:
     ldx #bx
     ldy #ax
-    jsr movs
 
+; for reuse    
 movs:
     ld (0), y
     sta (0, x)
@@ -37,63 +39,69 @@ movs:
 
 incwx:
     inc 0, x
-    bcc ends
+    bne ends
     inc 1, x
 ends:
     rts
        
 ```
-1. the primitives
+
+### the primitives
    
-        +       ( w1 w2 -- w1+w2 ) unsigned addition
-        2/      ( w -- w>>1 )  shift right one bit
-        nand    ( w1 w2 -- NOT(w1 AND w2) )  not and 
-        0#      ( 0 -- 0x0000 | w -- 0xFFFF ) test is tos is diferent of zero
-        @       ( a -- w )  fetch the value at reference
-        !       ( w a -- )  store the value in reference
-        &       ( -- a )  return next ip reference
-        s@      ( -- a )  return veriable _state_ absolute reference
+        +    ( w1 w2 -- w1+w2 ) unsigned addition
+        nand ( w1 w2 -- NOT(w1 AND w2) )  not and 
+        @    ( a -- w )  fetch the value at reference
+        !    ( w a -- )  store the value in reference
+        s@   ( -- a )    return veriable _state_ absolute reference
+        0#   ( 0 -- 0x0000 | w -- 0xFFFF ) if tos is diferent of zero 
+
+        :    ( -- ) init a word definition  
+        ;    ( -- ) ends a word definition
+        exit ( -- ) hook for inner interpret
         
-1. the re-introduce of user area concept as 
+### the user area pointers 
 
         state,     the state of Forth, compile or execute
-        toin,      a pointer to next free byte in terminal input buffer
-        latest,    a pointer to last word in dictionary
-        dpt,       a pointer to next free byte in heap dictionary
-        spt,       a pointer to actual top of data stack
-        rpt,       a pointer to actual top of return stack
-        ipt,       a pointer to next following cell in dictionary
+        toin,      next free byte in terminal input buffer
+        latest,    last word in dictionary
+        dpt,       next free byte in heap dictionary (here)
+        spt,       actual top of data stack
+        rpt,       actual top of return stack
+        ipt,       next following cell in dictionary
+        wrd,       word been executed
 
-2. the changes on hello-world.FORTH to my-hello-world.FORTH, to incorporate the modifications and recreate some words.
- 
-3. new words
+### the hello_world file
     
-       : dp@ s@ 2 2 2 + + ;
-   
-       : sp@ dp@ 2 + ;
+        The changes on hello-world.FORTH to my-hello-world.FORTH, 
+        to incorporate the modifications and recreate some words.
 
-       : rp@ sp@ 2 + ;
+```
+        :  8 4 4 + ;
 
-       : ip@ rp@ 2 + ; 
-       
-       : ip+ ip@ @ 2 + ip@ ! ;
+        : 10 6 4 + ;
 
-       : dp+ dp@ @ 2 + dp@ ! ;
+        : sp s@ 8 + ;
 
-       : rp+ rp@ @ 2 + rp@ ! ;
+        : rp s@ 10 + ;
 
-       : rp- rp@ @ 2 - rp@ ! ;
-   
-       : >r rp- rp@ @ ! ;
-   
-       : r> rp@ @ @ rp+ ;
+        All _sp@_ and _rp@_ changed to sp @ and rp @
+```
 
-       : lit ip@ @ @ ip+ ;
-   
-       : here dp@ @ ;
+### the extensions
+        
+        2/      ( w -- w>>1 )   shift right one bit
+        exec    ( a -- )        jump to top of stack address
+        >r      ( w -- )( -- w ) move from data into return stack
+        r>      ( -- w )( w -- ) move from return into data stack
 
-       : , here ! dp+ ;
+### the extras
 
-       : allot here + dp@ ! ;
+        bye     ( -- )  ends the Forth
+        abort   ( -- )  abort and reset
+        .S      ( -- )  dumps the data stack
+        .R      ( -- )  dumps the return stack
+        dump    ( -- )  dumps the dictionary as binary
+        words   ( -- )  dumps the dictionary as extended
+        .       ( w -- w ) shows cell as hexadecimal
 
-4. the new primitive **&**, called perse, to allow access to follow next reference on dictionary.
+

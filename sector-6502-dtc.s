@@ -292,8 +292,7 @@ warm:
     sta here + 0
 
 ;---------------------------------------------------------------------
-; must review 'abort and 'quit code
-; together to save bytes
+; 'abort and 'quit together to save bytes
 quit:
 ; reset
     ldy #>tib
@@ -328,6 +327,7 @@ parse_:
 ;---------------------------------------------------------------------
 okey:
 
+;;   uncomment for feedback
 ;    lda #'O'
 ;    jsr putchar
 ;    lda #'K'
@@ -355,6 +355,14 @@ find:
     ora snd + 1
     bne @each
 
+;;   uncomment for feedback
+;    lda #'?'
+;    jsr putchar
+;    lda #'?'
+;    jsr putchar
+;    lda #10
+;    jsr putchar
+
     jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
@@ -371,7 +379,7 @@ find:
 ; compare words
     ldy #0
 
-; save the flag, first byte is size and flag 
+; save the flag, first byte is (size and flag) 
     lda (fst), y
     sta stat + 1
 
@@ -414,8 +422,7 @@ eval:
 
 compile:
 
-    ldy #(fst)
-    jsr comma
+    jsr fcomma
 
     jmp parse
 
@@ -446,18 +453,22 @@ getline:
     ldy #1
 @loop:  
     jsr getchar
-; zzz 7-bit ascii only
-    and #$7F        
+; would be better with 
+; 7-bit ascii only
+;    and #$7F        
 ; unix \n
     cmp #10         
     beq @ends
+; would be better with 
 ; no controls
-    cmp #' '
-    bmi @loop
-; valid
+;    cmp #' '
+;    bmi @loop
+; is valid
     sta tib, y
     iny
-    cpy #tib_end
+; would be better with 
+; end of buffer ?
+;    cpy #tib_end
     bne @loop
 
 ; clear all if y eq \0
@@ -516,14 +527,15 @@ token:
 ;  lib6502  emulator
 getchar:
     lda $E000
-    ; no echoes ? uncomment
-    ; rts 
-putchar:
-    sta $E000
-; EOF ?
+
+; getchar returns 0xFF at EOF
     cmp #$FF
     beq byes
+
+putchar:
+    sta $E000
     rts
+
 ; exit for emulator  
 byes:
     jmp $0000
@@ -559,7 +571,6 @@ addwx:
     sta 0, x
     bcc @ends
     inc 1, x
-    clc     ; keep branchs
 @ends:
     rts
 
@@ -568,11 +579,17 @@ addwx:
 ;
 wcomma:
     sta fst + 1
+
+fcomma:    
     ldy #(fst)
 
 comma: 
     ldx #(here)
+    ; fall throught
 
+;---------------------------------------------------------------------
+; from a page zero address indexed by Y
+; into a page zero indirect address indexed by X
 copyinto:
     lda 0, y
     sta (0, x)
@@ -581,6 +598,9 @@ copyinto:
     sta (0, x)
     jmp incwx
 
+;---------------------------------------------------------------------
+; from a page zero indirect address indexed by X
+; into a page zero address indexed by y
 copyfrom:
     lda (0, x)
     sta 0, y
@@ -610,7 +630,7 @@ push:
     jsr decwx
     lda 0, y
     sta (0, x)
-    rts ; 
+    rts  
 
 ;---------------------------------------------------------------------
 ; pull a cell 
@@ -633,7 +653,7 @@ pull:
     lda (0, x)
     sta  1, y
     jmp incwx
-    ;  rts zzzz
+    ;  rts 
 
 ;---------------------------------------------------------------------
 ;
@@ -679,7 +699,7 @@ def_word "bye", "bye", 0
 ;----------------------------------------------------------------------
 ; ( -- ) ae exit forth
 def_word "abort", "abort", 0
-    jmp error
+    jmp quit
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of data stack
@@ -957,7 +977,6 @@ seek:
     bne @loop1
 
 @ends:
-    ; clc     ; keep branchs
     tya
     lsr
     rts
@@ -991,7 +1010,6 @@ puthex:
     cmp #$3A
     bcc @ends
     adc #$06
-    clc     ; keep branchs
 @ends:
     jmp putchar
 
@@ -1072,33 +1090,10 @@ def_word "2/", "shr", 0
     jmp this
 
 ;---------------------------------------------------------------------
-; ( w -- ) ( -- w ) from data stack into return stack
-def_word "lit", "lit", 0 
-    ldx #(ipt)
-    ldy #(fst)
-    jsr copyfrom
-    jmp this
-
-;---------------------------------------------------------------------
-; ( -- a ) return and bypass next cell reference 
-def_word "&", "perse", 0 
-    ldy #(ipt)
-    jsr spush
-    lda #2
-    ldx #(ipt)
-    jsr addwx
-    jmp this
-
-;---------------------------------------------------------------------
 ; ( a -- ) execute a jump to a reference at top of data stack
 def_word "exec", "exec", 0 
     jsr spull1
     jmp (fst)
-
-;---------------------------------------------------------------------
-; ( a -- ) execute at ipt, ends a high level branch
-def_word "duck", "duck", 0 
-    jmp (ipt)
 
 ;---------------------------------------------------------------------
 rpull1:
@@ -1123,11 +1118,36 @@ def_word "r>", "rtos", 0
     jsr spush1
     jmp next
 
-
 .endif
 
 ;---------------------------------------------------------------------
-; core 
+; core primitives minimal 
+
+;---------------------------------------------------------------------
+; ( -- c ) ; tos + 1 unchanged
+def_word "key", "key", 0
+    jsr getchar
+    sta fst + 0
+    jmp this
+    
+;---------------------------------------------------------------------
+; ( c -- ) ; tos + 1 unchanged
+def_word "emit", "emit", 0
+    jsr spull1
+    lda fst + 0
+    jsr putchar
+    jmp next
+
+;---------------------------------------------------------------------
+; ( w a -- ) ; [a] = w
+def_word "!", "store", 0
+storew:
+    jsr spull2
+    ldx #(snd) 
+    ldy #(fst) 
+    jsr copyinto
+    jmp next
+
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
@@ -1151,7 +1171,6 @@ def_word "+", "plus", 0
     sta fst + 0
     lda snd + 1
     adc fst + 1
-    ; clc ; keep branches 
     jmp keeps
 
 ;---------------------------------------------------------------------
@@ -1162,7 +1181,7 @@ fetchw:
     ldx #(fst)
     ldy #(snd)
     jsr copyfrom
-    ;   jmp copys
+    ; fall throught
 
 ;---------------------------------------------------------------------
 copys:
@@ -1178,13 +1197,6 @@ this:
 
     jmp next
 
-;---------------------------------------------------------------------
-; ( -- c ) ; tos + 1 unchanged
-def_word "key", "key", 0
-    jsr getchar
-    sta fst + 0
-    jmp this
-    
 ;---------------------------------------------------------------------
 ; ( 0 -- $0000) | ( n -- $FFFF)
 def_word "0#", "zeroq", 0
@@ -1210,6 +1222,7 @@ def_word "s@", "state", 0
     jmp keeps 
 
 ;---------------------------------------------------------------------
+; moved to hello_world
 ; ( -- sp )
 ;def_word "sp@", "spat", 0
 ;    lda spt + 0
@@ -1218,30 +1231,13 @@ def_word "s@", "state", 0
 ;    jmp keeps 
 
 ;---------------------------------------------------------------------
+; moved to hello_world
 ; ( -- rp )
 ;def_word "rp@", "rpat", 0
 ;    lda rpt + 0
 ;    sta fst + 0
 ;    lda rpt + 1
 ;    jmp keeps 
-
-;---------------------------------------------------------------------
-; ( c -- ) ; tos + 1 unchanged
-def_word "emit", "emit", 0
-    jsr spull1
-    lda fst + 0
-    jsr putchar
-    jmp next
-
-;---------------------------------------------------------------------
-; ( w a -- ) ; [a] = w
-def_word "!", "store", 0
-storew:
-    jsr spull2
-    ldx #(snd) 
-    ldy #(fst) 
-    jsr copyinto
-    jmp next
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -1294,12 +1290,9 @@ create:
 
 @ends:
 ; update here 
-    ; clc     ; keep branchs
     tya
     ldx #(here)
     jsr addwx
-
-.ifndef MTC
 
 ; inserts the nop call 
     lda #$EA
@@ -1312,8 +1305,6 @@ create:
     sta fst + 0
     lda #>nest
     jsr wcomma
-
-.endif
 
 ; done
     jmp next
@@ -1340,16 +1331,7 @@ next:
     ldy #(wrd)
     jsr copyfrom
 
-.ifdef MTC
-
-    lda #>init
-    cmp #(wrd+1)
-    bpl nest
-
-.endif
-
 jump:
-    clc         ; keep carry clean
     jmp (wrd)
 
 nest:   ; enter
