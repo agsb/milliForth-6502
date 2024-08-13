@@ -1,37 +1,38 @@
 
 ## Coding
 
-    On milliforth sector-x86 the classic NEXT ('lodsw' and 'jmp ax')
+On milliforth sector-x86 the classic NEXT ('lodsw' and 'jmp ax')
     is used as inner Forth heart beat. 
 
-    The register SI is ever used as pointer to next reference in same 
+The register SI is ever used as pointer to next reference in same 
     word. Whenm it is saved into and loaded from return stack ? 
 
-    All primitive words do not call any other word and ends with a 
+All primitive words do not call any other word and ends with a 
     jump to NEXT.
 
-    All composed words have a call to DOCOL, at start, to push SI, 
+All composed words have a call to DOCOL, at start, to push SI, 
     followed by a list of references of other words and ends with 
     a reference to EXIT, to pull SI, from return stack, 
 
-    The return stack keep track of next references of the last words 
+The return stack keep track of next references of the last words 
     not for the actual word.
 
-    Meanwhile the SI register is not accessible, it is not exposed and 
+Meanwhile the SI register is not accessible, it is not exposed and 
     the next reference can only be accessed while compiling, by using 
     HERE. Eg. lit [ here @ 6 + , ] 
 
-    The primitives s@ sp@ rp@ acts as VARIABLES, place the contentes 
+The primitives s@ sp@ rp@ acts as VARIABLES, place the contentes 
     of of registers at data stack. Those are the addresses for STATE 
     and, DATA and RETURN stack pointers.
 
-    But to easy run better have a pure pointer as sp and rp, so can
+But to easy run better have a pure pointer as sp and rp, so can
     derive sp@ == sp @ @ and sp! == sp @ ! 
 
+Then need to make a my_hello_world.FORTH
 
 ## Todo
 
-  done  _'OK'_ or _'NO'_;
+- still no  _'OK'_ or _'NO'_;
 - still no backspace routine for \b; 
 - still no cancel line routine for \u; 
 
@@ -39,8 +40,19 @@
 
 _12/08/2024_ 
 
-    all words runnig ok
+    all words from my_hello_word.FORTH runnig ok
 
+    extras: toogle inside
+        2/    shift right ( w -- w/2 )
+        exec  jumps to reference at top of data stack
+
+    extensions: (toogle inside)
+        .
+        .S
+        .R
+        dump
+        words
+        
 _10/08/2024_ 
 
     Using flag for [ (executing is 0) and ] (compiling is 1), 
@@ -101,12 +113,12 @@ _26/07/2024_
 _24/07/2024_ 
 
     reorder pseudo registers at page zero to allow
-        sp@ sp! rp@ rp! from offset by s@
+        sp rp from offset by s@
 
     cosmetic pretty format sector-x86.s
 
     included in extras: 
-        bye abort sp0 .S rp0 .R FALSE TRUE
+        bye abort .S .R FALSE TRUE
 
     OK: *pull *push 
 
@@ -160,7 +172,7 @@ _04/07/2024_
 
 _26/06/2024_
 
-   In debug mode, It's still a mess, don't get lost !!!
+    In debug mode, It's still a mess, don't get lost !!!
 
     something wrong at end of execution of compound words, 
     exit should break the sequence of references
@@ -175,12 +187,12 @@ _28/06/2024_
 _19/06/2024_ 
 
     Great review of heap and stack core code, 
-    reorder tib, sp, rp, pad.
+    reorder tib, sp, rp, pic.
 
 _16/06/2024_ 
     
-    Return to MITC paradigm.
-    it will grow the size of code, but will work.
+    Return to MTC paradigm.
+    it will grow the size of code, but will work ?
     todo a real DTC code, later.
 
 _15/06/2024_ 
@@ -198,7 +210,7 @@ _12/06/2024_
 
 _11/06/2024_ 
 
-    return and change model for 'minimal indirect thread code'
+    return and change model for 'minimal thread code'
     with lots of debugging code to find errors. 
     Renaming main file for it
 
@@ -210,34 +222,62 @@ _30/01/2024_
 
     doing debugs for DTC inner 
 
-_28/01/2024_ code for 6502 sized to 632 bytes. 
-             Review with 'standart direct thread code',
-             new sizes for tib, pad, data and return stacks. 
+_28/01/2024_ 
 
-_24/01/2024_ code for 6502 review. Recode for use 'standart direct thread code'. 
-             made a file with 'minimum itc model ' and another with 'standart itc model'
+    code for 6502 sized to 632 bytes. 
+    review with 'standart direct thread code',
+    new sizes for tib, pad, data and return stacks. 
+
+_24/01/2024_ 
+    
+    code for 6502 review. Recode for use 'direct thread code'. 
+    made a file with 'minimum tc model ' and another with 'direct tc model'
                  
-_16/01/2024_ code for 6502 sized to 612 bytes, review and reorder, need loop end-of-find.
+_16/01/2024_ 
 
-_11/01/2024_ code for 6502 sized to 632 bytes, refine ( pull, push, copy ), still crashes.
+    code for 6502 sized to 612 bytes, review and reorder, need loop end-of-find.
 
-_10/01/2024_ code for 6502 sized to 621 bytes, turn explicit copy from into, still crashes.
+_11/01/2024_ 
+    
+    code for 6502 sized to 632 bytes, refine ( pull, push, copy ), still crashes.
 
-_09/01/2024_ code for 6502 sized to 654 bytes, stack goes forward, still crashes.
+_10/01/2024_ 
 
-_02/01/2024_ code for 6502 sized to 647 bytes, still crashes by wrong jsr/jmp.
+    code for 6502 sized to 621 bytes, turn explicit copy from into, still crashes.
 
-_19/12/2023_ code for 6502 sized to 629 bytes, include key and emit, clean wrong rts.
+_09/01/2024_ 
 
-_05/12/2023_ code for 6502 sized to 588 bytes, include names in ascii-7 and aritmetic shift right (2/).
+    code for 6502 sized to 654 bytes, stack goes forward, still crashes.
 
-_27/11/2023_ code for 6502 sized to 572 bytes, clear some errors and ascii-7 checks
+_02/01/2024_ 
 
-_22/11/2023_ code for 6502 sized to 566 bytes, more good tips from Peter Ferrie <peter.ferrie@gmail.com>
+    code for 6502 sized to 647 bytes, still crashes by wrong jsr/jmp.
 
-_20/11/2023_ code for 6502 sized to 590 bytes, some good tips from Peter Ferrie <peter.ferrie@gmail.com>
+_19/12/2023_ 
 
-_20/11/2023_ rebuild the github repo without fork from original milliForth[^1]
+    code for 6502 sized to 629 bytes, include key and emit, clean wrong rts.
 
-_14/11/2023_ code for 6502 sized to 624 bytes, no ascii-7, no key, no emit, no 2/, many errors
+_05/12/2023_ 
+
+    code for 6502 sized to 588 bytes, include names in ascii-7 and aritmetic shift right (2/).
+
+_27/11/2023_ 
+
+    code for 6502 sized to 572 bytes, clear some errors and ascii-7 checks
+
+_22/11/2023_ 
+
+    code for 6502 sized to 566 bytes, more good tips from Peter Ferrie <peter.ferrie@gmail.com>
+
+_20/11/2023_ 
+
+    code for 6502 sized to 590 bytes, some good tips from Peter Ferrie <peter.ferrie@gmail.com>
+
+_20/11/2023_ 
+
+    rebuild the github repo without fork from original milliForth[^1]
+
+_14/11/2023_ 
+
+    code for 6502 sized to 624 bytes, no ascii-7, no key, no emit, no 2/, many errors
 
