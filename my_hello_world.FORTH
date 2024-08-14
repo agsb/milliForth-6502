@@ -38,18 +38,6 @@
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
 
-words 
-
-: [ 0 s@ ! ; 
-
-words 
-
-immediate
-
-: ] 1 s@ ! ;
-
-words 
-
 : >r rp @ @ swap rp @ ! rp @ 2 - rp ! rp @ ! ;
 : r> rp @ @ rp @ 2 + rp ! rp @ @ swap rp @ ! ;
 
@@ -60,6 +48,38 @@ words
 : ['] rp @ @ dup 2 + rp @ ! @ ;
 
 : rot >r swap r> swap ;
+
+: ] 1 s@ ! ;
+: [ 0 s@ ! ; 
+
+.S 
+
+.R
+
+words
+
+bye
+
+10 8 6
+
+.S
+
+dup .S 
+
+drop .S 
+
+rot .S 
+
+over .S 
+
+
+words 
+
+immediate
+
+: ? cr .S cr .R ;
+
+words 
 
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate

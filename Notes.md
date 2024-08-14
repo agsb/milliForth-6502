@@ -38,9 +38,22 @@ Then need to make a my_hello_world.FORTH
 
 ## Time table 
 
+_14/08/2024_ 
+    
+    testing MTC
+
+    all words bellow immediate from my_hello_word.FORTH 
+        make dictionary ok
+        compiling ok 
+        colon ok 
+        semis ok
+        primitives ok
+
 _12/08/2024_ 
 
-    all words from my_hello_word.FORTH runnig ok
+    testing DTC
+
+    all words from my_hello_word.FORTH runnig ok 
 
     extentions: toogle inside
         2/    shift right ( w -- w/2 )

@@ -320,7 +320,7 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 
-parse_:
+parsept:
     .word okey
 
 ;---------------------------------------------------------------------
@@ -364,6 +364,8 @@ find:
 ;    jsr putchar
 ;    lda #10
 ;    jsr putchar
+
+;   maybe a number ? not now
 
     jmp quit  ; end of dictionary, no more words to search, quit
 
@@ -409,11 +411,6 @@ find:
     jsr addwx
     
 eval:
-    ; if execute is FLAG_IMM
-    ; lda stat + 1
-    ; ora stat + 0
-    ; bmi execute
-
 ; executing ? if == \0
     lda stat + 0   
     beq execute
@@ -424,23 +421,46 @@ eval:
 
 compile:
 
+    lda #'C'
+    jsr putchar
+
     jsr fcomma
 
     jmp parse
 
 immediate:
 execute:
-    lda #>parse_
+
+    lda #'E'
+    jsr putchar
+
+    lda #>parsept
     sta ipt + 1
-    lda #<parse_
+    lda #<parsept
     sta ipt + 0
 
-    lda fst+1
-    sta ipt + 1
-    lda fst+0
-    sta ipt + 0
+    lda fst + 1
+    cmp #>init
+    bpl do_next
 
-    jmp next
+do_exec:
+
+    lda #'D'
+    jsr putchar
+
+    jmp (fst)
+
+do_next:
+
+    lda #'I'
+    jsr putchar
+
+    lda #0
+    sta wrd + 1
+    lda #fst
+    sta wrd + 0
+
+    jmp nest
 
 ;---------------------------------------------------------------------
 try:
@@ -924,13 +944,13 @@ show_refer:
 ; check if ends
     lda (fst), y
     cmp #<exit
-    bne @next
+    bne @step
     iny
     lda (fst), y
     cmp #>exit
     beq @ends
     dey
-@next:
+@step:
     iny
     iny
     bne @loop
@@ -1292,8 +1312,8 @@ do not need in MTC
 ;
 ;---------------------------------------------------------------------
 def_word "exit", "exit", FLAG_IMM
-unnest:
-    lda #'<'
+unnest: ; exit
+    lda #'U'
     jsr putchar
 
 ; pull, ipt = (rpt), rpt += 2 
@@ -1301,26 +1321,21 @@ unnest:
     jsr rpull
 
 next:
-; compare pages (MSBs)
-    lda #(ipt + 1)
-    cmp #>init
-    bmi jump
+    lda #'X'
+    jsr putchar
 
 ; wrd = (ipt) ; ipt += 2
     ldx #(ipt)
     ldy #(wrd)
     jsr copyfrom
 
-    lda #'|'
-    jsr putchar
-
 ; compare pages (MSBs)
-;    lda #(wrd + 1)
-;    cmp #>init
-;    bmi jump
+    lda #(wrd + 1)
+    cmp #>init
+    bmi jump
 
 nest:   ; enter
-    lda #'>'
+    lda #'N'
     jsr putchar
 
 ; push, *rp = ipt, rp -=2
@@ -1334,9 +1349,39 @@ nest:   ; enter
 
     jmp next
 
-jump:
+jump: 
+
+    lda #'J'
+    jsr putchar
 
     jmp (wrd)
+
+;----------------------------------------------------------------------
+    ; zzzz
+show1:
+    lda #':'
+    jsr putchar
+
+    lda #' '
+    jsr putchar
+
+    lda ipt+1
+    jsr puthex
+    lda ipt+0
+    jsr puthex
+    
+    lda #' '
+    jsr putchar
+
+    lda wrd+1
+    jsr puthex
+    lda wrd+1
+    jsr puthex
+     
+    lda #' '
+    jsr putchar
+
+    rts
 
 ends:
 
