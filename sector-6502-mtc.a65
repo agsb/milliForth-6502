@@ -315,7 +315,7 @@ quit:
 ; stat is 'interpret' == \0
     sty stat + 0
     
-    .byte $2c   ; mask next two bytes, nice trick !
+    ; .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
 ; the outer loop
