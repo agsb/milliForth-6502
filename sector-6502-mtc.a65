@@ -1295,29 +1295,12 @@ next:
 ; compare pages (MSBs)
     lda #(wrd + 1)
     cmp #>init
-    bpl nest
-
-jump:
-    jmp (wrd)
+    bmi jump
 
 nest:   ; enter
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
     jsr rpush
-
-/*
-do not need in MTC
-
-; pull (ip),  
-    pla
-    sta ipt + 0
-    pla
-    sta ipt + 1
-
-; 6502 trick: must increase return address 
-    ldx #(ipt)
-    jsr incwx
-*/
 
     lda wrd + 0
     sta ipt + 0
@@ -1325,6 +1308,10 @@ do not need in MTC
     sta ipt + 1
 
     jmp next
+
+jump:
+
+    jmp (wrd)
 
 ends:
 
