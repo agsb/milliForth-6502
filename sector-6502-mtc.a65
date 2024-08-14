@@ -315,12 +315,14 @@ quit:
 ; stat is 'interpret' == \0
     sty stat + 0
     
-    ; .byte $2c   ; mask next two bytes, nice trick !
+    .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
 ; the outer loop
 
-parse:
+parse_:
+    .word okey
+
 ;---------------------------------------------------------------------
 okey:
 
@@ -332,8 +334,12 @@ okey:
 ;    lda #10
 ;    jsr putchar
 
+parse:
 ; get a token
     jsr token
+
+;    lda #'P'
+;    jsr putchar
 
 find:
 ; load last
@@ -424,12 +430,17 @@ compile:
 
 immediate:
 execute:
-    lda #>parse
+    lda #>parse_
     sta ipt + 1
-    lda #<parse
+    lda #<parse_
     sta ipt + 0
 
-    jmp (fst)
+    lda fst+1
+    sta ipt + 1
+    lda fst+0
+    sta ipt + 0
+
+    jmp next
 
 ;---------------------------------------------------------------------
 try:
@@ -1282,22 +1293,36 @@ do not need in MTC
 ;---------------------------------------------------------------------
 def_word "exit", "exit", FLAG_IMM
 unnest:
+    lda #'<'
+    jsr putchar
+
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
     jsr rpull
 
 next:
+; compare pages (MSBs)
+    lda #(ipt + 1)
+    cmp #>init
+    bmi jump
+
 ; wrd = (ipt) ; ipt += 2
     ldx #(ipt)
     ldy #(wrd)
     jsr copyfrom
 
+    lda #'|'
+    jsr putchar
+
 ; compare pages (MSBs)
-    lda #(wrd + 1)
-    cmp #>init
-    bmi jump
+;    lda #(wrd + 1)
+;    cmp #>init
+;    bmi jump
 
 nest:   ; enter
+    lda #'>'
+    jsr putchar
+
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
     jsr rpush
