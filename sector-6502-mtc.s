@@ -20,6 +20,7 @@
 ;
 ;   what ? Design the best minimal Forth engine and vocabulary
 ;
+;----------------------------------------------------------------------
 ;   Changes:
 ;
 ;   all data (36 cells) and return (36 cells) stacks, TIB (80 bytes) 
@@ -35,6 +36,7 @@
 ;
 ;   As ANSI Forth 1994: FALSE is $0000 ; TRUE is $FFFF ;
 ;
+;----------------------------------------------------------------------
 ;   Remarks:
 ;
 ;       this code uses Minimal Thread Code, aka MTC.
@@ -60,6 +62,7 @@
 ;
 ;       no multiuser, no multitask, no checks, not faster;
 ;
+;----------------------------------------------------------------------
 ;   For 6502:
 ;
 ;       a 8-bit processor with 16-bit address space;
@@ -72,6 +75,7 @@
 ;
 ;       page zero is used as pseudo registers;
 ;
+;----------------------------------------------------------------------
 ;   For stacks:
 ;
 ;   "when the heap moves forward, move the stack backward" 
@@ -92,21 +96,22 @@
 ;
 ;   |$00 tib> .. $50| <spt..sp0 $98| <rpt..rp0 $E0|pic> ..$FF|
 ;
-;   At page 3:
+;   From page 3 onwards:
 ;
-;   |$0300 cold, warm, forth code, init: here> heap ... tail ????| 
+;   |$0300 cold:, warm:, forth code, init: here> heap ... tail| 
 ;
 ;   PIC is a transient area of 32 bytes 
 ;   PAD could be allocated from here
 ;
+;----------------------------------------------------------------------
 ;   For Devs:
 ;
 ;   the hello_world.forth file states that stacks works
-;       to allow : dup sp@ @ ; then sp must point to actual TOS
+;       to allow : dup sp@ @ ; so sp must point to actual TOS.
 ;   
-;   The movements will be:
-;       push is 'decrease and store'
+;   The movement will be:
 ;       pull is 'fetch and increase'
+;       push is 'decrease and store'
 ;
 ;   Never mess with two underscore variables;
 ;
@@ -114,13 +119,16 @@
 ;       colon saves "here" into "back" and 
 ;       semis loads "lastest" from "back";
 ;
-;   Do not risk to put stacks with $FF also no routine endings with.
+;   Do not risk to put stacks with $FF.
 ;
-;   Must carefull inspect if any label ends with $FF and move it;
+;   Also carefull inspect if any label ends with $FF and move it;
 ;
-;   This source is for Ca65.
+;   This source is hacked for use with Ca65.
 ;
-;   Stacks represented as (S: w3 w2 w1 -- u2 u1)
+;----------------------------------------------------------------------
+;
+;   Stacks represented as 
+;       S(w3 w2 w1 -- u2 u1)  R(w3 w2 w1 -- u2 u1)
 ;       before -- after, lower to upper, top at right
 ;
 ;----------------------------------------------------------------------
@@ -135,6 +143,14 @@
 .feature pc_assignment
 
 ;---------------------------------------------------------------------
+; macros for dictionary, makes:
+;
+;   h_name:
+;   .word  link_to_previous_entry
+;   .byte  strlen(name) + flags
+;   .byte  name
+;   name:
+;
 ; label for primitives
 .macro makelabel arg1, arg2
 .ident (.concat (arg1, arg2)):
@@ -181,22 +197,24 @@ FLAG_IMM = 1<<7
 
 ; "all in" page $200
 
-; terminal input buffer, 80 bytes, forward
+; terminal input buffer, forward
 ; getline, token, skip, scan, depends on page boundary
 tib = $0200
 
+; reserve 80 bytes, (72 is enough) 
+; moves forwards
 tib_end = $50
 
 ; data stack, 36 cells,
-; moves backwards and push decreases before copy
+; moves backwards, push decreases before copy
 sp0 = $98
 
 ; return stack, 36 cells, 
-; moves backwards and push decreases before copy
+; moves backwards, push decreases before copy
 rp0 = $E0
 
-; magic NOP (EA) JSR (20), at CFA cell
-magic = $20EA
+; reserved for scribbles
+pic = rp0
 
 ;----------------------------------------------------------------------
 ; no values here or must be a BSS
@@ -207,7 +225,7 @@ magic = $20EA
 nil:  ; empty for fixed reference
 
 ; as user variables
-; order matters for HELLO.forth !
+; order matters for hello_world.forth !
 
 ; internal Forth 
 
@@ -338,8 +356,8 @@ parse:
 ; get a token
     jsr token
 
-;    lda #'P'
-;    jsr putchar
+    ; lda #'P'
+    ; jsr putchar
 
 find:
 ; load last
@@ -351,13 +369,16 @@ find:
 @loop:
 ; lsb linked list
     lda snd + 0
-    sta fst + 0
+    sta wrd + 0
 
 ; verify \0x0
     ora snd + 1
     bne @each
 
-;;   uncomment for feedback
+;   maybe to place a code for number? 
+;   but not for now.
+
+;;   uncomment for error feedback
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #'?'
@@ -365,18 +386,17 @@ find:
 ;    lda #10
 ;    jsr putchar
 
-;   maybe a number ? not now
-
+;   not found what to do ?
     jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
 
 ; msb linked list
     lda snd + 1
-    sta fst + 1
+    sta wrd + 1
 
 ; update next link 
-    ldx #(fst) ; from 
+    ldx #(wrd) ; from 
     ldy #(snd) ; into
     jsr copyfrom
 
@@ -384,7 +404,7 @@ find:
     ldy #0
 
 ; save the flag, first byte is (size and flag) 
-    lda (fst), y
+    lda (wrd), y
     sta stat + 1
 
 ; compare chars
@@ -395,7 +415,7 @@ find:
     beq @done
 ; verify 
     sec
-    sbc (fst), y     
+    sbc (wrd), y     
 ; clean 7-bit ascii
     and #$7F        
     bne @loop
@@ -405,9 +425,9 @@ find:
     bne @equal
 
 @done:
-; update fst
+; update wrd
     tya
-    ldx #(fst)
+    ldx #(wrd)
     jsr addwx
     
 eval:
@@ -424,7 +444,7 @@ compile:
     lda #'C'
     jsr putchar
 
-    jsr fcomma
+    jsr wcomma
 
     jmp parse
 
@@ -440,20 +460,15 @@ execute:
     sta ipt + 0
 
 ; compare pages (MSBs)
-    lda #(fst + 1)
+    lda #(wrd + 1)
     cmp #>init
     bmi just
-
-    lda fst + 1
-    sta wrd + 1
-    lda fst + 0
-    sta wrd + 0
 
     jmp nest
 
 just:
 
-    jmp (fst)
+    jmp (wrd)
 
 ;---------------------------------------------------------------------
 try:
@@ -599,10 +614,7 @@ addwx:
 ; classic heap moves always forward
 ;
 wcomma:
-    sta fst + 1
-
-fcomma:    
-    ldy #(fst)
+    ldy #(wrd)
 
 comma: 
     ldx #(here)
@@ -882,6 +894,15 @@ def_word "words", "words", 0
     tya
     ldx #(fst)
     jsr addwx
+
+; show CFA
+
+    lda #' '
+    jsr putchar
+    lda fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
 
 ; thanks, @https://codebase64.org/doku.php?id=base:
 ;   16-bit_absolute_comparison
@@ -1233,8 +1254,9 @@ def_word ";", "semis", FLAG_IMM
 ; compound words must ends with exit
 finish:
     lda #<exit
-    sta fst + 0
+    sta wrd + 0
     lda #>exit
+    sta wrd + 1
     jsr wcomma
 
     jmp next
