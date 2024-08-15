@@ -441,8 +441,8 @@ eval:
 
 compile:
 
-    lda #'C'
-    jsr putchar
+    ; lda #'C'
+    ; jsr putchar
 
     jsr wcomma
 
@@ -451,25 +451,16 @@ compile:
 immediate:
 execute:
 
-    lda #'E'
-    jsr putchar
+    ; lda #'E'
+    ; jsr putchar
 
     lda #>parsept
     sta ipt + 1
     lda #<parsept
     sta ipt + 0
 
-; compare pages (MSBs)
-    lda wrd + 1
-    cmp #>init
-    bmi just
-
-    jmp nest
-
-just:
-
-    jmp (wrd)
-
+    jmp pick
+    
 ;---------------------------------------------------------------------
 try:
     lda tib, y
@@ -718,7 +709,7 @@ spush1:
 ;----------------------------------------------------------------------
 
 ; uncomment to include the extras (sic)
-extras = 1 
+; extras = 1 
 
 .ifdef extras
 
@@ -1119,7 +1110,7 @@ number:
 ;
 ;---------------------------------------------------------------------
 ; uncomment to include the extensions (sic)
-extensions = 1 
+; extensions = 1 
 
 .ifdef extensions
 
@@ -1297,9 +1288,6 @@ create:
     ldx #(here)
     jsr addwx
 
-    lda #'='
-    jsr putchar
-
 ; done
     jmp next
 
@@ -1315,37 +1303,23 @@ create:
 ;---------------------------------------------------------------------
 def_word "exit", "exit", FLAG_IMM
 unnest: ; exit
-    lda #'U'
-    jsr putchar
-
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
     jsr rpull
 
 next:
-    lda #'X'
-    jsr putchar
-
-    jsr show1
-
 ; wrd = (ipt) ; ipt += 2
     ldx #(ipt)
     ldy #(wrd)
     jsr copyfrom
 
+pick:
 ; compare pages (MSBs)
-    lda #(wrd + 1)
+    lda wrd + 1
     cmp #>init
     bmi jump
 
-    jsr show1
-
 nest:   ; enter
-    lda #'N'
-    jsr putchar
-
-    jsr show1
-
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
     jsr rpush
@@ -1355,44 +1329,14 @@ nest:   ; enter
     lda wrd + 1
     sta ipt + 1
 
-    jsr show1
-
     jmp next
 
 jump: 
 
-    lda #'J'
-    jsr putchar
-
     jmp (wrd)
 
 ;----------------------------------------------------------------------
-    ; zzzz
-show1:
-    lda #':'
-    jsr putchar
-
-    lda #' '
-    jsr putchar
-
-    lda ipt+1
-    jsr puthex
-    lda ipt+0
-    jsr puthex
-    
-    lda #' '
-    jsr putchar
-
-    lda wrd+1
-    jsr puthex
-    lda wrd+0
-    jsr puthex
-     
-    lda #' '
-    jsr putchar
-
-    rts
-
+; end of code
 ends:
 
 ;----------------------------------------------------------------------

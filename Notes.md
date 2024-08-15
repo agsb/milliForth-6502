@@ -38,6 +38,22 @@ Then need to make a my_hello_world.FORTH
 
 ## Time table 
 
+_16/08/2024_ 
+
+    both DTC and MTC runs with my_hello_world.FORTH
+
+        MTC Instructions: 38053769 Cycles: 156337697                            
+                                                                            
+        DTC Instructions: 37457299 Cycles: 155977289                            
+                                                                                  
+        overhead:
+            
+            Instructions:   596470 Cycles:    360408                            
+
+            1.59% Instructions (mtc/dtc)                                        
+
+            0.23% cycles (mtc/dtc)                                              
+
 _14/08/2024_ 
     
     testing MTC
