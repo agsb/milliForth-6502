@@ -11,7 +11,7 @@ of less than 512 bytes.
 
 ## Bytes?
 
-Yes, bytes. But the code is for a x86 16-bit CPU. 
+Yes, bytes. But those are for a x86 16-bit CPU. 
 
 How minimal could be it for a classic 6502 8-bit CPU ?
 
@@ -21,15 +21,16 @@ as registers and page one as hardware stack.
 
 ## Inner Interpreter
 
-The FIG-Forth (1980) for 6502 uses Indirect Thread Code (ITC) as inner interpreter. 
+The FIG-Forth (1980) for 6502 uses Indirect Thread Code (ITC) 
+    as inner interpreter. 
 
 The miniForth, sectorforth and milliForth use Direct Thread Code (DTC) 
 
 This Forth for 6502, will be done using two models: 
     
-    with classic DTC as milli-Forth-x86 ~ now with 640 bytes
+    with classic Direct Thread Code ~ now with 640 bytes
     and
-    with Minimal Thread Code (MTC) ~ (still wait)
+    with Minimal Thread Code (MTC) ~ now with 623 bytes
 
 (later we will compare both, but DTC will win for less size) 
 
