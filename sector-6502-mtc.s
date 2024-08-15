@@ -460,7 +460,7 @@ execute:
     sta ipt + 0
 
 ; compare pages (MSBs)
-    lda #(wrd + 1)
+    lda wrd + 1
     cmp #>init
     bmi just
 
