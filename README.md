@@ -12,12 +12,11 @@ of less than 512 bytes.
 ## Bytes?
 
 Yes, bytes. But those are for a x86 16-bit CPU. 
-
 How minimal could be it for a classic 6502 8-bit CPU ?
 
 Two essentially different CPUs, a 16-bit x86 based on complex 
 registers and opcodes, and a 8-bit 6502 using page zero 
-as registers and page one as hardware stack.
+as common registers and page one as hardware stack.
 
 ## Inner Interpreter
 
@@ -26,15 +25,15 @@ The FIG-Forth (1980) for 6502 uses Indirect Thread Code (ITC)
 
 The miniForth, sectorforth and milliForth use Direct Thread Code (DTC) 
 
-This Forth for 6502, will be done using two models: 
+This Forth for 6502, ~will be~ was done using two models: 
     
     with classic Direct Thread Code ~ now with 640 bytes
     and
     with Minimal Thread Code (MTC) ~ now with 623 bytes
 
-(later we will compare both, but DTC will win for less size) 
+(later we will compare both, ~but DTC will win for less size~) 
 
-This project is also used to test variations of Minimum Thread Code
+This project is also used to verify variations of Minimum Thread Code
 against a standart Direct Thread Code.
 
 ## Coding for 6502
@@ -69,26 +68,42 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Notes
 
-Look up at Notes[^6]
+Look up at Notes[^6] for more.
 
+16/08/2024:
+    both models DTC and MTC, works with my_hello_world.FORTH;
+    
 11/08/2024:
-    return to direct thread code:
+    return to direct thread code;
 
 11/06/2024:
-    adapt for minimal thread indirect code
+    adapt for minimal thread indirect code;
 
 24/01/2024:
-    write using standart direct thread code
+    write using standart direct thread code;
+
+14/11/2023
+    code for 6502 sized to 624 bytes, 
+    no ascii-7, no key, no emit, no 2/, many errors
 
 ## Coding
 
 This version includes: 
+
 ```
 primitives:
-    s@, +, nand, @, !, :, ;, 0#, key, emit, exit,
-    
-    the sp@ and rp@ are derived from s@ in the my_hello_world.FORTH
-
+    s@    return the address of user structure
+    +     adds two values at top of data stack
+    nand  logic not and the two values at top of data stack
+    @     fetch a value of cell wich address at top of data stack
+    !     store a value into a cell wich address at top of data stack
+    :     starts compilng a new word
+    ;
+    0#
+    exit
+    key
+    emit
+        
 internals: 
     spush, spull, rpull, rpush, (stack code)
     copyfrom, copyinto, (heap code)
@@ -97,9 +112,21 @@ internals:
     * pick, jump, (mtc inner) 
     cold, quit, token, skip, scan, getline, (boot and terminal)
     parse, find, compile, execute, (outer interpreter)
+
+externals:
     getch, putch, byes (depends on system, used minimal for emulator )
 
+extensions:
+    2/      shift right one bit
+    jump    jump to address in instruction pointer (ipt)    
+    
+extras:
+    bye abort .S .R . dump words
+
+
 A my_hello_world.FORTH alternate version with dictionary for use;
+
+The sp@ and rp@ are now derived from s@ in the my_hello_world.FORTH
 
 ```
 
