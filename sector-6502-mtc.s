@@ -439,28 +439,21 @@ execute:
     lda #<parsept
     sta ipt + 0
 
-    lda fst + 1
+; compare pages (MSBs)
+    lda #(fst + 1)
     cmp #>init
-    bpl do_next
+    bmi just
 
-do_exec:
-
-    lda #'D'
-    jsr putchar
-
-    jmp (fst)
-
-do_next:
-
-    lda #'I'
-    jsr putchar
-
-    lda #0
+    lda fst + 1
     sta wrd + 1
-    lda #fst
+    lda fst + 0
     sta wrd + 0
 
     jmp nest
+
+just:
+
+    jmp (fst)
 
 ;---------------------------------------------------------------------
 try:
@@ -1253,6 +1246,7 @@ def_word ":", "colon", 0
     sta back + 0 
     lda here + 1
     sta back + 1 
+
 ; stat is 'compile'
     lda #1
     sta stat + 0
@@ -1281,22 +1275,8 @@ create:
     ldx #(here)
     jsr addwx
 
-/*
-
-do not need in MTC
-
-; inserts the nop call 
-    lda #$EA
-    sta fst + 0
-    lda #$20
-    jsr wcomma
-
-; inserts the reference
-    lda #<nest
-    sta fst + 0
-    lda #>nest
-    jsr wcomma
-*/
+    lda #'='
+    jsr putchar
 
 ; done
     jmp next
@@ -1324,6 +1304,8 @@ next:
     lda #'X'
     jsr putchar
 
+    jsr show1
+
 ; wrd = (ipt) ; ipt += 2
     ldx #(ipt)
     ldy #(wrd)
@@ -1334,9 +1316,13 @@ next:
     cmp #>init
     bmi jump
 
+    jsr show1
+
 nest:   ; enter
     lda #'N'
     jsr putchar
+
+    jsr show1
 
 ; push, *rp = ipt, rp -=2
     ldy #(ipt)
@@ -1346,6 +1332,8 @@ nest:   ; enter
     sta ipt + 0
     lda wrd + 1
     sta ipt + 1
+
+    jsr show1
 
     jmp next
 
@@ -1375,7 +1363,7 @@ show1:
 
     lda wrd+1
     jsr puthex
-    lda wrd+1
+    lda wrd+0
     jsr puthex
      
     lda #' '
