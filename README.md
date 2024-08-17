@@ -36,17 +36,32 @@ This Forth for 6502, ~will be~ was done using two models:
 This project is also used to verify standart Direct Thread Code against 
 variations of Minimum Thread Code.
 
-Minimal Thread Code is an alternative model for inner interpreter, where 
+[Minimal Thread Code](https://github.com/agsb/milliForth-6502/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf) 
+is an alternative model for inner interpreter, where 
 the dictionary is organized with the primitives words grouped together 
 before the compound words, defining a "tipping point", from where could 
 decide if the reference of a word will be to executed or be pushed into 
 return stack.
 
+Both DTC and MTC runs with my_hello_world.FORTH, using 
+
+    MTC Instructions: 38053769 Cycles: 156337697                            
+                                                                        
+    DTC Instructions: 37457299 Cycles: 155977289                            
+                                                                              
+    overhead: Instructions: 596470 Cycles: 360408                            
+
+        1.59% Instructions (mtc/dtc)                                        
+
+        0.23% cycles (mtc/dtc)      
+
 ## Coding for 6502
 
 Focus in size not performance.
 
-Using ca65 V2.19 - Git 7979f8a41. 
+The compilation wqas done with [ca65](https://github.com/cc65/cc65) V2.19 - Git 7979f8a41. 
+
+The emulation of 6502 CPU was done with [run6502](https://github.com/mrdudz/run6502)
 
 The way at 6502 is use a page zero and lots of lda/sta bytes.
 
