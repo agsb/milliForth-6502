@@ -27,14 +27,20 @@ The miniForth, sectorforth and milliForth use Direct Thread Code (DTC)
 
 This Forth for 6502, ~will be~ was done using two models: 
     
-    with classic Direct Thread Code ~ now with 640 bytes
+    with classic Direct Thread Code (DTC) ~ now with 640 bytes
     and
     with Minimal Thread Code (MTC) ~ now with 623 bytes
 
 (later we will compare both, ~but DTC will win for less size~) 
 
-This project is also used to verify variations of Minimum Thread Code
-against a standart Direct Thread Code.
+This project is also used to verify standart Direct Thread Code against 
+variations of Minimum Thread Code.
+
+Minimal Thread Code is an alternative model for inner interpreter, where 
+the dictionary is organized with the primitives words grouped together 
+before the compound words, defining a "tipping point", from where could 
+decide if the reference of a word will be to executed or be pushed into 
+return stack.
 
 ## Coding for 6502
 
@@ -98,31 +104,36 @@ primitives:
     @     fetch a value of cell wich address at top of data stack
     !     store a value into a cell wich address at top of data stack
     :     starts compilng a new word
-    ;
-    0#
-    exit
-    key
-    emit
+    ;     stops compiling a new word
+    0#    test if top of data stack is not zero
+    exit  ends a word
+    key   get a char from default terminal (system dependent)
+    emit  put a char into default terminal (system dependent)
         
 internals: 
     spush, spull, rpull, rpush, (stack code)
     copyfrom, copyinto, (heap code)
     incr, decr, add, etc (register mimics)
-    unnest, next, nest, (dtc inner) 
-    * pick, jump, (mtc inner) 
     cold, quit, token, skip, scan, getline, (boot and terminal)
     parse, find, compile, execute, (outer interpreter)
-
+    unnest, next, nest, (dtc inner) 
+    pick, jump, (mtc inner) 
+    
 externals:
     getch, putch, byes (depends on system, used minimal for emulator )
 
-extensions:
+extensions: (selectable)
     2/      shift right one bit
     jump    jump to address in instruction pointer (ipt)    
     
-extras:
-    bye abort .S .R . dump words
-
+extras:    (selectable)
+    bye     ends the Forth, return to system
+    abort   restart the Forth
+    .S      list cells in data stack
+    .R      list cells in return stack
+    .       show cell at top of data stack
+    words   extended list the words in dictionary
+    dump    list contents of dictionary in binary
 
 A my_hello_world.FORTH alternate version with dictionary for use;
 
@@ -151,17 +162,17 @@ The sp@ and rp@ are now derived from s@ in the my_hello_world.FORTH
 
    A common memory model organization of Forth: 
 
-   tib->...<-spt, user forth dictionary, here->pad...<-rpt,
+       tib->...<-spt, user forth dictionary, here->pad...<-rpt,
 
    then backward stacks allow to use the slack space ... 
 
    This 6502 Forth memory model is blocked in pages of 256 bytes:
 
-   page0, page1, page2, core ... forth dictionary ...here...
+       page0, page1, page2, core ... forth dictionary ...here...
    
    at page2, without 'rush over'
 
-   [tib 40 cells> <spt 36 cells| <rpt 36 cells|pic 16 cells> ] .
+       [tib 40 cells> <spt 36 cells| <rpt 36 cells|pic 16 cells> ] .
 
 ## Language
 
@@ -178,7 +189,7 @@ For Forth from inside howto see
 
 ## Use
 
-_** 12/08/2024 DTC model operational, using lib6502 for emulation and tests **_
+_** 16/08/2024 DTC and MTC models operational, using lib6502 for emulation and tests **_
 
 A crude small script for compile with ca65 is included.
 
@@ -194,7 +205,9 @@ the size is take from main: to ends: using the sector-6502.lbl file
 
 the originals files are edited for lines with less than 80 bytes
 
-the bf.FORTH and hello_world.FORTH are from original milliFort[^1]
+the bf.FORTH and hello_world.FORTH are from original milliForth[^1]
+
+the my_hello_world.FORTH is adapted for miiliforth-6502
 
 ## References
 
