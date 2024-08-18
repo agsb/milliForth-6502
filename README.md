@@ -169,7 +169,7 @@ The sp@ and rp@ are now derived from s@ in the my_hello_world.FORTH
     $2E0*   return stack    ; return stack, 36 cells, backwards
     $2E0    PIC             ; reserved for scratch, 16 cells
     $300    _main_          ; start of Forth
-    $???    _init_          ; start of compose dictionary
+    $???    _init_          ; start of compound dictionary
 ```
 
 ### Stacks
