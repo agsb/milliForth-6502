@@ -85,7 +85,7 @@
  
  ( with comments )
  
- : create : ['] lit , here @ 4 + , ['] exit , 0 s@ ! ;
+ : create : ['] lit , here @ 4 + , ['] exit , 1 s@ ! ;
  
  : cells lit [ 2 , ] ;
  : allot here @ + here ! ;

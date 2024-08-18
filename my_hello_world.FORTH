@@ -52,32 +52,8 @@
 : ] 1 s@ ! ;
 : [ 0 s@ ! ; 
 
-.S 
-
-.R
-
-words
-
-10 8 6
-
-.S
-
-dup .S 
-
-drop .S 
-
-rot .S 
-
-over .S 
-
-
-words 
-
 immediate
 
-: ? cr .S cr .R ;
-
-words 
 
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
@@ -112,6 +88,8 @@ words
 : ( [char] ) parse ; immediate
 
 ( with comments )
+
+: ? cr .S cr .R ;
 
 ." hello, world"
 
