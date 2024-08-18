@@ -43,7 +43,17 @@ before the compound words, defining a "tipping point", from where could
 decide if the reference of a word will be to executed or be pushed into 
 return stack.
 
-Both DTC and MTC runs with my_hello_world.FORTH, using 
+## Coding for 6502
+
+Focus in size not performance.
+
+The compilation wqas done with [ca65](https://github.com/cc65/cc65) V2.19 - Git 7979f8a41. 
+
+The emulation of 6502 CPU was done with [run6502](https://github.com/mrdudz/run6502)
+
+The way at 6502 is use a page zero and lots of lda/sta bytes.
+
+Both DTC and MTC runs with my_hello_world.FORTH, with these numbers. 
 
     MTC Instructions: 38053769 Cycles: 156337697                            
                                                                         
@@ -55,15 +65,6 @@ Both DTC and MTC runs with my_hello_world.FORTH, using
 
         0.23% cycles (mtc/dtc)      
 
-## Coding for 6502
-
-Focus in size not performance.
-
-The compilation wqas done with [ca65](https://github.com/cc65/cc65) V2.19 - Git 7979f8a41. 
-
-The emulation of 6502 CPU was done with [run6502](https://github.com/mrdudz/run6502)
-
-The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 ### Changes:
 
