@@ -71,20 +71,22 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 - all tib (80 bytes), pic (16 cells), data (36 cells) and 
     return (36 cells) stacks are in page $200 ; 
 - tib and pic grows forward, stacks grows backwards ;
-- no overflow or underflow checks ;
 - only immediate flag used as $80, no more flags ;
 
+- no line editor, no backspace, no cancel line, no low ASCII verify ; 
+- no stacks overflow or underflow checks ;
+ 
 ### Remarks:
 
-- 6502 is a byte processor, no need 'pad' at end of even names;
-- hardware stack (page $100) not used as forth stack, free for use;
-- uses 32 bytes of _page zero_;
-- no multiuser, no multitask, no faster;
-- only update _latest_ at end of word definition; 
-- redefine a word does not change previous uses;
-- stacks moves like the hardware stack;
+- 6502 is a byte processor, no need 'pad' at end of even names ;
+- hardware stack (page $100) not used as forth stack, free for use ;
+- uses 32 bytes of _page zero_ ;
+- no multiuser, no multitask, no faster ;
+- only update _latest_ at end of word definition ; 
+- redefine a word does not change previous uses ;
+- stacks moves like the hardware stack ;
 - words must be between spaces, before and after ever ;
-- uses 7-bit ASCII characters;
+- better use 7-bit ASCII characters ;
 - approuch as ANSI X3.215-1994[^5]
 
 ### Notes
