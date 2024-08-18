@@ -190,7 +190,7 @@ The sp@ and rp@ are now derived from s@ in the my_hello_world.FORTH
    
    at page2, without 'rush over'
 
-       [tib 40 cells> <spt 36 cells| <rpt 36 cells|pic 16 cells> ] .
+       |tib 40 cells> <spt 36 cells| <rpt 36 cells|pic 16 cells> | .
 
 ## Language
 
