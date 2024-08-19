@@ -1,6 +1,6 @@
 # A milliForth for 6502
 
-_"A Forth in 340 bytes — the smallest real programming 
+_"A Forth in 328 bytes — the smallest real programming 
 language ever, as of yet."_
 
 The milliForth[^1] is a review of sectorForth[^2], 
