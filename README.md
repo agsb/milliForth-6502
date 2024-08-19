@@ -47,7 +47,7 @@ return stack.
 
 Focus in size not performance.
 
-The compilation was done with [ca65](https://github.com/cc65/cc65) V2.19 - Git 7979f8a41. 
+The compilation wqas done with [ca65](https://github.com/cc65/cc65) V2.19 - Git 7979f8a41. 
 
 The emulation of 6502 CPU was done with [run6502](https://github.com/mrdudz/run6502)
 
@@ -169,7 +169,11 @@ The sp@ and rp@ are now derived from s@ in the my_hello_world.FORTH
     $2E0*   return stack    ; return stack, 36 cells, backwards
     $2E0    PIC             ; reserved for scratch, 16 cells
     $300    _main_          ; start of Forth
+    $???    _ends_          ; end of code and primitives of Forth
     $???    _init_          ; start of compound dictionary
+
+    _init_ is the page (MSB) of _ends_ + 1
+
 ```
 
 ### Stacks
