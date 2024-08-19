@@ -303,10 +303,10 @@ warm:
     lda #<h_exit
     sta last + 0
 
-; next heap free cell  
-    lda #>init
+; next heap free cell, same as init:  
+    lda #>ends + 1
     sta here + 1
-    lda #<init
+    lda #0
     sta here + 0
 
 ;---------------------------------------------------------------------
@@ -1316,7 +1316,8 @@ next:
 pick:
 ; compare pages (MSBs)
     lda wrd + 1
-    cmp #>init
+    cmp #>ends + 1
+    ; cmp #>init
     bmi jump
 
 nest:   ; enter
@@ -1342,7 +1343,7 @@ ends:
 ;----------------------------------------------------------------------
 ; anything above is not a primitive
 ; needed for MTC
-.align $100
-
-init:   
+; same as #>end+1
+;.align $100
+;init:   
 
