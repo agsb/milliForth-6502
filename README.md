@@ -27,9 +27,12 @@ The miniForth, sectorforth and milliForth use Direct Thread Code (DTC)
 
 This Forth for 6502, ~will be~ was done using two models: 
     
-    with classic Direct Thread Code (DTC) ~ now with 640 bytes
+    with classic Direct Thread Code (DTC) ~ now with 583 bytes (*)
     and
-    with Minimal Thread Code (MTC) ~ now with 623 bytes
+    with Minimal Thread Code (MTC) ~ now with 572 bytes (*)
+
+
+(*) Thanks to wise changes from peterferrie !
 
 (later we will compare both, ~but DTC will win for less size~) 
 
