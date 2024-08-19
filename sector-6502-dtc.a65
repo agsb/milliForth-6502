@@ -526,15 +526,24 @@ getchar:
 
 ; getchar returns 0xFF at EOF
     cmp #$FF
+.ifndef extras
+    bne putchar
+; exit for emulator  
+    pha
+    pha
+.else
     beq byes
+.endif
 
 putchar:
     sta $E000
     rts
 
+.ifdef extras
 ; exit for emulator  
 byes:
     jmp $0000
+.endif
 
 ;---------------------------------------------------------------------
 ; decrement a word in page zero. offset by X
