@@ -32,7 +32,7 @@ This Forth for 6502, ~will be~ was done using two models:
     with Minimal Thread Code (MTC) ~ now with 572 bytes (*)
 
 
-(*) Thanks to wise changes from peterferrie !
+(*) Thanks to wise changes from [peterferrie](https://github.com/peterferrie) !
 
 (later we will compare both, ~but DTC will win for less size~) 
 
