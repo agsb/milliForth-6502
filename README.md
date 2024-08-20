@@ -58,15 +58,16 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 
 Both DTC and MTC runs with my_hello_world.FORTH, with these numbers. 
 
-    MTC Instructions: 38053769 Cycles: 156337697                            
-                                                                        
-    DTC Instructions: 37457299 Cycles: 155977289                            
-                                                                              
-    overhead: Instructions: 596470 Cycles: 360408                            
 
-        1.59% Instructions (mtc/dtc)                                        
+    MTC, Instructions: 35796948 Cycles: 148802145 SIZE: 582
 
-        0.23% cycles (mtc/dtc)      
+    DTC, Instructions: 35211469 Cycles: 148450585 SIZE: 596
+
+    compiling my_hello_world.FORTH, overhead for MTC/DTC
+    
+    Instructions:    1.66% 
+
+    Cycles:          0.24%
 
 
 ### Changes:

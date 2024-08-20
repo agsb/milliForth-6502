@@ -5,20 +5,14 @@ token:
     ldy #1
 
 @skip:
-    jsr getchar
-    cmp #$FF
-    beq byes
+    jsr getch
     cmp #' ' 
     beq @skip
 
 @scan:
-    cmp #10     ; if \n
-    beq @ends
+    jsr getch
     sta tib, y
     iny
-    ; cpy #16     ; if maxsize
-    ; bpl @ends
-    jsr getchar
     cmp #' '
     bne @scan
 
@@ -27,6 +21,14 @@ token:
     sta tib, y
     dey
     sty tib
+    rts
+
+@getch:
+    jsr getchar
+    cmp #10
+    beq @ends
+    cmp #$FF
+    beq byes
     rts
 
 byes:
