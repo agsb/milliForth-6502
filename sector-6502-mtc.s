@@ -428,6 +428,7 @@ find:
 ; update wrd
     tya
     ;; ldx #(wrd) ; set already
+    ;; addwx also clear carry
     jsr addwx
     
 eval:
@@ -553,13 +554,16 @@ token:
     rts
 
 ;---------------------------------------------------------------------
+;  this code depends on systems or emulators
+;
 ;  lib6502  emulator
+; 
 getchar:
     lda $E000
 
 eofs:
 ; EOF ?
-    cmp #$FF
+    cmp #$FF ; also clean carry :)
     beq byes
 
 putchar:
@@ -569,6 +573,10 @@ putchar:
 ; exit for emulator  
 byes:
     jmp $0000
+
+;
+;   lib6502 emulator
+;---------------------------------------------------------------------
 
 ;---------------------------------------------------------------------
 ; decrement a word in page zero. offset by X
@@ -650,6 +658,7 @@ spull2:
 ;---------------------------------------------------------------------
 spull1:
     ldy #(fst)
+    ; fall through
 
 ;---------------------------------------------------------------------
 ; pull a cell 
@@ -690,7 +699,7 @@ addwx:
     sta 0, x
     bcc @ends
     inc 1, x
-    clc ; clean
+    clc ; keep carry clean
 @ends:
     rts
 
@@ -817,6 +826,7 @@ def_word "dump", "dump", 0
     cmp here + 1
     bne @loop
 
+    clc  ; clean
     jmp next 
 
 ;----------------------------------------------------------------------
@@ -890,14 +900,9 @@ def_word "words", "words", 0
     lda fst + 0
     jsr puthex
 
-; thanks, @https://codebase64.org/doku.php?id=base:
-;   16-bit_absolute_comparison
-; check if primitive
-    lda fst + 0
-    cmp #<init
+; check if is a primitive
     lda fst + 1
-    sbc #>init
-    eor fst + 1
+    cmp #>ends + 1
     bmi @loop
 
 ; list references
@@ -908,6 +913,7 @@ def_word "words", "words", 0
     jmp @loop 
 
 @ends:
+    clc  ; clean
     jmp next
 
 ;----------------------------------------------------------------------
@@ -955,6 +961,7 @@ show_refer:
     iny
     bne @loop
 @ends:
+    clc  ; clean
     rts
 
 ;----------------------------------------------------------------------
@@ -1007,6 +1014,7 @@ seek:
 @ends:
     tya
     lsr
+    clc  ; clean
     rts
 
 ;----------------------------------------------------------------------
@@ -1039,6 +1047,7 @@ puthex:
     bcc @ends
     adc #$06
 @ends:
+    clc  ; clean
     jmp putchar
 
 .endif
@@ -1127,13 +1136,13 @@ def_word "exec", "exec", 0
 
 ;---------------------------------------------------------------------
 ; core primitives minimal 
-
+; start of dictionary
 ;---------------------------------------------------------------------
 ; ( -- c ) ; tos + 1 unchanged
 def_word "key", "key", 0
     jsr getchar
     sta fst + 0
-    ; jmp this  ; uncomment if getchar could be \0
+    ; jmp this  ; uncomment if char could be \0
     bne this    ; always taken
     
 ;---------------------------------------------------------------------
@@ -1174,7 +1183,7 @@ def_word "nand", "nand", 0
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
     jsr spull2
-    clc  ; clean ?
+    clc  ; better safe than sorry
     lda snd + 0
     adc fst + 0
     sta fst + 0
@@ -1207,8 +1216,6 @@ this:
 jmpnext:
     jmp next
 
-zzzz:
-
 ;---------------------------------------------------------------------
 ; ( 0 -- $0000) | ( n -- $FFFF)
 def_word "0#", "zeroq", 0
@@ -1218,17 +1225,17 @@ def_word "0#", "zeroq", 0
     beq isfalse  ; is \0 ?
 istrue:
     lda #$FF
-    bne stafst  ; always taken
+isfalse:
+    sta fst + 0                                                         
+    jmp keeps  
 
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
 def_word "s@", "state", 0 
     lda #<stat
-isfalse:
-stafst:
     sta fst + 0
     lda #>stat
-    ; jmp keeps ; uncomment if stats not in page $0
+    ;  jmp keeps ; uncomment if stats not in page $0
     beq keeps   ; always taken
 
 ;---------------------------------------------------------------------

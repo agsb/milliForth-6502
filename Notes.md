@@ -45,12 +45,16 @@ _20/08/2024_
 
     Doing patch per patch to find what or where.
 
-    The getline and token does not work, assumes only one space 
-        between words, reverted some code.
+    The 'getline and token' code does not work, 
+        assumes only one space between words, changed.
+
+    The '0#' forgot set LSB to MSB, changed;
 
     Why need a buffer of 80 chars and complex getline and token, if
     thereis no edition and only one word between spaces is taken each
     time ? make a 24 char buffer and just simplify token. next todo. 
+
+    MTC and DTC ok
 
 _16/08/2024_ 
 

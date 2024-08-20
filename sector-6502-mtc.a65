@@ -378,7 +378,7 @@ find:
 ;   maybe to place a code for number? 
 ;   but not for now.
 
-;;   uncomment for feedback, comment out "beq quit" above
+;;   uncomment for feedback, comment out deq quit" above
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #'?'
@@ -387,7 +387,7 @@ find:
 ;    jsr putchar
 
 ;   not found what to do ?
-;    jmp quit  ; end of dictionary, no more words to search, quit
+    ; jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
 
@@ -417,7 +417,7 @@ find:
     sec
     sbc (wrd), y     
 ; clean 7-bit ascii
-    asl
+    asl        
     bne @loop
 
 ; next char
@@ -427,7 +427,8 @@ find:
 @done:
 ; update wrd
     tya
-    ;;ldx #(fst) ; set already
+    ;; ldx #(wrd) ; set already
+    ;; addwx also clear carry
     jsr addwx
     
 eval:
@@ -446,7 +447,7 @@ compile:
 
     jsr wcomma
 
-    bcc parse   ; always taken
+    bcc parse
 
 immediate:
 execute:
@@ -479,12 +480,13 @@ getline:
     ldy #0
 @loop:  
 ; is valid
-    sta tib, y     ; dummy store on first pass, overwritten later
+    sta tib, y  ; dummy store on first pass, overwritten
     iny
 ; would be better with 
 ; end of buffer ?
 ;    cpy #tib_end
 ;    beq @ends
+; then 
     jsr getchar
 ; would be better with 
 ; 7-bit ascii only
@@ -518,59 +520,63 @@ token:
     ldy toin + 0
 
 @skip:
-; keep start 
-    sty tout + 0    
 ; skip spaces
     jsr try
     beq @skip
 
+; keep y == start + 1
+    dey
+    sty tout + 0
+
 @scan:
-; keep stop 
-    sty toin + 0 
 ; scan spaces
     jsr try
     bne @scan
 
+; keep y == stop + 1  
+    dey
+    sty toin + 0 
+
 @done:
 ; sizeof
     tya
-    clc
+    sec
     sbc tout + 0
 
 ; keep it
     ldy tout + 0
-    sta tib - 1, y  ; store size for counted string 
-    dec tout + 0
+    dey
+    sta tib, y  ; store size for counted string 
+    sty tout + 0
 
 ; setup token
+    clc     ; clean 
     rts
 
 ;---------------------------------------------------------------------
+;  this code depends on systems or emulators
+;
 ;  lib6502  emulator
+; 
 getchar:
     lda $E000
 
 eofs:
 ; EOF ?
-    cmp #$FF
-.ifndef extras
-    bne putchar
-; exit for emulator  
-    pha
-    pha
-.else
+    cmp #$FF ; also clean carry :)
     beq byes
-.endif
 
 putchar:
     sta $E000
     rts
 
-.ifdef extras
 ; exit for emulator  
 byes:
     jmp $0000
-.endif
+
+;
+;   lib6502 emulator
+;---------------------------------------------------------------------
 
 ;---------------------------------------------------------------------
 ; decrement a word in page zero. offset by X
@@ -610,7 +616,7 @@ copyinto:
     jsr incwx
     lda 1, y
     sta (0, x)
-    bcc incwx   ; always taken
+    jmp incwx
 
 ;---------------------------------------------------------------------
 ;
@@ -619,7 +625,6 @@ copyinto:
 ;---------------------------------------------------------------------
 spush1:
     ldy #(fst)
-    ;;bne spush   ; fall through
 
 ;---------------------------------------------------------------------
 ; push a cell 
@@ -645,10 +650,6 @@ push:
     rts  
 
 ;---------------------------------------------------------------------
-;
-; generics 
-;
-;---------------------------------------------------------------------
 spull2:
     ldy #(snd)
     jsr spull
@@ -657,7 +658,7 @@ spull2:
 ;---------------------------------------------------------------------
 spull1:
     ldy #(fst)
-    ;;bne spull   ; fall through
+    ; fall through
 
 ;---------------------------------------------------------------------
 ; pull a cell 
@@ -673,17 +674,18 @@ rpull:
 
 ;---------------------------------------------------------------------
 ; classic stack backwards
-pull: ; fall through, same as copyfrom
+pull:   ; fall through, same as copyfrom
+
 ;---------------------------------------------------------------------
 ; from a page zero indirect address indexed by X
 ; into a page zero address indexed by y
 copyfrom:
     lda (0, x)
-    sta  0, y
+    sta 0, y
     jsr incwx
     lda (0, x)
-    sta  1, y
-    ;;bcc incwx ; fall through
+    sta 1, y
+    ; jmp incwx ; fall through
 
 ;---------------------------------------------------------------------
 ; increment a word in page zero. offset by X
@@ -697,10 +699,9 @@ addwx:
     sta 0, x
     bcc @ends
     inc 1, x
-    clc
+    clc ; keep carry clean
 @ends:
     rts
-
 
 ;---------------------------------------------------------------------
 ;
@@ -825,6 +826,7 @@ def_word "dump", "dump", 0
     cmp here + 1
     bne @loop
 
+    clc  ; clean
     jmp next 
 
 ;----------------------------------------------------------------------
@@ -898,14 +900,9 @@ def_word "words", "words", 0
     lda fst + 0
     jsr puthex
 
-; thanks, @https://codebase64.org/doku.php?id=base:
-;   16-bit_absolute_comparison
-; check if primitive
-    lda fst + 0
-    cmp #<init
+; check if is a primitive
     lda fst + 1
-    sbc #>init
-    eor fst + 1
+    cmp #>ends + 1
     bmi @loop
 
 ; list references
@@ -916,6 +913,7 @@ def_word "words", "words", 0
     jmp @loop 
 
 @ends:
+    clc  ; clean
     jmp next
 
 ;----------------------------------------------------------------------
@@ -963,6 +961,7 @@ show_refer:
     iny
     bne @loop
 @ends:
+    clc  ; clean
     rts
 
 ;----------------------------------------------------------------------
@@ -1015,6 +1014,7 @@ seek:
 @ends:
     tya
     lsr
+    clc  ; clean
     rts
 
 ;----------------------------------------------------------------------
@@ -1047,6 +1047,7 @@ puthex:
     bcc @ends
     adc #$06
 @ends:
+    clc  ; clean
     jmp putchar
 
 .endif
@@ -1085,7 +1086,7 @@ number:
     ora fst + 0
     sta fst + 0
 
-    clc
+    clc ; clean
     rts
 
 @very:
@@ -1135,12 +1136,13 @@ def_word "exec", "exec", 0
 
 ;---------------------------------------------------------------------
 ; core primitives minimal 
-
+; start of dictionary
 ;---------------------------------------------------------------------
 ; ( -- c ) ; tos + 1 unchanged
 def_word "key", "key", 0
     jsr getchar
     sta fst + 0
+    ; jmp this  ; uncomment if char could be \0
     bne this    ; always taken
     
 ;---------------------------------------------------------------------
@@ -1149,6 +1151,7 @@ def_word "emit", "emit", 0
     jsr spull1
     lda fst + 0
     jsr putchar
+    ; jmp next  ; uncomment if carry could be set
     bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
@@ -1159,7 +1162,8 @@ storew:
     ldx #(snd) 
     ldy #(fst) 
     jsr copyinto
-    bcc jmpnext    ; always taken
+    ; jmp next  ; uncomment if carry could be set
+    bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
@@ -1172,13 +1176,14 @@ def_word "nand", "nand", 0
     lda snd + 1
     and fst + 1
     eor #$FF
-    bcc keeps   ; always taken
+    ; jmp keeps  ; uncomment if carry could be set
+    bcc keeps ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
     jsr spull2
-    ;;clc ; cleared already
+    clc  ; better safe than sorry
     lda snd + 0
     adc fst + 0
     sta fst + 0
@@ -1220,16 +1225,17 @@ def_word "0#", "zeroq", 0
     beq isfalse  ; is \0 ?
 istrue:
     lda #$FF
-    bne stafst  ; always taken
+isfalse:
+    sta fst + 0                                                         
+    jmp keeps  
 
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
 def_word "s@", "state", 0 
     lda #<stat
-isfalse:
-stafst:
     sta fst + 0
     lda #>stat
+    ;  jmp keeps ; uncomment if stats not in page $0
     beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
@@ -1251,6 +1257,7 @@ finish:
     sta wrd + 1
     jsr wcomma
 
+    ; jmp next
     bcc next    ; always taken
 
 ;---------------------------------------------------------------------
@@ -1290,10 +1297,11 @@ create:
     jsr addwx
 
 ; done
+    ; jmp next
     bcc next    ; always taken
 
 ;---------------------------------------------------------------------
-; classic direct thread code
+; minimal thread code
 ;   ipt is IP, wrd is W
 ;
 ; for reference: 

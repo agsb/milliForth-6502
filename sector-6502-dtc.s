@@ -143,6 +143,14 @@
 .feature pc_assignment
 
 ;---------------------------------------------------------------------
+; macros for dictionary, makes:
+;
+;   h_name:
+;   .word  link_to_previous_entry
+;   .byte  strlen(name) + flags
+;   .byte  name
+;   name:
+;
 ; label for primitives
 .macro makelabel arg1, arg2
 .ident (.concat (arg1, arg2)):
@@ -167,8 +175,6 @@ makelabel "", label
 hcount .set 0
 
 H0000 = 0
-
-; MTC = 1
 
 ;---------------------------------------------------------------------
 /*
@@ -208,6 +214,9 @@ rp0 = $E0
 ; reserved for scribbles
 pic = rp0
 
+; magic NOP (EA) JSR (20), at CFA cell
+magic = $20EA
+
 ;----------------------------------------------------------------------
 ; no values here or must be a BSS
 .segment "ZERO"
@@ -217,7 +226,7 @@ pic = rp0
 nil:  ; empty for fixed reference
 
 ; as user variables
-; order matters for HELLO.forth !
+; order matters for hello_world.forth !
 
 ; internal Forth 
 
@@ -295,10 +304,10 @@ warm:
     lda #<h_exit
     sta last + 0
 
-; next heap free cell  
-    lda #>init
+; next heap free cell, same as init:  
+    lda #>ends + 1
     sta here + 1
-    lda #<init
+    lda #0
     sta here + 0
 
 ;---------------------------------------------------------------------
@@ -330,10 +339,9 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 
-; like a begin-again
-
-parse_:
+parsept:
     .word okey
+
 ;---------------------------------------------------------------------
 okey:
 
@@ -349,6 +357,9 @@ parse:
 ; get a token
     jsr token
 
+    ; lda #'P'
+    ; jsr putchar
+
 find:
 ; load last
     lda last + 1
@@ -363,9 +374,12 @@ find:
 
 ; verify \0x0
     ora snd + 1
-    bne @each
+    beq quit
 
-;;   uncomment for feedback
+;   maybe to place a code for number? 
+;   but not for now.
+
+;;   uncomment for feedback, comment out deq quit" above
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #'?'
@@ -373,7 +387,8 @@ find:
 ;    lda #10
 ;    jsr putchar
 
-    jmp quit  ; end of dictionary, no more words to search, quit
+;   not found what to do ?
+    ; jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
 
@@ -403,7 +418,7 @@ find:
     sec
     sbc (wrd), y     
 ; clean 7-bit ascii
-    and #$7F        
+    asl        
     bne @loop
 
 ; next char
@@ -413,15 +428,11 @@ find:
 @done:
 ; update wrd
     tya
-    ldx #(wrd)
+    ;; ldx #(wrd) ; set already
+    ;; addwx also clear carry
     jsr addwx
     
 eval:
-    ; if execute is FLAG_IMM
-    ; lda stat + 1
-    ; ora stat + 0
-    ; bmi execute
-
 ; executing ? if == \0
     lda stat + 0   
     beq execute
@@ -432,19 +443,26 @@ eval:
 
 compile:
 
+    ; lda #'C'
+    ; jsr putchar
+
     jsr wcomma
 
-    jmp parse
+    bcc parse
 
 immediate:
 execute:
-    lda #>parse_
+
+    ; lda #'E'
+    ; jsr putchar
+
+    lda #>parsept
     sta ipt + 1
-    lda #<parse_
+    lda #<parsept
     sta ipt + 0
 
-    jmp (wrd)
-
+    jmp pick
+    
 ;---------------------------------------------------------------------
 try:
     lda tib, y
@@ -460,26 +478,27 @@ getline:
     pla
 
 ; leave the first
-    ldy #1
+    ldy #0
 @loop:  
+; is valid
+    sta tib, y  ; dummy store on first pass, overwritten
+    iny
+; would be better with 
+; end of buffer ?
+;    cpy #tib_end
+;    beq @ends
+; then 
     jsr getchar
 ; would be better with 
 ; 7-bit ascii only
 ;    and #$7F        
 ; unix \n
     cmp #10         
-    beq @ends
+    bne @loop
 ; would be better with 
 ; no controls
 ;    cmp #' '
 ;    bmi @loop
-; is valid
-    sta tib, y
-    iny
-; would be better with 
-; end of buffer ?
-;    cpy #tib_end
-    bne @loop
 
 ; clear all if y eq \0
 @ends:
@@ -488,9 +507,8 @@ getline:
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
 ; mark eol with \0
-    iny
     lda #0
-    sta tib, y
+    sta tib + 1, y
 ; start it
     sta toin + 0
 
@@ -506,15 +524,17 @@ token:
 ; skip spaces
     jsr try
     beq @skip
-; keep start 
+
+; keep y == start + 1
     dey
-    sty tout + 0    
+    sty tout + 0
 
 @scan:
 ; scan spaces
     jsr try
     bne @scan
-; keep stop 
+
+; keep y == stop + 1  
     dey
     sty toin + 0 
 
@@ -531,15 +551,20 @@ token:
     sty tout + 0
 
 ; setup token
+    clc     ; clean 
     rts
 
 ;---------------------------------------------------------------------
+;  this code depends on systems or emulators
+;
 ;  lib6502  emulator
+; 
 getchar:
     lda $E000
 
-; getchar returns 0xFF at EOF
-    cmp #$FF
+eofs:
+; EOF ?
+    cmp #$FF ; also clean carry :)
     beq byes
 
 putchar:
@@ -549,6 +574,10 @@ putchar:
 ; exit for emulator  
 byes:
     jmp $0000
+
+;
+;   lib6502 emulator
+;---------------------------------------------------------------------
 
 ;---------------------------------------------------------------------
 ; decrement a word in page zero. offset by X
@@ -570,28 +599,9 @@ decwx:
 ;    rts
 
 ;---------------------------------------------------------------------
-; increment a word in page zero. offset by X
-incwx:
-    lda #01
-;---------------------------------------------------------------------
-; add a byte to a word in page zero. offset by X
-addwx:
-    clc
-    adc 0, x
-    sta 0, x
-    bcc @ends
-    inc 1, x
-@ends:
-    rts
-
-;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
-
-tcomma:    
-    sta wrd + 1
-
-wcomma:    
+wcomma:
     ldy #(wrd)
 
 comma: 
@@ -610,15 +620,12 @@ copyinto:
     jmp incwx
 
 ;---------------------------------------------------------------------
-; from a page zero indirect address indexed by X
-; into a page zero address indexed by y
-copyfrom:
-    lda (0, x)
-    sta 0, y
-    jsr incwx
-    lda (0, x)
-    sta 1, y
-    jmp incwx
+;
+; generics 
+;
+;---------------------------------------------------------------------
+spush1:
+    ldy #(fst)
 
 ;---------------------------------------------------------------------
 ; push a cell 
@@ -644,6 +651,17 @@ push:
     rts  
 
 ;---------------------------------------------------------------------
+spull2:
+    ldy #(snd)
+    jsr spull
+    ; fall through
+
+;---------------------------------------------------------------------
+spull1:
+    ldy #(fst)
+    ; fall through
+
+;---------------------------------------------------------------------
 ; pull a cell 
 ; from a page zero indirect address indexed by X
 ; into a page zero address indexed by y
@@ -657,34 +675,34 @@ rpull:
 
 ;---------------------------------------------------------------------
 ; classic stack backwards
-pull:
+pull:   ; fall through, same as copyfrom
+
+;---------------------------------------------------------------------
+; from a page zero indirect address indexed by X
+; into a page zero address indexed by y
+copyfrom:
     lda (0, x)
-    sta  0, y
+    sta 0, y
     jsr incwx
     lda (0, x)
-    sta  1, y
-    jmp incwx
-    ;  rts 
+    sta 1, y
+    ; jmp incwx ; fall through
 
 ;---------------------------------------------------------------------
-;
-; generics 
-;
+; increment a word in page zero. offset by X
+incwx:
+    lda #01
 ;---------------------------------------------------------------------
-spull2:
-    ldy #(snd)
-    jsr spull
-    ; fall through
-
-;---------------------------------------------------------------------
-spull1:
-    ldy #(fst)
-    jmp spull
-
-;---------------------------------------------------------------------
-spush1:
-    ldy #(fst)
-    jmp spush
+; add a byte to a word in page zero. offset by X
+addwx:
+    clc
+    adc 0, x
+    sta 0, x
+    bcc @ends
+    inc 1, x
+    clc ; keep carry clean
+@ends:
+    rts
 
 ;---------------------------------------------------------------------
 ;
@@ -809,6 +827,7 @@ def_word "dump", "dump", 0
     cmp here + 1
     bne @loop
 
+    clc  ; clean
     jmp next 
 
 ;----------------------------------------------------------------------
@@ -873,14 +892,18 @@ def_word "words", "words", 0
     ldx #(fst)
     jsr addwx
 
-; thanks, @https://codebase64.org/doku.php?id=base:
-;   16-bit_absolute_comparison
-; check if primitive
-    lda fst + 0
-    cmp #<init
+; show CFA
+
+    lda #' '
+    jsr putchar
     lda fst + 1
-    sbc #>init
-    eor fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+
+; check if is a primitive
+    lda fst + 1
+    cmp #>ends + 1
     bmi @loop
 
 ; list references
@@ -891,6 +914,7 @@ def_word "words", "words", 0
     jmp @loop 
 
 @ends:
+    clc  ; clean
     jmp next
 
 ;----------------------------------------------------------------------
@@ -927,17 +951,18 @@ show_refer:
 ; check if ends
     lda (fst), y
     cmp #<exit
-    bne @next
+    bne @step
     iny
     lda (fst), y
     cmp #>exit
     beq @ends
     dey
-@next:
+@step:
     iny
     iny
     bne @loop
 @ends:
+    clc  ; clean
     rts
 
 ;----------------------------------------------------------------------
@@ -990,6 +1015,7 @@ seek:
 @ends:
     tya
     lsr
+    clc  ; clean
     rts
 
 ;----------------------------------------------------------------------
@@ -1022,6 +1048,7 @@ puthex:
     bcc @ends
     adc #$06
 @ends:
+    clc  ; clean
     jmp putchar
 
 .endif
@@ -1060,7 +1087,7 @@ number:
     ora fst + 0
     sta fst + 0
 
-    clc
+    clc ; clean
     rts
 
 @very:
@@ -1106,40 +1133,18 @@ def_word "exec", "exec", 0
     jsr spull1
     jmp (fst)
 
-;---------------------------------------------------------------------
-rpull1:
-    ldy #(fst)
-    jmp rpull
-
-;---------------------------------------------------------------------
-rpush1:
-    ldy #(fst)
-    jmp rpush
-
-;---------------------------------------------------------------------
-; ( w -- ) ( -- w ) from data stack into return stack
-def_word ">r", "stor", 0 
-    jsr spull1
-    jsr rpush1
-    jmp next
-
-; ( -- w ) ( w -- ) from return stack into data stack
-def_word "r>", "rtos", 0 
-    jsr rpull1
-    jsr spush1
-    jmp next
-
 .endif
 
 ;---------------------------------------------------------------------
 ; core primitives minimal 
-
+; start of dictionary
 ;---------------------------------------------------------------------
 ; ( -- c ) ; tos + 1 unchanged
 def_word "key", "key", 0
     jsr getchar
     sta fst + 0
-    jmp this
+    ; jmp this  ; uncomment if char could be \0
+    bne this    ; always taken
     
 ;---------------------------------------------------------------------
 ; ( c -- ) ; tos + 1 unchanged
@@ -1147,7 +1152,8 @@ def_word "emit", "emit", 0
     jsr spull1
     lda fst + 0
     jsr putchar
-    jmp next
+    ; jmp next  ; uncomment if carry could be set
+    bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w a -- ) ; [a] = w
@@ -1157,7 +1163,8 @@ storew:
     ldx #(snd) 
     ldy #(fst) 
     jsr copyinto
-    jmp next
+    ; jmp next  ; uncomment if carry could be set
+    bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
@@ -1170,13 +1177,14 @@ def_word "nand", "nand", 0
     lda snd + 1
     and fst + 1
     eor #$FF
-    jmp keeps
+    ; jmp keeps  ; uncomment if carry could be set
+    bcc keeps ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
     jsr spull2
-    clc
+    clc  ; better safe than sorry
     lda snd + 0
     adc fst + 0
     sta fst + 0
@@ -1206,6 +1214,7 @@ keeps:
 this:
     jsr spush1
 
+jmpnext:
     jmp next
 
 ;---------------------------------------------------------------------
@@ -1214,15 +1223,12 @@ def_word "0#", "zeroq", 0
     jsr spull1
     lda fst + 1
     ora fst + 0
-    bne istrue  ; is \0 ?
-isfalse:
-    lda #$00
-    .byte $2c   ; mask next two bytes, nice trick !
+    beq isfalse  ; is \0 ?
 istrue:
     lda #$FF
-rest:
-    sta fst + 0
-    jmp keeps
+isfalse:
+    sta fst + 0                                                         
+    jmp keeps  
 
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
@@ -1230,25 +1236,8 @@ def_word "s@", "state", 0
     lda #<stat
     sta fst + 0
     lda #>stat
-    jmp keeps 
-
-;---------------------------------------------------------------------
-; moved to hello_world
-; ( -- sp )
-;def_word "sp@", "spat", 0
-;    lda spt + 0
-;    sta fst + 0
-;    lda spt + 1
-;    jmp keeps 
-
-;---------------------------------------------------------------------
-; moved to hello_world
-; ( -- rp )
-;def_word "rp@", "rpat", 0
-;    lda rpt + 0
-;    sta fst + 0
-;    lda rpt + 1
-;    jmp keeps 
+    ;  jmp keeps ; uncomment if stats not in page $0
+    beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -1266,9 +1255,11 @@ finish:
     lda #<exit
     sta wrd + 0
     lda #>exit
-    jsr tcomma
+    sta wrd + 1
+    jsr wcomma
 
-    jmp next
+    ; jmp next
+    bcc next    ; always taken
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
@@ -1277,6 +1268,7 @@ def_word ":", "colon", 0
     sta back + 0 
     lda here + 1
     sta back + 1 
+
 ; stat is 'compile'
     lda #1
     sta stat + 0
@@ -1306,22 +1298,23 @@ create:
     jsr addwx
 
 ; inserts the nop call 
-    lda #$EA
-    sta wrd + 0
-    lda #$20
-    jsr tcomma
+    lda #<magic
+    sta fst + 0
+    lda #>magic
+    jsr wcomma
 
 ; inserts the reference
     lda #<nest
-    sta wrd + 0
+    sta fst + 0
     lda #>nest
-    jsr tcomma
+    jsr wcomma
 
 ; done
-    jmp next
+    ; jmp next
+    bcc next    ; always taken
 
 ;---------------------------------------------------------------------
-; classic direct thread code
+; minimal thread code
 ;   ipt is IP, wrd is W
 ;
 ; for reference: 
@@ -1331,7 +1324,7 @@ create:
 ;
 ;---------------------------------------------------------------------
 def_word "exit", "exit", FLAG_IMM
-unnest:
+unnest: ; exit
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
     jsr rpull
@@ -1342,7 +1335,7 @@ next:
     ldy #(wrd)
     jsr copyfrom
 
-jump:
+pick:
     jmp (wrd)
 
 nest:   ; enter
@@ -1362,11 +1355,14 @@ nest:   ; enter
     
     jmp next
 
+;----------------------------------------------------------------------
+; end of code
 ends:
 
 ;----------------------------------------------------------------------
 ; anything above is not a primitive
-; .align $100
-
-init:   
+; needed for MTC
+; same as #>end+1
+;.align $100
+;init:   
 
