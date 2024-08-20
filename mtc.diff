@@ -1,0 +1,243 @@
+376c376
+<     beq quit
+---
+>     bne @each
+381c381
+< ;;   uncomment for feedback, comment out "beq quit" above
+---
+> ;;   uncomment for error feedback
+390c390
+< ;    jmp quit  ; end of dictionary, no more words to search, quit
+---
+>     jmp quit  ; end of dictionary, no more words to search, quit
+420c420
+<     asl
+---
+>     and #$7F        
+430c430
+<     ;;ldx #(fst) ; set already
+---
+>     ldx #(wrd)
+449c449
+<     bcc parse   ; always taken
+---
+>     jmp parse
+479c479
+<     ldy #0
+---
+>     ldy #1
+481,487d480
+< ; is valid
+<     sta tib, y     ; dummy store on first pass, overwritten later
+<     iny
+< ; would be better with 
+< ; end of buffer ?
+< ;    cpy #tib_end
+< ;    beq @ends
+494c487
+<     bne @loop
+---
+>     beq @ends
+498a492,498
+> ; is valid
+>     sta tib, y
+>     iny
+> ; would be better with 
+> ; end of buffer ?
+> ;    cpy #tib_end
+>     bne @loop
+506a507
+>     iny
+508c509
+<     sta tib + 1, y
+---
+>     sta tib, y
+521,522d521
+< ; keep start 
+<     sty tout + 0    
+525a525,527
+> ; keep start 
+>     dey
+>     sty tout + 0    
+528,529d529
+< ; keep stop 
+<     sty toin + 0 
+532a533,535
+> ; keep stop 
+>     dey
+>     sty toin + 0 
+537c540
+<     clc
+---
+>     sec
+542,543c545,547
+<     sta tib - 1, y  ; store size for counted string 
+<     dec tout + 0
+---
+>     dey
+>     sta tib, y  ; store size for counted string 
+>     sty tout + 0
+556,561d559
+< .ifndef extras
+<     bne putchar
+< ; exit for emulator  
+<     pha
+<     pha
+< .else
+563d560
+< .endif
+569d565
+< .ifdef extras
+573d568
+< .endif
+594a590,604
+> ; increment a word in page zero. offset by X
+> incwx:
+>     lda #01
+> ;---------------------------------------------------------------------
+> ; add a byte to a word in page zero. offset by X
+> addwx:
+>     clc
+>     adc 0, x
+>     sta 0, x
+>     bcc @ends
+>     inc 1, x
+> @ends:
+>     rts
+> 
+> ;---------------------------------------------------------------------
+613c623
+<     bcc incwx   ; always taken
+---
+>     jmp incwx
+616,622c626,634
+< ;
+< ; generics 
+< ;
+< ;---------------------------------------------------------------------
+< spush1:
+<     ldy #(fst)
+<     ;;bne spush   ; fall through
+---
+> ; from a page zero indirect address indexed by X
+> ; into a page zero address indexed by y
+> copyfrom:
+>     lda (0, x)
+>     sta 0, y
+>     jsr incwx
+>     lda (0, x)
+>     sta 1, y
+>     jmp incwx
+648,662d659
+< ;
+< ; generics 
+< ;
+< ;---------------------------------------------------------------------
+< spull2:
+<     ldy #(snd)
+<     jsr spull
+<     ; fall through
+< 
+< ;---------------------------------------------------------------------
+< spull1:
+<     ldy #(fst)
+<     ;;bne spull   ; fall through
+< 
+< ;---------------------------------------------------------------------
+676,680c673
+< pull: ; fall through, same as copyfrom
+< ;---------------------------------------------------------------------
+< ; from a page zero indirect address indexed by X
+< ; into a page zero address indexed by y
+< copyfrom:
+---
+> pull:
+686c679,680
+<     ;;bcc incwx ; fall through
+---
+>     jmp incwx
+>     ;  rts 
+689,691c683,685
+< ; increment a word in page zero. offset by X
+< incwx:
+<     lda #01
+---
+> ;
+> ; generics 
+> ;
+693,702c687,690
+< ; add a byte to a word in page zero. offset by X
+< addwx:
+<     clc
+<     adc 0, x
+<     sta 0, x
+<     bcc @ends
+<     inc 1, x
+<     clc
+< @ends:
+<     rts
+---
+> spull2:
+>     ldy #(snd)
+>     jsr spull
+>     ; fall through
+703a692,700
+> ;---------------------------------------------------------------------
+> spull1:
+>     ldy #(fst)
+>     jmp spull
+> 
+> ;---------------------------------------------------------------------
+> spush1:
+>     ldy #(fst)
+>     jmp spush
+1144c1141
+<     bne this    ; always taken
+---
+>     jmp this
+1152c1149
+<     bcc jmpnext ; always taken
+---
+>     jmp next
+1162c1159
+<     bcc jmpnext    ; always taken
+---
+>     jmp next
+1175c1172
+<     bcc keeps   ; always taken
+---
+>     jmp keeps
+1181c1178
+<     ;;clc ; cleared already
+---
+>     clc
+1211d1207
+< jmpnext:
+1220c1216,1219
+<     beq isfalse  ; is \0 ?
+---
+>     bne istrue  ; is \0 ?
+> isfalse:
+>     ; lda #$00
+>     .byte $2c   ; mask next two bytes, nice trick !
+1223c1222,1224
+<     bne stafst  ; always taken
+---
+> rest:
+>     sta fst + 0
+>     jmp keeps
+1229,1230d1229
+< isfalse:
+< stafst:
+1233c1232
+<     beq keeps   ; always taken
+---
+>     jmp keeps 
+1254c1253
+<     bcc next    ; always taken
+---
+>     jmp next
+1293c1292
+<     bcc next    ; always taken
+---
+>     jmp next

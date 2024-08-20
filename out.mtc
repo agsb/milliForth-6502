@@ -1,8 +1,8 @@
  start compiling 
  stop compiling 
  start compiling 
-Executing: ca65 -l sector-6502-dtc.lst --cpu 6502 -mm near -g -t none sector-6502-dtc.s 
-Executing: ld65 -Ln sector-6502-dtc.lbl -m sector-6502-dtc.map -o sector-6502-dtc.out -C sector-6502-dtc.cfg sector-6502-dtc.o 
+Executing: ca65 -l sector-6502-mtc.lst --cpu 6502 -mm near -g -t none sector-6502-mtc.s 
+Executing: ld65 -Ln sector-6502-mtc.lbl -m sector-6502-mtc.map -o sector-6502-mtc.out -C sector-6502-mtc.cfg sector-6502-mtc.o 
  stop compiling 
 
 : -1 s@ s@ nand s@ nand ;
@@ -43,8 +43,6 @@ Executing: ld65 -Ln sector-6502-dtc.lbl -m sector-6502-dtc.map -o sector-6502-dt
 : 2* dup + ;
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
-: [ 0 s@ ! ; immediate
-: ] 1 s@ ! ;
 
 : >r rp @ @ swap rp @ ! rp @ 2 - rp ! rp @ ! ;
 : r> rp @ @ rp @ 2 + rp ! rp @ @ swap rp @ ! ;
@@ -56,6 +54,12 @@ Executing: ld65 -Ln sector-6502-dtc.lbl -m sector-6502-dtc.map -o sector-6502-dt
 : ['] rp @ @ dup 2 + rp @ ! @ ;
 
 : rot >r swap r> swap ;
+
+: ] 1 s@ ! ;
+: [ 0 s@ ! ; 
+
+immediate
+
 
 : if ['] ?branch , here @ 0 , ; immediate
 : then dup here @ swap - swap ! ; immediate
@@ -91,6 +95,7 @@ Executing: ld65 -Ln sector-6502-dtc.lbl -m sector-6502-dtc.map -o sector-6502-dt
 
 ( with comments )
 
+: ? cr .S cr .R ;
+
 ." hello, world"
 hello, world
-ÿ

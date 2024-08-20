@@ -373,12 +373,12 @@ find:
 
 ; verify \0x0
     ora snd + 1
-    bne @each
+    beq quit
 
 ;   maybe to place a code for number? 
 ;   but not for now.
 
-;;   uncomment for error feedback
+;;   uncomment for feedback, comment out deq quit" above
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #'?'
@@ -387,7 +387,7 @@ find:
 ;    jsr putchar
 
 ;   not found what to do ?
-    jmp quit  ; end of dictionary, no more words to search, quit
+    ; jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
 
@@ -417,7 +417,7 @@ find:
     sec
     sbc (wrd), y     
 ; clean 7-bit ascii
-    and #$7F        
+    asl        
     bne @loop
 
 ; next char
@@ -427,7 +427,7 @@ find:
 @done:
 ; update wrd
     tya
-    ldx #(wrd)
+    ;; ldx #(wrd) ; set already
     jsr addwx
     
 eval:
@@ -446,7 +446,7 @@ compile:
 
     jsr wcomma
 
-    jmp parse
+    bcc parse
 
 immediate:
 execute:
@@ -476,26 +476,27 @@ getline:
     pla
 
 ; leave the first
-    ldy #1
+    ldy #0
 @loop:  
+; is valid
+    sta tib, y  ; dummy store on first pass, overwritten
+    iny
+; would be better with 
+; end of buffer ?
+;    cpy #tib_end
+;    beq @ends
+; then 
     jsr getchar
 ; would be better with 
 ; 7-bit ascii only
 ;    and #$7F        
 ; unix \n
     cmp #10         
-    beq @ends
+    bne @loop
 ; would be better with 
 ; no controls
 ;    cmp #' '
 ;    bmi @loop
-; is valid
-    sta tib, y
-    iny
-; would be better with 
-; end of buffer ?
-;    cpy #tib_end
-    bne @loop
 
 ; clear all if y eq \0
 @ends:
@@ -504,9 +505,8 @@ getline:
     sta tib + 0 ; start with space
     sta tib, y  ; ends with space
 ; mark eol with \0
-    iny
     lda #0
-    sta tib, y
+    sta tib + 1, y
 ; start it
     sta toin + 0
 
@@ -522,15 +522,17 @@ token:
 ; skip spaces
     jsr try
     beq @skip
-; keep start 
+
+; keep y == start + 1
     dey
-    sty tout + 0    
+    sty tout + 0
 
 @scan:
 ; scan spaces
     jsr try
     bne @scan
-; keep stop 
+
+; keep y == stop + 1  
     dey
     sty toin + 0 
 
@@ -587,21 +589,6 @@ decwx:
 ;    rts
 
 ;---------------------------------------------------------------------
-; increment a word in page zero. offset by X
-incwx:
-    lda #01
-;---------------------------------------------------------------------
-; add a byte to a word in page zero. offset by X
-addwx:
-    clc
-    adc 0, x
-    sta 0, x
-    bcc @ends
-    inc 1, x
-@ends:
-    rts
-
-;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
 wcomma:
@@ -623,15 +610,12 @@ copyinto:
     jmp incwx
 
 ;---------------------------------------------------------------------
-; from a page zero indirect address indexed by X
-; into a page zero address indexed by y
-copyfrom:
-    lda (0, x)
-    sta 0, y
-    jsr incwx
-    lda (0, x)
-    sta 1, y
-    jmp incwx
+;
+; generics 
+;
+;---------------------------------------------------------------------
+spush1:
+    ldy #(fst)
 
 ;---------------------------------------------------------------------
 ; push a cell 
@@ -657,6 +641,16 @@ push:
     rts  
 
 ;---------------------------------------------------------------------
+spull2:
+    ldy #(snd)
+    jsr spull
+    ; fall through
+
+;---------------------------------------------------------------------
+spull1:
+    ldy #(fst)
+
+;---------------------------------------------------------------------
 ; pull a cell 
 ; from a page zero indirect address indexed by X
 ; into a page zero address indexed by y
@@ -670,34 +664,34 @@ rpull:
 
 ;---------------------------------------------------------------------
 ; classic stack backwards
-pull:
+pull:   ; fall through, same as copyfrom
+
+;---------------------------------------------------------------------
+; from a page zero indirect address indexed by X
+; into a page zero address indexed by y
+copyfrom:
     lda (0, x)
-    sta  0, y
+    sta 0, y
     jsr incwx
     lda (0, x)
-    sta  1, y
-    jmp incwx
-    ;  rts 
+    sta 1, y
+    ; jmp incwx ; fall through
 
 ;---------------------------------------------------------------------
-;
-; generics 
-;
+; increment a word in page zero. offset by X
+incwx:
+    lda #01
 ;---------------------------------------------------------------------
-spull2:
-    ldy #(snd)
-    jsr spull
-    ; fall through
-
-;---------------------------------------------------------------------
-spull1:
-    ldy #(fst)
-    jmp spull
-
-;---------------------------------------------------------------------
-spush1:
-    ldy #(fst)
-    jmp spush
+; add a byte to a word in page zero. offset by X
+addwx:
+    clc
+    adc 0, x
+    sta 0, x
+    bcc @ends
+    inc 1, x
+    clc ; keep clear
+@ends:
+    rts
 
 ;---------------------------------------------------------------------
 ;
@@ -1138,7 +1132,8 @@ def_word "exec", "exec", 0
 def_word "key", "key", 0
     jsr getchar
     sta fst + 0
-    jmp this
+    ; jmp this  ; uncomment if getchar could be \0
+    bne this    ; always taken
     
 ;---------------------------------------------------------------------
 ; ( c -- ) ; tos + 1 unchanged
@@ -1146,7 +1141,8 @@ def_word "emit", "emit", 0
     jsr spull1
     lda fst + 0
     jsr putchar
-    jmp next
+    ; jmp next  ; uncomment if carry could be set
+    bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w a -- ) ; [a] = w
@@ -1156,7 +1152,8 @@ storew:
     ldx #(snd) 
     ldy #(fst) 
     jsr copyinto
-    jmp next
+    ; jmp next  ; uncomment if carry could be set
+    bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- NOT(w1 AND w2) )
@@ -1169,13 +1166,14 @@ def_word "nand", "nand", 0
     lda snd + 1
     and fst + 1
     eor #$FF
-    jmp keeps
+    ; jmp keeps  ; uncomment if carry could be set
+    bcc keeps ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
     jsr spull2
-    clc
+    ; clc  ; cleared already
     lda snd + 0
     adc fst + 0
     sta fst + 0
@@ -1205,6 +1203,7 @@ keeps:
 this:
     jsr spush1
 
+jmpnext:
     jmp next
 
 ;---------------------------------------------------------------------
@@ -1213,23 +1212,21 @@ def_word "0#", "zeroq", 0
     jsr spull1
     lda fst + 1
     ora fst + 0
-    bne istrue  ; is \0 ?
-isfalse:
-    ; lda #$00
-    .byte $2c   ; mask next two bytes, nice trick !
+    beq isfalse  ; is \0 ?
 istrue:
     lda #$FF
-rest:
-    sta fst + 0
-    jmp keeps
+    bne stafst  ; always taken
 
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
 def_word "s@", "state", 0 
     lda #<stat
+isfalse:
+stafst:
     sta fst + 0
     lda #>stat
-    jmp keeps 
+    jmp keeps ; uncomment if stats not in page $0
+    ;beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
