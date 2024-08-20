@@ -38,6 +38,20 @@ Then need to make a my_hello_world.FORTH
 
 ## Time table 
 
+_20/08/2024_ 
+
+    Peterferrie does some improvements but somewhere those breaked
+    the execution.
+
+    Doing patch per patch to find what or where.
+
+    The getline and token does not work, assumes only one space 
+        between words, reverted some code.
+
+    Why need a buffer of 80 chars and complex getline and token, if
+    thereis no edition and only one word between spaces is taken each
+    time ? make a 24 char buffer and just simplify token. next todo. 
+
 _16/08/2024_ 
 
     both DTC and MTC runs with my_hello_world.FORTH
