@@ -1,1 +1,0 @@
-sh doit $1 < my_bf.FORTH > z3

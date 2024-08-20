@@ -54,9 +54,9 @@
 ;       no line wrap, do not break words between lines;
 ;
 ;       only 7-bit ASCII characters, plus \n, no controls;
-;           ( later maybe \b bacspace and \u cancel )
+;           ( later maybe \b backspace and \u cancel )
 ;
-;       words are case-sensitivy and less than 15-36 characters;
+;       words are case-sensitivy and less than 16 characters;
 ;
 ;       no need named-'pad' at end of even names;
 ;
@@ -215,6 +215,8 @@ rp0 = $E0
 pic = rp0
 
 ; magic NOP (EA) JSR (20), at CFA cell
+; magic = $EA20
+
 magic = $20EA
 
 ;----------------------------------------------------------------------
@@ -257,6 +259,7 @@ tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
 
 ; for future expansion, reserved
+
 head:   .word $0 ; heap forward, also DP
 tail:   .word $0 ; heap backward
 
@@ -346,6 +349,8 @@ parsept:
 okey:
 
 ;;   uncomment for feedback
+;    lda stat + 0
+;    bne parse
 ;    lda #'O'
 ;    jsr putchar
 ;    lda #'K'
@@ -379,16 +384,14 @@ find:
 ;   maybe to place a code for number? 
 ;   but not for now.
 
-;;   uncomment for feedback, comment out deq quit" above
+;;   uncomment for feedback, comment out "beq quit" above
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #10
 ;    jsr putchar
-
-;   not found what to do ?
-    ; jmp quit  ; end of dictionary, no more words to search, quit
+;    jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
 
@@ -461,7 +464,7 @@ execute:
     lda #<parsept
     sta ipt + 0
 
-    jmp pick
+    jmp (wrd)
     
 ;---------------------------------------------------------------------
 try:
@@ -601,6 +604,9 @@ decwx:
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
+stawrd:
+    sta wrd + 1
+
 wcomma:
     ldy #(wrd)
 
@@ -994,6 +1000,7 @@ show_name:
 ;----------------------------------------------------------------------
 ;  ae seek for 'exit to ends a sequence of references
 ;  max of 254 references in list
+;
 seek:
     ldy #0
 @loop1:
@@ -1104,7 +1111,6 @@ number:
 @erro:
     pla
     pla
-    sec
     rts
 
 .endif
@@ -1255,8 +1261,7 @@ finish:
     lda #<exit
     sta wrd + 0
     lda #>exit
-    sta wrd + 1
-    jsr wcomma
+    jsr stawrd
 
     ; jmp next
     bcc next    ; always taken
@@ -1299,22 +1304,22 @@ create:
 
 ; inserts the nop call 
     lda #<magic
-    sta fst + 0
+    sta wrd + 0
     lda #>magic
-    jsr wcomma
+    jsr stawrd
 
 ; inserts the reference
     lda #<nest
-    sta fst + 0
+    sta wrd + 0
     lda #>nest
-    jsr wcomma
+    jsr stawrd
 
 ; done
     ; jmp next
     bcc next    ; always taken
 
 ;---------------------------------------------------------------------
-; minimal thread code
+; direct thread code
 ;   ipt is IP, wrd is W
 ;
 ; for reference: 
@@ -1353,7 +1358,7 @@ nest:   ; enter
     ldx #(ipt)
     jsr incwx
     
-    jmp next
+    bcc next
 
 ;----------------------------------------------------------------------
 ; end of code

@@ -1,0 +1,5 @@
+MTC, Instructions: 35796948 Cycles: 148802145 SIZE: 582
+DTC, Instructions: 35211469 Cycles: 148450585 SIZE: 596
+
+compiling my_hello_world.FORTH over MTC/DTC
+     Instructions:    1.66% Cycles:     0.24%

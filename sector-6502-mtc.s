@@ -54,9 +54,9 @@
 ;       no line wrap, do not break words between lines;
 ;
 ;       only 7-bit ASCII characters, plus \n, no controls;
-;           ( later maybe \b bacspace and \u cancel )
+;           ( later maybe \b backspace and \u cancel )
 ;
-;       words are case-sensitivy and less than 15-36 characters;
+;       words are case-sensitivy and less than 16 characters;
 ;
 ;       no need named-'pad' at end of even names;
 ;
@@ -175,8 +175,6 @@ makelabel "", label
 hcount .set 0
 
 H0000 = 0
-
-; MTC = 1
 
 ;---------------------------------------------------------------------
 /*
@@ -345,6 +343,8 @@ parsept:
 okey:
 
 ;;   uncomment for feedback
+;    lda stat + 0
+;    bne parse
 ;    lda #'O'
 ;    jsr putchar
 ;    lda #'K'
@@ -378,16 +378,14 @@ find:
 ;   maybe to place a code for number? 
 ;   but not for now.
 
-;;   uncomment for feedback, comment out deq quit" above
+;;   uncomment for feedback, comment out "beq quit" above
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #10
 ;    jsr putchar
-
-;   not found what to do ?
-    ; jmp quit  ; end of dictionary, no more words to search, quit
+;    jmp quit  ; end of dictionary, no more words to search, quit
 
 @each:    
 
@@ -993,6 +991,7 @@ show_name:
 ;----------------------------------------------------------------------
 ;  ae seek for 'exit to ends a sequence of references
 ;  max of 254 references in list
+;
 seek:
     ldy #0
 @loop1:
@@ -1100,10 +1099,10 @@ number:
     ; any valid digit, A-Z, do not care 
 @ends:
     rts
+
 @erro:
     pla
     pla
-    sec
     rts
 
 .endif
