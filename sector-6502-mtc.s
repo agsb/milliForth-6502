@@ -549,6 +549,7 @@ token:
     sty tout + 0
 
 ; setup token
+    clc     ; clean 
     rts
 
 ;---------------------------------------------------------------------
@@ -689,7 +690,7 @@ addwx:
     sta 0, x
     bcc @ends
     inc 1, x
-    clc ; keep clear
+    clc ; clean
 @ends:
     rts
 
@@ -1076,7 +1077,7 @@ number:
     ora fst + 0
     sta fst + 0
 
-    clc
+    clc ; clean
     rts
 
 @very:
@@ -1173,7 +1174,7 @@ def_word "nand", "nand", 0
 ; ( w2 w1 -- w1 + w2 ) 
 def_word "+", "plus", 0
     jsr spull2
-    ; clc  ; cleared already
+    clc  ; clean ?
     lda snd + 0
     adc fst + 0
     sta fst + 0
@@ -1206,6 +1207,8 @@ this:
 jmpnext:
     jmp next
 
+zzzz:
+
 ;---------------------------------------------------------------------
 ; ( 0 -- $0000) | ( n -- $FFFF)
 def_word "0#", "zeroq", 0
@@ -1225,8 +1228,8 @@ isfalse:
 stafst:
     sta fst + 0
     lda #>stat
-    jmp keeps ; uncomment if stats not in page $0
-    ;beq keeps   ; always taken
+    ; jmp keeps ; uncomment if stats not in page $0
+    beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", FLAG_IMM
@@ -1247,7 +1250,8 @@ finish:
     sta wrd + 1
     jsr wcomma
 
-    jmp next
+    ; jmp next
+    bcc next    ; always taken
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", 0
@@ -1286,10 +1290,11 @@ create:
     jsr addwx
 
 ; done
-    jmp next
+    ; jmp next
+    bcc next    ; always taken
 
 ;---------------------------------------------------------------------
-; classic direct thread code
+; minimal thread code
 ;   ipt is IP, wrd is W
 ;
 ; for reference: 
