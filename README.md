@@ -32,7 +32,7 @@ This Forth for 6502, ~will be~ was done using two models:
     with Minimal Thread Code (MTC)
 
 
-(*) Thanks to wise changes from [peterferrie](https://github.com/peterferrie) !
+
 
 (later we will compare both, ~but DTC will win for less size~) 
 
@@ -69,6 +69,7 @@ Both DTC and MTC runs with my_hello_world.FORTH, with these numbers.
 
     Cycles:          0.24%
 
+(*) Thanks to wise changes from [peterferrie](https://github.com/peterferrie) !
 
 ### Changes:
 
