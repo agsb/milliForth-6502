@@ -72,11 +72,11 @@ immediate
     ['] 2dup , ['] = , ['] ?branch , 
     here @ - , ['] 2drop , ; immediate
 
+: bl lit [ 1 2* 2* 2* 2* 2* , ] ;
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
 : c@ @ ffh and ;
 : in> >in @ c@ >in dup @ 1 + swap ! ;
-: bl lit [ 1 2* 2* 2* 2* 2* , ] ;
 
 : type 0 do dup c@ emit 1 + loop drop ;
 : parse in> drop >in @ swap 0 begin over in> 
@@ -85,11 +85,22 @@ immediate
 : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;
 : [char] ['] lit , bl word drop c@ , ; immediate
 : ." [char] " parse type ; immediate
+
 : ( [char] ) parse ; immediate
 
-( with comments )
+( this comments only works in same line )
 
-: ? cr .S cr .R ;
+( ." hello, world" )
+
+( no "hello, world" showed )
+
+( and this won't work because the line already gone into TIB)
+
+: \ begin 10 key ffh and = until ; immediate 
+
+\ ." hello, world"
+
+( a "hello, world" showed )
 
 ." hello, world"
 
