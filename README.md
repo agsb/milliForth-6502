@@ -52,7 +52,7 @@ Focus in size not performance.
 
 The compilation wqas done with [ca65](https://github.com/cc65/cc65) V2.19 - Git 7979f8a41. 
 
-The emulation of 6502 CPU was done with [run6502](https://github.com/mrdudz/run6502)
+The emulation of 6502 CPU was done with [run6502](https://github.com/ShonFrazier/lib6502)
 
 The way at 6502 is use a page zero and lots of lda/sta bytes.
 
