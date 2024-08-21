@@ -27,9 +27,9 @@ The miniForth, sectorforth and milliForth use Direct Thread Code (DTC)
 
 This Forth for 6502, ~will be~ was done using two models: 
     
-    with classic Direct Thread Code (DTC) ~ now with 583 bytes (*)
+    with classic Direct Thread Code (DTC) 
     and
-    with Minimal Thread Code (MTC) ~ now with 572 bytes (*)
+    with Minimal Thread Code (MTC)
 
 
 (*) Thanks to wise changes from [peterferrie](https://github.com/peterferrie) !
@@ -59,11 +59,11 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 Both DTC and MTC runs with my_hello_world.FORTH, with these numbers. 
 
 
-    MTC, Instructions: 35796948 Cycles: 148802145 SIZE: 582
+    MTC, Instructions: 35796948, Cycles: 148802145, SIZE: 582
 
-    DTC, Instructions: 35211469 Cycles: 148450585 SIZE: 596
+    DTC, Instructions: 35211469, Cycles: 148450585, SIZE: 596
 
-    compiling my_hello_world.FORTH, overhead for MTC/DTC
+    compiling my_hello_world.FORTH, overhead MTC / DTC
     
     Instructions:    1.66% 
 
