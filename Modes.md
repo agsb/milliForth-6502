@@ -24,7 +24,6 @@
 In DTC, each compound word needs start with a "call ENTER" and ends with a reference to EXIT
 
 EXIT:
-UNNEST:
 
     IP = (RP)
     RP += CELL
@@ -36,7 +35,6 @@ NEXT:
     JMP (W)
 
 ENTER:
-NEST:
 
     RP -= CELL
     (RP) = IP
@@ -50,7 +48,7 @@ any_compound_WORD:
     list of references
     reference to EXIT
    
-Note, each compound word does 3 jumps (in NEXT to W, in WORD to ENTER, in ENTER to NEXT) and a push-pull in SP
+Note, each compound word start does 3 jumps (in NEXT to W, in WORD to ENTER, in ENTER to NEXT) and a push-pull at hardware SP.
 
 ### Minimal Thread Code (MTC)
 
@@ -60,7 +58,6 @@ All primitives words comes before compound words in dictionary.
 
 No extra jumps and in 16-bit CPUs, the test could be done just comparing the MSB bytes.
 
-EXIT:
 UNNEST:
 
     IP = (RP)
@@ -75,7 +72,6 @@ NEXT:
     CMP _INIT_
     BMI JUMP
 
-ENTER:
 NEST:
     
     RP -= CELL
@@ -92,5 +88,7 @@ any_compound_WORD:
     
     // no CALL for ENTER 
     list of references for words
-    reference to EXIT
+    reference to UNNEST
+
+All references at compound words are pushed into return stack without any jump into the word code. The dictionary is smaller.
 
