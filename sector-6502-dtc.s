@@ -811,9 +811,9 @@ list:
 
 def_word "dump", "dump", 0
 
-    lda #<init
+    lda #$0
     sta fst + 0
-    lda #>init
+    lda #>extras + 1
     sta fst + 1
 
     ldx #(fst)

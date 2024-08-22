@@ -39,7 +39,7 @@ This Forth for 6502, ~will be~ was done using two models:
 This project is also used to verify standart Direct Thread Code against 
 variations of Minimum Thread Code.
 
-[Minimal Thread Code](https://github.com/agsb/milliForth-6502/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf) 
+[Minimal Thread Code](https://github.com/agsb/milliForth-6502/blob/main/The_words_in_MTC_Forth.en.pdf) 
 is an alternative model for inner interpreter, where 
 the dictionary is organized with the primitives words grouped together 
 before the compound words, defining a "tipping point", from where could 
@@ -244,6 +244,6 @@ the my_hello_world.FORTH is adapted for miiliforth-6502
 [^4]: The miniforth: https://github.com/meithecatte/miniforth
 [^5]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
 [^6]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/main/Notes.md
-[^7]: A minimal indirect thread code for Forth: https://github.com/agsb/immu/blob/main/The%20words%20in%20MITC%20Forth%20en.pdf
+[^7]: A minimal thread code for Forth: https://github.com/agsb/immu/blob/main/The_words_in_MTC_Forth.en.pdf
 
 

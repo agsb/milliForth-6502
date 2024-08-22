@@ -709,9 +709,8 @@ addwx:
 ; cs counted string < 256, sz string with nul ends
 ; 
 ;----------------------------------------------------------------------
-
 ; uncomment to include the extras (sic)
-; extras = 1 
+extras = 1 
 
 .ifdef extras
 
@@ -802,9 +801,9 @@ list:
 
 def_word "dump", "dump", 0
 
-    lda #<init
+    lda #$0
     sta fst + 0
-    lda #>init
+    lda #>ends + 1
     sta fst + 1
 
     ldx #(fst)
@@ -1113,7 +1112,7 @@ number:
 ;
 ;---------------------------------------------------------------------
 ; uncomment to include the extensions (sic)
-; extensions = 1 
+extensions = 1 
 
 .ifdef extensions
 
