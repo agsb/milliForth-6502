@@ -40,6 +40,12 @@ Then need to make a my_hello_world.FORTH
 
 _20/08/2024_ 
 
+    Updated the presentation
+
+    bf.FORTH still does no works
+
+_20/08/2024_ 
+
     Peterferrie does some improvements but somewhere those breaked
     the execution.
 
