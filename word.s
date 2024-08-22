@@ -1,30 +1,32 @@
-;
+;---------------------------------------------------------------------
 ; receive a word between spaces
-; quits at any control < 32 or end space
+; also ends at controls
+; terminate it with \0
 ; 
 word:
     ldy #0
 
-@skip:  ; skip spaces
-    jsr getch
-    beq @skip
-    bmi @ends
+@wskip:  ; skip spaces
+    jsr @wgetch
+    bmi @wends
+    beq @wskip
 
-@scan:  ; scan spaces
-    jsr getch
+@wscan:  ; scan spaces
+    jsr @wgetch
     iny
     sta tib, y
-    bmi @ends
-    bne @scan
+    bmi @wends
+    bne @wscan
 
-@ends:  ; make a c-string, keeps end char
+@wends:  ; make a c-string \0
+    lda #0
+    sta tib, y
     sty tib
     rts
 
-@getch: ; receive a char and masks it
+@wgetch: ; receive a char and masks it
     jsr getchar
     and #$7F    ; mask 7-bit ASCII
     cmp #' ' 
     rts
-
 
