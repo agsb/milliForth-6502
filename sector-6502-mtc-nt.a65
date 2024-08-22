@@ -408,8 +408,8 @@ find:
 ; compare chars
 @equal:
     lda (tout), y
-; space ends
-    cmp #32  
+; \0 ends
+    cmp #0  
     beq @done
 ; verify 
     sec
@@ -551,50 +551,37 @@ token:
     clc     ; clean 
     rts
 
-
 ;---------------------------------------------------------------------
-; there is no edit capabilities, 
-; nor \b nor \u nor cursor nor line ;)
-tokens:
-    ldy #1
+; receive a word between spaces
+; also ends at controls
+; terminate it with \0
+; 
+word:
+    ldy #0
 
-@skip:
-    jsr @getchs
-    cmp #' ' 
-    beq @skip
+@wskip:  ; skip spaces
+    jsr @wgetch
+    bmi @wends
+    beq @wskip
 
-@scan:
-    jsr @getchs
-    sta tib, y
+@wscan:  ; scan spaces
+    jsr @wgetch
     iny
-    cmp #' '
-    bne @scan
-
-@ends:
-    lda #' '
     sta tib, y
-    dey
+    bmi @wends
+    bne @wscan
+
+@wends:  ; make a c-string \0
+    lda #0
+    sta tib, y
     sty tib
     rts
 
-@getchs:
+@wgetch: ; receive a char and masks it
     jsr getchar
-    cmp #$FF
-    beq @byess
-
-    cmp #10
-    bne @eofs
-    pla
-    pla
-    jmp ends
-
-@eofs:
+    and #$7F    ; mask 7-bit ASCII
+    cmp #' ' 
     rts
-
-@byess:
-    jmp $0000
-
-@tends:
 
 ;---------------------------------------------------------------------
 ;  this code depends on systems or emulators
@@ -613,7 +600,7 @@ putchar:
     sta $E000
     rts
 
-; exit for emulator  
+; exit for emulator, leave all.  
 byes:
     jmp $0000
 
@@ -1328,8 +1315,8 @@ create:
     ldy #0
 @loop:    
     lda (tout), y
-    cmp #32    ; stops at space
-    beq @ends
+    cmp #0    
+    beq @ends   ; stops at \0
     sta (here), y
     iny
     bne @loop

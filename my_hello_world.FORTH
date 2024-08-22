@@ -17,6 +17,8 @@
 : sp s@ 8 + ;
 : rp s@ 10 + ;
 
+: cell 2 ;
+
 : cr 10 emit ;
 
 : dup sp @ @ ;
@@ -33,7 +35,9 @@
 : 2drop drop drop ;
 
 : or invert swap invert and invert ;
-: , here @ ! here @ 2 + here ! ;
+: allot here @ + here ! ;
+: , here @ ! 2 allot ;
+
 : 2* dup + ;
 : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
 : immediate latest @ 2 + dup @ 80h or swap ! ;
@@ -76,13 +80,14 @@ immediate
 : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
 : ffh lit [ 0fh 2* 2* 2* 2* 0fh or , ] ;
 : c@ @ ffh and ;
-: in> >in @ c@ >in dup @ 1 + swap ! ;
-
 : type 0 do dup c@ emit 1 + loop drop ;
+
+: in> >in @ c@ >in dup @ 1 + swap ! ;
 : parse in> drop >in @ swap 0 begin over in> 
     <> while 1 + repeat swap bl 
     = if >in dup @ 1 - swap ! then ;
 : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;
+
 : [char] ['] lit , bl word drop c@ , ; immediate
 : ." [char] " parse type ; immediate
 
