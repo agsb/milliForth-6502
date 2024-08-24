@@ -31,9 +31,6 @@ This Forth for 6502, ~will be~ was done using two models:
     and
     with Minimal Thread Code (MTC)
 
-
-
-
 (later we will compare both, ~but DTC will win for less size~) 
 
 This project is also used to verify standart Direct Thread Code against 
@@ -99,6 +96,9 @@ Both DTC and MTC runs with my_hello_world.FORTH, with these numbers.
 
 Look up at Notes[^6] for more.
 
+24/08/2024
+    merge of dtc and mtc code into a flagged sector-6502.s file
+    
 16/08/2024:
     both models DTC and MTC, works with my_hello_world.FORTH;
     
