@@ -149,7 +149,7 @@ externals:
 
 extensions: (selectable)
     2/      shift right one bit
-    jump    jump to address in instruction pointer (ipt)
+    exec    jump to address at top of spt
     :$      jump to (ipt)   
     ;$      jump to next
 
