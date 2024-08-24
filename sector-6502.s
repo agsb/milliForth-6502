@@ -181,7 +181,13 @@ H0000 = 0
 ;---------------------------------------------------------------------
 ; define thread code model
 ; MTC is default
-; DTC = 1
+; use_DTC = 1
+
+; uncomment to include the extras (sic)
+; use_extras = 1 
+
+; uncomment to include the extensions (sic)
+; use_extensions = 1 
 
 ;---------------------------------------------------------------------
 /*
@@ -222,7 +228,7 @@ rp0 = $E0
 pic = rp0
 
 ;~~~~~~~~
-.ifdef DTC
+.ifdef use_DTC
 
 ; magic NOP (EA) JSR (20), at CFA cell
 ; magic = $EA20
@@ -477,7 +483,7 @@ execute:
     sta ipt + 0
 
 ;~~~~~~~~
-.ifdef DTC
+.ifdef use_DTC
 
     jmp (wrd)
 
@@ -741,8 +747,6 @@ addwx:
 ; cs counted string < 256, sz string with nul ends
 ; 
 ;----------------------------------------------------------------------
-; uncomment to include the extras (sic)
-use_extras = 1 
 
 .ifdef use_extras
 
@@ -1142,9 +1146,6 @@ number:
 ; extensions
 ;
 ;---------------------------------------------------------------------
-; uncomment to include the extensions (sic)
-use_extensions = 1 
-
 .ifdef use_extensions
 
 ;---------------------------------------------------------------------
@@ -1337,7 +1338,7 @@ def_word ":", "colon", 0
     jsr addwx
 
 ;~~~~~~~~
-.ifdef DTC
+.ifdef use_DTC
 
 ; inserts the nop call
     lda #<magic
@@ -1383,7 +1384,7 @@ next:
     jsr copyfrom
 
 ;~~~~~~~~
-.ifdef DTC
+.ifdef use_DTC
 
 pick:
     jmp (wrd)
