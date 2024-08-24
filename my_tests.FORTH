@@ -94,7 +94,7 @@
  
  ." Hello world !" cr
 
- : create : ['] lit , here @ 4 + , ['] exit , 0 s@ ! ; 
+ : create here @ : ['] lit , here @ 4 + , ['] exit , 0 s@ ! latest ! ; 
  
  : cells lit [ 2 , ] ;
  : allot here @ + here ! ;
