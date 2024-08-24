@@ -140,15 +140,19 @@ internals:
     cold, quit, token, skip, scan, getline, (boot and terminal)
     parse, find, compile, execute, (outer interpreter)
     unnest, next, nest, (dtc inner) 
-    pick, jump, (mtc inner) 
-    
+    pick, jump, (mtc inner)
+
+    ps. next is not the one for loop next     
+
 externals:
     getch, putch, byes (depends on system, used minimal for emulator )
 
 extensions: (selectable)
     2/      shift right one bit
-    jump    jump to address in instruction pointer (ipt)    
-    
+    jump    jump to address in instruction pointer (ipt)
+    :$      jump to (ipt)   
+    ;$      jump to next
+
 extras:    (selectable)
     bye     ends the Forth, return to system
     abort   restart the Forth
