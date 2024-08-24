@@ -21,7 +21,6 @@
  
  : dup sp @ @ ;
  : invert dup nand ;
- : and nand invert ;
  : - invert 1 + + ;
  : <> - 0# ;
  : = <> invert ;
@@ -32,11 +31,16 @@
  : 2dup over over ;
  : 2drop drop drop ;
  
+ : and nand invert ;
  : or invert swap invert and invert ;
- : , here @ ! here @ 2 + here ! ;
+
+ : alloc here @ + here ! ;
+ : , here @ ! 2 alloc ;
+
  : 2* dup + ;
  : 80h 1 2* 2* 2* 2* 2* 2* 2* ;
  : immediate latest @ 2 + dup @ 80h or swap ! ;
+
  : [ 0 s@ ! ; immediate
  : ] 1 s@ ! ;
  
@@ -81,9 +85,19 @@
  : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;
  : [char] ['] lit , bl word drop c@ , ; immediate
  : ." [char] " parse type ; immediate
- : ( [char] ) parse ; immediate
+
+ : ( [char] ) parse drop drop ; immediate
  
- : create ['] lit , here @ 4 +  , ['] exit , ;
+ ( teste de commentarios )
+
+ ( with comments )
+ 
+ ." Hello world !" cr
+
+ : zzz ['] exit , ;
+
+ : create : ['] lit , here @ 4 + , ['] exit , ; 
+ 
  : cells lit [ 2 , ] ;
  : allot here @ + here ! ;
  : variable create 1 cells allot ;
@@ -94,6 +108,7 @@
  variable loop_depth
  variable parse_index
  
+
  : runbf 0 parse_index ! 
      begin parse_index @ c@ 
      dup dup dup dup dup dup dup 
@@ -123,6 +138,11 @@
  
  here @ 48 + tape_head !
  
+ .S cr
+ .R cr
+
+ words 
+
  BF( >++++++++[<+++++++++>-]
      <.>++++[<+++++++>-]
      <+.+++++++..+++.>>++++++[<+++++++>-]

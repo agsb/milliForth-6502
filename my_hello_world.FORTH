@@ -91,21 +91,10 @@ immediate
 : [char] ['] lit , bl word drop c@ , ; immediate
 : ." [char] " parse type ; immediate
 
-: ( [char] ) parse ; immediate
+: ( [char] ) parse drop drop ; immediate
 
-( this comments only works in same line )
+." Hello world " cr
 
-( ." hello, world" )
+." That's all Folks !" cr
 
-( no "hello, world" showed )
-
-( and this won't work because the line already gone into TIB)
-
-: \ begin 10 key ffh and = until ; immediate 
-
-\ ." hello, world"
-
-( a "hello, world" showed )
-
-." hello, world"
 

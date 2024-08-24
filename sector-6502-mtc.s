@@ -127,9 +127,9 @@
 ;
 ;----------------------------------------------------------------------
 ;
-;   Stacks represented as 
-;       S(w3 w2 w1 -- u2 u1)  R(w3 w2 w1 -- u2 u1)
-;       before -- after, lower to upper, top at right
+;   Stacks represented as (standart)
+;       S:(w1 w2 w3 -- u1 u2)  R:(w1 w2 w3 -- u1 u2)
+;       before -- after, top at left.
 ;
 ;----------------------------------------------------------------------
 ;
@@ -722,7 +722,7 @@ def_word "bye", "bye", 0
     jmp byes
 
 ;----------------------------------------------------------------------
-; ( -- ) ae exit forth
+; ( -- ) ae quit forth
 def_word "abort", "abort", 0
     jmp quit
 
@@ -797,8 +797,7 @@ list:
     rts
     
 ;----------------------------------------------------------------------
-; dumps the user dictionary
-
+; ( -- ) dumps the user dictionary
 def_word "dump", "dump", 0
 
     lda #$0
@@ -827,8 +826,7 @@ def_word "dump", "dump", 0
     jmp next 
 
 ;----------------------------------------------------------------------
-; words in dictionary
-
+; ( -- ) words in dictionary
 def_word "words", "words", 0
 
 ; load lastest
@@ -1016,7 +1014,7 @@ seek:
     rts
 
 ;----------------------------------------------------------------------
-; ( u -- ) print tos in hexadecimal, swaps order
+; ( u -- u ) print tos in hexadecimal, swaps order
 def_word ".", "dot", 0
     lda #' '
     jsr putchar
@@ -1130,13 +1128,23 @@ def_word "exec", "exec", 0
     jsr spull1
     jmp (fst)
 
+;---------------------------------------------------------------------
+; ( -- ) execute a jump to a reference at IP
+def_word ":$", "docode", 0 
+    jmp (ipt)
+
+;---------------------------------------------------------------------
+; ( -- ) execute a jump to next
+def_word ";$", "donext", 0 
+    jmp next
+
 .endif
 
 ;---------------------------------------------------------------------
 ; core primitives minimal 
 ; start of dictionary
 ;---------------------------------------------------------------------
-; ( -- c ) ; tos + 1 unchanged
+; ( -- u ) ; tos + 1 unchanged
 def_word "key", "key", 0
     jsr getchar
     sta fst + 0
@@ -1144,7 +1152,7 @@ def_word "key", "key", 0
     bne this    ; always taken
     
 ;---------------------------------------------------------------------
-; ( c -- ) ; tos + 1 unchanged
+; ( u -- ) ; tos + 1 unchanged
 def_word "emit", "emit", 0
     jsr spull1
     lda fst + 0
@@ -1153,7 +1161,7 @@ def_word "emit", "emit", 0
     bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
-; ( w a -- ) ; [a] = w
+; ( a w -- ) ; [a] = w
 def_word "!", "store", 0
 storew:
     jsr spull2
@@ -1164,7 +1172,7 @@ storew:
     bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
-; ( w2 w1 -- NOT(w1 AND w2) )
+; ( w1 w2 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
     jsr spull2
     lda snd + 0
@@ -1178,7 +1186,7 @@ def_word "nand", "nand", 0
     bcc keeps ; always taken
 
 ;---------------------------------------------------------------------
-; ( w2 w1 -- w1 + w2 ) 
+; ( w1 w2 -- w1+w2 ) 
 def_word "+", "plus", 0
     jsr spull2
     clc  ; better safe than sorry
@@ -1215,7 +1223,7 @@ jmpnext:
     jmp next
 
 ;---------------------------------------------------------------------
-; ( 0 -- $0000) | ( n -- $FFFF)
+; ( 0 -- $0000) | ( n -- $FFFF) not zero at top ?
 def_word "0#", "zeroq", 0
     jsr spull1
     lda fst + 1
@@ -1237,12 +1245,13 @@ def_word "s@", "state", 0
     beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
-def_word ";", "semis", FLAG_IMM
+def_word ";", "semis",  FLAG_IMM
 ; update last, panic if colon not lead elsewhere 
     lda back + 0 
     sta last + 0
     lda back + 1 
     sta last + 1
+
 ; stat is 'interpret'
     lda #0
     sta stat + 0
@@ -1270,7 +1279,7 @@ def_word ":", "colon", 0
     lda #1
     sta stat + 0
 
-create:
+@header:
 ; copy last into (here)
     ldy #(last)
     jsr comma
@@ -1308,7 +1317,8 @@ create:
 ;   unnest aka exit or semis;
 ;
 ;---------------------------------------------------------------------
-def_word "exit", "exit", FLAG_IMM
+; ( -- ) 
+def_word "exit", "exit", 0
 unnest: ; exit
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)

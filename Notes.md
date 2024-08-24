@@ -38,6 +38,15 @@ Then need to make a my_hello_world.FORTH
 
 ## Time table 
 
+_23/08/2024_ 
+
+    repeat: 
+    
+        __exit__ does not deserve to be immediate.
+        __;__    must to be immediate  
+    
+    using my_test.FORTH as test dicitionary
+
 _20/08/2024_ 
 
     Updated the presentation

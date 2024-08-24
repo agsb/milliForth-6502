@@ -1328,7 +1328,7 @@ create:
 ;   unnest aka exit or semis;
 ;
 ;---------------------------------------------------------------------
-def_word "exit", "exit", FLAG_IMM
+def_word "exit", "exit", 0 
 unnest: ; exit
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
