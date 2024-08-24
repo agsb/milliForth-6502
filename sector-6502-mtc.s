@@ -826,7 +826,8 @@ def_word "dump", "dump", 0
     jmp next 
 
 ;----------------------------------------------------------------------
-; ( -- ) words in dictionary
+; ( -- ) words in dictionary, 
+; extended reference list stops at first 'exit
 def_word "words", "words", 0
 
 ; load lastest

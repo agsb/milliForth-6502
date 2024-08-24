@@ -81,9 +81,9 @@
  : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;
  : [char] ['] lit , bl word drop c@ , ; immediate
  : ." [char] " parse type ; immediate
- : ( [char] ) parse ; immediate
+ : ( [char] ) parse drop drop ; immediate
  
- : create ['] lit , here @ 4 +  , ['] exit , ;
+ : create : ['] lit , here @ 4 + , ['] exit , 0 s@ ! ;
  : cells lit [ 2 , ] ;
  : allot here @ + here ! ;
  : variable create 1 cells allot ;

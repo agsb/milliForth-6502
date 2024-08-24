@@ -40,10 +40,12 @@ Then need to make a my_hello_world.FORTH
 
 _23/08/2024_ 
 
-    repeat: 
     
-        __exit__ does not deserve to be immediate.
-        __;__    must to be immediate  
+    in milliforth/sector forth, compiling is 0 and executing is 1,
+    all forth uses 0 to execute and 1 to compiling
+
+    __exit__ does not deserve to be immediate.
+    __;__    must to be immediate  
     
     using my_test.FORTH as test dicitionary
 

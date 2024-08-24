@@ -94,9 +94,7 @@
  
  ." Hello world !" cr
 
- : zzz ['] exit , ;
-
- : create : ['] lit , here @ 4 + , ['] exit , ; 
+ : create : ['] lit , here @ 4 + , ['] exit , 0 s@ ! ; 
  
  : cells lit [ 2 , ] ;
  : allot here @ + here ! ;
@@ -107,7 +105,6 @@
  variable tape_head
  variable loop_depth
  variable parse_index
- 
 
  : runbf 0 parse_index ! 
      begin parse_index @ c@ 
@@ -141,7 +138,6 @@
  .S cr
  .R cr
 
- words 
 
  BF( >++++++++[<+++++++++>-]
      <.>++++[<+++++++>-]
@@ -149,3 +145,7 @@
      <++.------------.>++++++[<+++++++++>-]
      <+.<.+++.------.--------.>>>++++[<++++++++>-]
      <+.)
+
+     
+ words
+
