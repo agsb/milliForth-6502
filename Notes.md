@@ -38,9 +38,22 @@ Then need to make a my_hello_world.FORTH
 
 ## Time table 
 
-_23/08/2024_ 
+_24/08/2024_ 
 
-    latest is only updated at __;__ then __create__ must update it also.
+    unify sector-6502-mtc and sector-6502-dtc as 
+        flagged sector-6502
+
+    change internal parse: to resolve: because ambiguity on common used
+
+    change flags name to use_"something"
+
+    the __:__ does not update latest. It is only updated at __;__.
+
+    then __create__ must update it.
+
+    my_bf.FORTH still not work
+
+_23/08/2024_ 
 
     in milliforth/sector forth, compiling is 0 and executing is 1,
     all forth uses 0 to execute and 1 to compiling

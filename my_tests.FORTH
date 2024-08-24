@@ -88,8 +88,6 @@
 
  : ( [char] ) parse drop drop ; immediate
  
- ( teste de commentarios )
-
  ( with comments )
  
  ." Hello world !" cr
@@ -98,12 +96,14 @@
  
  : cells lit [ 2 , ] ;
  : allot here @ + here ! ;
- : variable create 1 cells allot ;
+ : variable create cells allot ;
  
  : 48 lit [ 6 6 + 6 + 6 + 6 + 6 + 6 + 6 + , ] ;
  
  variable tape_head
+
  variable loop_depth
+
  variable parse_index
 
  : runbf 0 parse_index ! 
@@ -135,17 +135,20 @@
  
  here @ 48 + tape_head !
  
- .S cr
- .R cr
+ tape_head
 
+ dup @
+
+ .S cr
+
+ .R cr
 
  BF( >++++++++[<+++++++++>-]
      <.>++++[<+++++++>-]
      <+.+++++++..+++.>>++++++[<+++++++>-]
      <++.------------.>++++++[<+++++++++>-]
      <+.<.+++.------.--------.>>>++++[<++++++++>-]
-     <+.)
+     <+. )
 
-     
  words
 

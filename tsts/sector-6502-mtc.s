@@ -336,7 +336,7 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 
-parsept:
+resolvept:
     .word okey
 
 ;---------------------------------------------------------------------
@@ -344,7 +344,7 @@ okey:
 
 ;;   uncomment for feedback
 ;    lda stat + 0
-;    bne parse
+;    bne resolve
 ;    lda #'O'
 ;    jsr putchar
 ;    lda #'K'
@@ -352,7 +352,7 @@ okey:
 ;    lda #10
 ;    jsr putchar
 
-parse:
+resolve:
 ; get a token
     jsr token
 
@@ -445,7 +445,7 @@ compile:
 
     jsr wcomma
 
-    bcc parse
+    bcc resolve
 
 immediate:
 execute:
@@ -453,9 +453,9 @@ execute:
     ; lda #'E'
     ; jsr putchar
 
-    lda #>parsept
+    lda #>resolvept
     sta ipt + 1
-    lda #<parsept
+    lda #<resolvept
     sta ipt + 0
 
     jmp pick
@@ -710,9 +710,9 @@ addwx:
 ; 
 ;----------------------------------------------------------------------
 ; uncomment to include the extras (sic)
-extras = 1 
+use_extras = 1 
 
-.ifdef extras
+.ifdef use_extras
 
 ;----------------------------------------------------------------------
 ; extras
@@ -1111,9 +1111,9 @@ number:
 ;
 ;---------------------------------------------------------------------
 ; uncomment to include the extensions (sic)
-extensions = 1 
+use_extensions = 1 
 
-.ifdef extensions
+.ifdef use_extensions
 
 ;---------------------------------------------------------------------
 ; ( w -- w/2 ) ; shift right

@@ -39,7 +39,9 @@
 ;----------------------------------------------------------------------
 ;   Remarks:
 ;
-;       this code uses Minimal Thread Code, aka MTC.
+;       this code uses 
+;           Direct Thread Code, aka DTC or
+;           Minimal Thread Code, aka MTC.
 ;
 ;       use a classic cell with 16-bits. 
 ;
@@ -127,9 +129,9 @@
 ;
 ;----------------------------------------------------------------------
 ;
-;   Stacks represented as 
-;       S(w3 w2 w1 -- u2 u1)  R(w3 w2 w1 -- u2 u1)
-;       before -- after, lower to upper, top at right
+;   Stacks represented as (standart)
+;       S:(w1 w2 w3 -- u1 u2)  R:(w1 w2 w3 -- u1 u2)
+;       before -- after, top at left.
 ;
 ;----------------------------------------------------------------------
 ;
@@ -177,6 +179,11 @@ hcount .set 0
 H0000 = 0
 
 ;---------------------------------------------------------------------
+; define thread code model
+; MTC is default
+; DTC = 1
+
+;---------------------------------------------------------------------
 /*
 NOTES:
 
@@ -213,6 +220,17 @@ rp0 = $E0
 
 ; reserved for scribbles
 pic = rp0
+
+;~~~~~~~~
+.ifdef DTC
+
+; magic NOP (EA) JSR (20), at CFA cell
+; magic = $EA20
+
+magic = $20EA
+
+.endif
+;~~~~~~~~
 
 ;----------------------------------------------------------------------
 ; no values here or must be a BSS
@@ -336,7 +354,7 @@ quit:
 ;---------------------------------------------------------------------
 ; the outer loop
 
-parsept:
+resolvept:
     .word okey
 
 ;---------------------------------------------------------------------
@@ -344,7 +362,7 @@ okey:
 
 ;;   uncomment for feedback
 ;    lda stat + 0
-;    bne parse
+;    bne resolve
 ;    lda #'O'
 ;    jsr putchar
 ;    lda #'K'
@@ -352,7 +370,7 @@ okey:
 ;    lda #10
 ;    jsr putchar
 
-parse:
+resolve:
 ; get a token
     jsr token
 
@@ -408,8 +426,8 @@ find:
 ; compare chars
 @equal:
     lda (tout), y
-; \0 ends
-    cmp #0  
+; space ends
+    cmp #32  
     beq @done
 ; verify 
     sec
@@ -445,7 +463,7 @@ compile:
 
     jsr wcomma
 
-    bcc parse
+    bcc resolve
 
 immediate:
 execute:
@@ -453,12 +471,23 @@ execute:
     ; lda #'E'
     ; jsr putchar
 
-    lda #>parsept
+    lda #>resolvept
     sta ipt + 1
-    lda #<parsept
+    lda #<resolvept
     sta ipt + 0
 
+;~~~~~~~~
+.ifdef DTC
+
+    jmp (wrd)
+
+.else 
+    
     jmp pick
+
+.endif
+;~~~~~~~~
+
     
 ;---------------------------------------------------------------------
 try:
@@ -552,38 +581,6 @@ token:
     rts
 
 ;---------------------------------------------------------------------
-; receive a word between spaces
-; also ends at controls
-; terminate it with \0
-; 
-word:
-    ldy #0
-
-@wskip:  ; skip spaces
-    jsr @wgetch
-    bmi @wends
-    beq @wskip
-
-@wscan:  ; scan spaces
-    jsr @wgetch
-    iny
-    sta tib, y
-    bmi @wends
-    bne @wscan
-
-@wends:  ; make a c-string \0
-    lda #0
-    sta tib, y
-    sty tib
-    rts
-
-@wgetch: ; receive a char and masks it
-    jsr getchar
-    and #$7F    ; mask 7-bit ASCII
-    cmp #' ' 
-    rts
-
-;---------------------------------------------------------------------
 ;  this code depends on systems or emulators
 ;
 ;  lib6502  emulator
@@ -600,7 +597,7 @@ putchar:
     sta $E000
     rts
 
-; exit for emulator, leave all.  
+; exit for emulator  
 byes:
     jmp $0000
 
@@ -630,6 +627,9 @@ decwx:
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
+stawrd:
+    sta wrd + 1
+
 wcomma:
     ldy #(wrd)
 
@@ -741,11 +741,10 @@ addwx:
 ; cs counted string < 256, sz string with nul ends
 ; 
 ;----------------------------------------------------------------------
-
 ; uncomment to include the extras (sic)
-; extras = 1 
+use_extras = 1 
 
-.ifdef extras
+.ifdef use_extras
 
 ;----------------------------------------------------------------------
 ; extras
@@ -755,7 +754,7 @@ def_word "bye", "bye", 0
     jmp byes
 
 ;----------------------------------------------------------------------
-; ( -- ) ae exit forth
+; ( -- ) ae quit forth
 def_word "abort", "abort", 0
     jmp quit
 
@@ -830,13 +829,12 @@ list:
     rts
     
 ;----------------------------------------------------------------------
-; dumps the user dictionary
-
+; ( -- ) dumps the user dictionary
 def_word "dump", "dump", 0
 
-    lda #<init
+    lda #$0
     sta fst + 0
-    lda #>init
+    lda #>ends + 1
     sta fst + 1
 
     ldx #(fst)
@@ -860,8 +858,8 @@ def_word "dump", "dump", 0
     jmp next 
 
 ;----------------------------------------------------------------------
-; words in dictionary
-
+; ( -- ) words in dictionary, 
+; extended reference list stops at first 'exit
 def_word "words", "words", 0
 
 ; load lastest
@@ -1049,7 +1047,7 @@ seek:
     rts
 
 ;----------------------------------------------------------------------
-; ( u -- ) print tos in hexadecimal, swaps order
+; ( u -- u ) print tos in hexadecimal, swaps order
 def_word ".", "dot", 0
     lda #' '
     jsr putchar
@@ -1145,9 +1143,9 @@ number:
 ;
 ;---------------------------------------------------------------------
 ; uncomment to include the extensions (sic)
-; extensions = 1 
+use_extensions = 1 
 
-.ifdef extensions
+.ifdef use_extensions
 
 ;---------------------------------------------------------------------
 ; ( w -- w/2 ) ; shift right
@@ -1163,13 +1161,23 @@ def_word "exec", "exec", 0
     jsr spull1
     jmp (fst)
 
+;---------------------------------------------------------------------
+; ( -- ) execute a jump to a reference at IP
+def_word ":$", "docode", 0 
+    jmp (ipt)
+
+;---------------------------------------------------------------------
+; ( -- ) execute a jump to next
+def_word ";$", "donext", 0 
+    jmp next
+
 .endif
 
 ;---------------------------------------------------------------------
 ; core primitives minimal 
 ; start of dictionary
 ;---------------------------------------------------------------------
-; ( -- c ) ; tos + 1 unchanged
+; ( -- u ) ; tos + 1 unchanged
 def_word "key", "key", 0
     jsr getchar
     sta fst + 0
@@ -1177,7 +1185,7 @@ def_word "key", "key", 0
     bne this    ; always taken
     
 ;---------------------------------------------------------------------
-; ( c -- ) ; tos + 1 unchanged
+; ( u -- ) ; tos + 1 unchanged
 def_word "emit", "emit", 0
     jsr spull1
     lda fst + 0
@@ -1186,7 +1194,7 @@ def_word "emit", "emit", 0
     bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
-; ( w a -- ) ; [a] = w
+; ( a w -- ) ; [a] = w
 def_word "!", "store", 0
 storew:
     jsr spull2
@@ -1197,7 +1205,7 @@ storew:
     bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
-; ( w2 w1 -- NOT(w1 AND w2) )
+; ( w1 w2 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
     jsr spull2
     lda snd + 0
@@ -1211,7 +1219,7 @@ def_word "nand", "nand", 0
     bcc keeps ; always taken
 
 ;---------------------------------------------------------------------
-; ( w2 w1 -- w1 + w2 ) 
+; ( w1 w2 -- w1+w2 ) 
 def_word "+", "plus", 0
     jsr spull2
     clc  ; better safe than sorry
@@ -1248,7 +1256,7 @@ jmpnext:
     jmp next
 
 ;---------------------------------------------------------------------
-; ( 0 -- $0000) | ( n -- $FFFF)
+; ( 0 -- $0000) | ( n -- $FFFF) not zero at top ?
 def_word "0#", "zeroq", 0
     jsr spull1
     lda fst + 1
@@ -1270,12 +1278,13 @@ def_word "s@", "state", 0
     beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
-def_word ";", "semis", FLAG_IMM
+def_word ";", "semis",  FLAG_IMM
 ; update last, panic if colon not lead elsewhere 
     lda back + 0 
     sta last + 0
     lda back + 1 
     sta last + 1
+
 ; stat is 'interpret'
     lda #0
     sta stat + 0
@@ -1303,7 +1312,7 @@ def_word ":", "colon", 0
     lda #1
     sta stat + 0
 
-create:
+@header:
 ; copy last into (here)
     ldy #(last)
     jsr comma
@@ -1315,8 +1324,8 @@ create:
     ldy #0
 @loop:    
     lda (tout), y
-    cmp #0    
-    beq @ends   ; stops at \0
+    cmp #32    ; stops at space
+    beq @ends
     sta (here), y
     iny
     bne @loop
@@ -1327,12 +1336,31 @@ create:
     ldx #(here)
     jsr addwx
 
+;~~~~~~~~
+.ifdef DTC
+
+; inserts the nop call
+    lda #<magic
+    sta wrd + 0
+    lda #>magic
+    jsr stawrd
+
+; inserts the reference
+    lda #<nest
+    sta wrd + 0
+    lda #>nest
+    jsr stawrd
+
+.endif
+;~~~~~~~~
+
 ; done
     ; jmp next
     bcc next    ; always taken
 
 ;---------------------------------------------------------------------
-; minimal thread code
+; Thread Code Engine
+;
 ;   ipt is IP, wrd is W
 ;
 ; for reference: 
@@ -1341,7 +1369,8 @@ create:
 ;   unnest aka exit or semis;
 ;
 ;---------------------------------------------------------------------
-def_word "exit", "exit", FLAG_IMM
+; ( -- ) 
+def_word "exit", "exit", 0
 unnest: ; exit
 ; pull, ipt = (rpt), rpt += 2 
     ldy #(ipt)
@@ -1352,6 +1381,31 @@ next:
     ldx #(ipt)
     ldy #(wrd)
     jsr copyfrom
+
+;~~~~~~~~
+.ifdef DTC
+
+pick:
+    jmp (wrd)
+
+nest:   ; enter
+; push, *rp = ipt, rp -=2
+    ldy #(ipt)
+    jsr rpush
+
+; pull (ip),
+    pla
+    sta ipt + 0
+    pla
+    sta ipt + 1
+
+; 6502 trick: must increase return address
+    ldx #(ipt)
+    jsr incwx
+
+    bcc next
+
+.else
 
 pick:
 ; compare pages (MSBs)
@@ -1376,6 +1430,9 @@ jump:
 
     jmp (wrd)
 
+.endif
+;~~~~~~~~
+
 ;----------------------------------------------------------------------
 ; end of code
 ends:
@@ -1386,4 +1443,5 @@ ends:
 ; same as #>end+1
 ;.align $100
 ;init:   
+;----------------------------------------------------------------------
 
