@@ -184,10 +184,10 @@ H0000 = 0
 ; use_DTC = 1
 
 ; uncomment to include the extras (sic)
-; use_extras = 1 
+ use_extras = 1 
 
 ; uncomment to include the extensions (sic)
-; use_extensions = 1 
+ use_extensions = 1 
 
 ;---------------------------------------------------------------------
 /*
@@ -321,17 +321,19 @@ warm:
     sta here + 0
 
 ;---------------------------------------------------------------------
-; 'abort and 'quit together to save bytes
-quit:
-; reset
+; supose never change
+reset:
     ldy #>tib
     sty spt + 1
     sty rpt + 1
     sty toin + 1
     sty tout + 1
 
+abort:
     ldy #<sp0
     sty spt + 0
+
+quit:
     ldy #<rp0
     sty rpt + 0
 
@@ -386,19 +388,19 @@ find:
 
 ; verify \0x0
     ora snd + 1
-    beq quit
+    beq abort
 
 ;   maybe to place a code for number? 
 ;   but not for now.
 
-;;   uncomment for feedback, comment out "beq quit" above
+;;   uncomment for feedback, comment out "beq abort" above
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #'?'
 ;    jsr putchar
 ;    lda #10
 ;    jsr putchar
-;    jmp quit  ; end of dictionary, no more words to search, quit
+;    jmp abort  ; end of dictionary, no more words to search, abort
 
 @each:    
 
@@ -747,9 +749,9 @@ def_word "bye", "bye", 0
     jmp byes
 
 ;----------------------------------------------------------------------
-; ( -- ) ae quit forth
-def_word "abort", "abort", 0
-    jmp quit
+; ( -- ) ae abort
+def_word "abort", "abort_", 0
+    jmp abort
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of data stack
@@ -852,7 +854,6 @@ def_word "dump", "dump", 0
 
 ;----------------------------------------------------------------------
 ; ( -- ) words in dictionary, 
-; extended reference list stops at first 'exit
 def_word "words", "words", 0
 
 ; load lastest
@@ -860,6 +861,12 @@ def_word "words", "words", 0
     sta snd + 1
     lda last + 0
     sta snd + 0
+
+; load here
+    lda here + 1
+    sta trd + 1
+    lda here + 0
+    sta trd + 0
     
 @loop:
 ; lsb linked list
@@ -888,19 +895,20 @@ def_word "words", "words", 0
     lda fst + 0
     jsr puthex
 
-; update next link 
-    ldx #(fst) ; from 
-    ldy #(snd) ; into
-    jsr copyfrom
-
 ; put link
     lda #' '
     jsr putchar
 
-    lda snd + 1
+    ldy #1
+    lda (fst), y
     jsr puthex
-    lda snd + 0
+    dey 
+    lda (fst), y
     jsr puthex
+
+    ldx #(fst)
+    lda #2
+    jsr addwx
 
 ; put size + flag, name
     ldy #0
@@ -916,6 +924,7 @@ def_word "words", "words", 0
 
     lda #' '
     jsr putchar
+    
     lda fst + 1
     jsr puthex
     lda fst + 0
@@ -924,66 +933,35 @@ def_word "words", "words", 0
 ; check if is a primitive
     lda fst + 1
     cmp #>ends + 1
-    bmi @loop
+    bmi @continue
 
 ; list references
     ldy #0
     jsr show_refer
 
 @continue:
+    
+    lda snd + 0
+    sta trd + 0
+    lda snd + 1
+    sta trd + 1
+
+    ldy #0
+    lda (trd), y
+    sta snd + 0
+    iny
+    lda (trd), y
+    sta snd + 1
+
+    ldx #(trd)
+    lda #2
+    jsr addwx
+
     jmp @loop 
 
 @ends:
     clc  ; clean
     jmp next
-
-;----------------------------------------------------------------------
-show_refer:
-; ae put references PFA ... 
-    lda fst + 0
-    sta trd + 0
-    lda fst + 1
-    sta trd + 1
-    ldx #(trd)
-
-@loop:
-    lda #' '
-    jsr putchar
-
-    lda trd + 1
-    jsr puthex
-    lda trd + 0
-    jsr puthex
-
-    jsr incwx
-    jsr incwx
-
-    lda #':'
-    jsr putchar
-    
-    iny 
-    lda (fst), y
-    jsr puthex
-    dey
-    lda (fst), y
-    jsr puthex
-
-; check if ends
-    lda (fst), y
-    cmp #<exit
-    bne @step
-    iny
-    lda (fst), y
-    cmp #>exit
-    beq @ends
-    dey
-@step:
-    iny
-    iny
-    bne @loop
-@ends:
-    clc  ; clean
-    rts
 
 ;----------------------------------------------------------------------
 ; ae put size and name 
@@ -1006,6 +984,46 @@ show_name:
     lda (fst), y
     jsr putchar
     dex
+    bne @loop
+
+@ends:
+    rts
+
+;----------------------------------------------------------------------
+show_refer:
+; ae put references PFA ... 
+
+    ldx #(fst)
+
+@loop:
+    lda #' '
+    jsr putchar
+
+    lda fst + 1
+    jsr puthex
+    lda fst + 0
+    jsr puthex
+
+    lda #':'
+    jsr putchar
+    
+    iny 
+    lda (fst), y
+    jsr puthex
+    dey
+    lda (fst), y
+    jsr puthex
+
+    lda #2
+    jsr addwx
+
+; check if ends
+
+    lda fst + 0
+    cmp trd + 0
+    bne @loop
+    lda fst + 1
+    cmp trd + 1
     bne @loop
 
 @ends:
