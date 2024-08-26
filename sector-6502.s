@@ -227,17 +227,6 @@ rp0 = $E0
 ; reserved for scribbles
 pic = rp0
 
-;~~~~~~~~
-.ifdef use_DTC
-
-; magic NOP (EA) JSR (20), at CFA cell
-; magic = $EA20
-
-magic = $20EA
-
-.endif
-;~~~~~~~~
-
 ;----------------------------------------------------------------------
 ; no values here or must be a BSS
 .segment "ZERO"
@@ -1339,6 +1328,11 @@ def_word ":", "colon", 0
 
 ;~~~~~~~~
 .ifdef use_DTC
+
+; magic NOP (EA) JSR (20), at CFA cell
+; magic = $EA20
+
+magic = $20EA
 
 ; inserts the nop call
     lda #<magic

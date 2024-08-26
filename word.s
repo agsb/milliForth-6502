@@ -12,16 +12,26 @@ word:
     beq @wskip
 
 @wscan:  ; scan spaces
-    jsr @wgetch
     iny
     sta tib, y
+    jsr @wgetch
     bmi @wends
     bne @wscan
 
-@wends:  ; make a c-string \0
+@wends:  ; make a c-ascii\0
     lda #0
     sta tib, y
     sty tib
+    rts
+
+@wline:
+    ldy #0
+@loop:
+    iny 
+    sta tib,y
+    jsr wgetch
+    bpl @loop
+    ; edits \b \u \r ...
     rts
 
 @wgetch: ; receive a char and masks it
@@ -29,4 +39,6 @@ word:
     and #$7F    ; mask 7-bit ASCII
     cmp #' ' 
     rts
+
+
 
