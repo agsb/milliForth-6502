@@ -38,6 +38,12 @@ Then need to make a my_hello_world.FORTH
 
 ## Time table 
 
+_28/08/2024_ 
+
+    sector-6502-tst, testing use full pages for tib, sp, rp
+
+    take a break for while ...let the dust settle.
+
 _24/08/2024_ 
 
     unify sector-6502-mtc and sector-6502-dtc as 
