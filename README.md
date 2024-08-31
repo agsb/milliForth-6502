@@ -41,7 +41,7 @@ is an alternative model for inner interpreter, where
 the dictionary is organized with the primitives words grouped together 
 before the compound words, defining a "tipping point", from where could 
 decide if the reference of a word will be to executed or be pushed into 
-return stack.
+return stack. PS. MTC is a reduced form of [TachyonForth](https://sourceforge.net/projects/tachyon-forth/) inner interpreter.
 
 ## Coding for 6502
 
