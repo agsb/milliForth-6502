@@ -1,0 +1,7 @@
+for f in ` ls freq*.v ` ; do
+    for g in ` ls ng*.v `; do
+        echo " $f $g "
+        sh ./dot $f $g $f.$g
+        done
+    done
+
