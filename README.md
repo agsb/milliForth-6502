@@ -126,10 +126,12 @@ primitives:
     nand  logic not and the two values at top of data stack
     @     fetch a value of cell wich address at top of data stack
     !     store a value into a cell wich address at top of data stack
+    0#    test if top of data stack is not zero
+
     :     starts compilng a new word
     ;     stops compiling a new word
-    0#    test if top of data stack is not zero
     exit  ends a word
+
     key   get a char from default terminal (system dependent)
     emit  put a char into default terminal (system dependent)
         
@@ -137,12 +139,13 @@ internals:
     spush, spull, rpull, rpush, (stack code)
     copyfrom, copyinto, (heap code)
     incr, decr, add, etc (register mimics)
-    cold, quit, token, skip, scan, getline, (boot and terminal)
+    cold, warm, quit, token, skip, scan, getline, (boot and terminal)
     parse, find, compile, execute, (outer interpreter)
-    unnest, next, nest, (dtc inner) 
-    pick, jump, (mtc inner)
 
-    ps. next is not the one for loop next     
+    unnest, next, nest, (dtc inner) 
+    unnest, next, nest, pick, jump, (mtc inner)
+
+    ps. next is not the FOR NEXT loop    
 
 externals:
     getch, putch, byes (depends on system, used minimal for emulator )
@@ -151,7 +154,7 @@ extensions: (selectable)
     2/      shift right one bit
     exec    jump to address at top of spt
     :$      jump to (ipt)   
-    ;$      jump to next
+    ;$      jump to next 
 
 extras:    (selectable)
     bye     ends the Forth, return to system

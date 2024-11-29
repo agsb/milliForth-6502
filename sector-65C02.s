@@ -188,10 +188,10 @@ H0000 = 0
 ; use_DTC = 1
 
 ; uncomment to include the extras (sic)
- use_extras = 1 
+; use_extras = 1 
 
 ; uncomment to include the extensions (sic)
- use_extensions = 1 
+; use_extensions = 1 
 
 ;---------------------------------------------------------------------
 /*
@@ -213,7 +213,7 @@ FLAG_IMM = 1<<7
 ; "all in" page $200
 
 ; terminal input buffer, forward
-; getline, token, skip, scan, depends on page boundary
+; getline, token, skip, scan, depends on page boundary $XX00
 tib = $0200
 
 ; reserve 80 bytes, (72 is enough) 
@@ -222,11 +222,11 @@ tib_end = $50
 
 ; data stack, 36 cells,
 ; moves backwards, push decreases before copy
-sp0 = $00FF
+sp0 = $98
 
 ; return stack, 36 cells, 
 ; moves backwards, push decreases before copy
-rp0 = $01FF
+rp0 = $E0
 
 ;----------------------------------------------------------------------
 ; no values here or must be a BSS
@@ -325,16 +325,14 @@ reset:
 	ldy #>tib
 	sty toin + 1
 	sty tout + 1
+	sty spt + 1
+	sty rpt + 1
 
 abort:
-	ldy #>sp0
-	sty spt + 1
 	ldy #<sp0
 	sty spt + 0
 
 quit:
-	ldy #>rp0
-	sty rpt + 1
 	ldy #<rp0
 	sty rpt + 0
 
@@ -360,19 +358,17 @@ okey:
 ;	lda stat + 0
 ;	bne resolve
 ;	lda #'O'
-;	jsr putchar
+;	jsr putc
 ;	lda #'K'
-;	jsr putchar
+;	jsr putc
 ;	lda #10
-;	jsr putchar
+;	jsr putc
 
 resolve:
 ; get a token
 	jsr token
 
-	; lda #'P'
-	; jsr putchar
-
+;---------------------------------------------------------------------
 find:
 ; load last
 	lda last + 1
@@ -392,15 +388,6 @@ find:
 ;   maybe to place a code for number? 
 ;   but not for now.
 
-;;   uncomment for feedback, comment out "beq abort" above
-;	lda #'?'
-;	jsr putchar
-;	lda #'?'
-;	jsr putchar
-;	lda #10
-;	jsr putchar
-;	jmp abort  ; end of dictionary, no more words to search, abort
-
 @each:	
 
 ; msb linked list
@@ -412,7 +399,7 @@ find:
 	ldy #(snd) ; into
 	jsr copyfrom
 
-; compare words
+; compare words backwards
 	ldy #0
 
         lda (tout), y
@@ -433,11 +420,11 @@ find:
 	sta stat + 1
         and #$7F        ; mask immediate
 ; update wrd
-	tya
 	;; ldx #(wrd) ; set already
 	;; addwx also clear carry
 	jsr addwx
 	
+;---------------------------------------------------------------------
 eval:
 ; executing ? if == \0
 	lda stat + 0   
@@ -449,18 +436,12 @@ eval:
 
 compile:
 
-	; lda #'C'
-	; jsr putchar
-
 	jsr wcomma
 
 	bra resolve
 
 immediate:
 execute:
-
-	; lda #'E'
-	; jsr putchar
 
 	lda #>resolvept
 	sta ipt + 1
@@ -481,51 +462,46 @@ execute:
 
 	
 ;---------------------------------------------------------------------
-try:
+getch:
 	lda tib, y
 	beq getline    ; if \0 
-	iny
 	eor #' '
 	rts
 
 ;---------------------------------------------------------------------
 getline:
-; drop rts of try
+        tay
+
+; drop rts of getch
 	pla
 	pla
 
 ; leave the first
-	ldy #0
+	lda #' '
 @loop:  
 ; is valid
 	sta tib, y  ; dummy store on first pass, overwritten
 	iny
-; would be better with 
+
 ; end of buffer ?
 ;	cpy #tib_end
 ;	beq @ends
-; then 
-	jsr getchar
-; would be better with 
+
+	jsr getc
+
 ; 7-bit ascii only
 ;	and #$7F        
-; unix \n
-	cmp #10         
-	bne @loop
-; would be better with 
-; no controls
-;	cmp #' '
-;	bmi @loop
+
+; less than space ends 
+	cmp #' ' + 1         
+	bpl @loop
 
 ; clear all if y eq \0
 @ends:
-; grace \b
-	lda #32
-	sta tib + 0 ; start with space
-	sta tib, y  ; ends with space
 ; mark eol with \0
 	lda #0
-	sta tib + 1, y
+	sta tib, y
+
 ; start it
 	sta toin + 0
 
@@ -533,26 +509,27 @@ getline:
 ; in place every token,
 ; the counter is placed at last space before word
 ; no rewinds
+; TIB must start at $XX00
 token:
 ; last position on tib
 	ldy toin + 0
 
 @skip:
 ; skip spaces
-	jsr try
+	iny
+	jsr getch
 	beq @skip
 
-; keep y == start + 1
-	dey
+; keep y == first non space 
 	sty tout + 0
 
 @scan:
 ; scan spaces
-	jsr try
+	iny
+	jsr getch
 	bne @scan
 
-; keep y == stop + 1  
-	dey
+; keep y == first space after
 	sty toin + 0 
 
 @done:
@@ -564,11 +541,10 @@ token:
 ; keep it
 	ldy tout + 0
 	dey
-	sta tib, y  ; store size for counted string 
-	sty tout + 0
+	sta tib, y      ; store size for counted string 
+	sty tout + 0    ; point to c-str
 
-; setup token
-	clc     ; clean 
+; done token
 	rts
 
 ;---------------------------------------------------------------------
@@ -576,7 +552,7 @@ token:
 ;
 ;  lib6502  emulator
 ; 
-getchar:
+getc:
 	lda $E000
 
 eofs:
@@ -584,7 +560,7 @@ eofs:
 	cmp #$FF ; also clean carry :)
 	beq byes
 
-putchar:
+putc:
 	sta $E000
 	rts
 
@@ -637,7 +613,7 @@ copyinto:
 	jsr incwx
 	lda 1, y
 	sta (0, x)
-	jmp incwx
+	bra incwx
 
 ;---------------------------------------------------------------------
 ;
@@ -720,7 +696,6 @@ addwx:
 	sta 0, x
 	bcc @ends
 	inc 1, x
-	clc ; keep carry clean
 @ends:
 	rts
 
@@ -755,7 +730,7 @@ def_word ".S", "splist", 0
 	lda spt + 1
 	sta fst + 1
 	lda #'S'
-	jsr putchar
+	jsr putc
 	lda #sp0
 	jsr list
 	jmp next
@@ -768,7 +743,7 @@ def_word ".R", "rplist", 0
 	lda rpt + 1
 	sta fst + 1
 	lda #'R'
-	jsr putchar
+	jsr putc
 	lda #>rp0
 	jsr list
 	jmp next
@@ -789,13 +764,13 @@ list:
 	jsr puthex
 
 	lda #' '
-	jsr putchar
+	jsr putc
 
 	txa
 	jsr puthex
 
 	lda #' '
-	jsr putchar
+	jsr putc
 
 	txa
 	beq @ends
@@ -803,7 +778,7 @@ list:
 	ldy #0
 @loop:
 	lda #' '
-	jsr putchar
+	jsr putc
 	iny
 	lda (fst),y 
 	jsr puthex
@@ -832,7 +807,7 @@ def_word "dump", "dump", 0
 @loop:
 	
 	lda (fst),y
-	jsr putchar
+	jsr putc
 	jsr incwx
 
 	lda fst + 0
@@ -843,7 +818,6 @@ def_word "dump", "dump", 0
 	cmp here + 1
 	bne @loop
 
-	clc  ; clean
 	jmp next 
 
 ;----------------------------------------------------------------------
@@ -878,11 +852,11 @@ def_word "words", "words", 0
 @each:	
 
 	lda #10
-	jsr putchar
+	jsr putc
 
 ; put address
 	lda #' '
-	jsr putchar
+	jsr putc
 
 	lda fst + 1
 	jsr puthex
@@ -891,7 +865,7 @@ def_word "words", "words", 0
 
 ; put link
 	lda #' '
-	jsr putchar
+	jsr putc
 
 	ldy #1
 	lda (fst), y
@@ -917,7 +891,7 @@ def_word "words", "words", 0
 ; show CFA
 
 	lda #' '
-	jsr putchar
+	jsr putc
 	
 	lda fst + 1
 	jsr puthex
@@ -954,20 +928,19 @@ def_word "words", "words", 0
 	jmp @loop 
 
 @ends:
-	clc  ; clean
 	jmp next
 
 ;----------------------------------------------------------------------
 ; ae put size and name 
 show_name:
 	lda #' '
-	jsr putchar
+	jsr putc
 
 	lda (fst), y
 	jsr puthex
 	
 	lda #' '
-	jsr putchar
+	jsr putc
 
 	lda (fst), y
 	and #$7F
@@ -976,7 +949,7 @@ show_name:
  @loop:
 	iny
 	lda (fst), y
-	jsr putchar
+	jsr putc
 	dex
 	bne @loop
 
@@ -991,7 +964,7 @@ show_refer:
 
 @loop:
 	lda #' '
-	jsr putchar
+	jsr putc
 
 	lda fst + 1
 	jsr puthex
@@ -999,7 +972,7 @@ show_refer:
 	jsr puthex
 
 	lda #':'
-	jsr putchar
+	jsr putc
 	
 	iny 
 	lda (fst), y
@@ -1048,14 +1021,13 @@ seek:
 @ends:
 	tya
 	lsr
-	clc  ; clean
 	rts
 
 ;----------------------------------------------------------------------
 ; ( u -- u ) print tos in hexadecimal, swaps order
 def_word ".", "dot", 0
 	lda #' '
-	jsr putchar
+	jsr putc
 	jsr spull1
 	lda fst + 1
 	jsr puthex
@@ -1081,8 +1053,7 @@ puthex:
 	bcc @ends
 	adc #$06
 @ends:
-	clc  ; clean
-	jmp putchar
+	jmp putc
 
 .endif
 
@@ -1120,7 +1091,6 @@ number:
 	ora fst + 0
 	sta fst + 0
 
-	clc ; clean
 	rts
 
 @very:
@@ -1181,31 +1151,11 @@ def_word ";$", "donext", 0
 ;---------------------------------------------------------------------
 ; ( -- u ) ; tos + 1 unchanged
 def_word "key", "key", 0
-	jsr getchar
+	jsr getc
 	sta fst + 0
 	; jmp this  ; uncomment if char could be \0
-	bne this    ; always taken
+	bra this    ; always taken
 	
-;---------------------------------------------------------------------
-; ( u -- ) ; tos + 1 unchanged
-def_word "emit", "emit", 0
-	jsr spull1
-	lda fst + 0
-	jsr putchar
-	; jmp next  ; uncomment if carry could be set
-	bcc jmpnext ; always taken
-
-;---------------------------------------------------------------------
-; ( a w -- ) ; [a] = w
-def_word "!", "store", 0
-storew:
-	jsr spull2
-	ldx #(snd) 
-	ldy #(fst) 
-	jsr copyinto
-	; jmp next  ; uncomment if carry could be set
-	bcc jmpnext ; always taken
-
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- NOT(w1 AND w2) )
 def_word "nand", "nand", 0
@@ -1218,7 +1168,7 @@ def_word "nand", "nand", 0
 	and fst + 1
 	eor #$FF
 	; jmp keeps  ; uncomment if carry could be set
-	bcc keeps ; always taken
+	bra keeps ; always taken
 
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- w1+w2 ) 
@@ -1231,31 +1181,6 @@ def_word "+", "plus", 0
 	lda snd + 1
 	adc fst + 1
 	jmp keeps
-
-;---------------------------------------------------------------------
-; ( a -- w ) ; w = [a]
-def_word "@", "fetch", 0
-fetchw:
-	jsr spull1
-	ldx #(fst)
-	ldy #(snd)
-	jsr copyfrom
-	; fall throught
-
-;---------------------------------------------------------------------
-copys:
-	lda 0, y
-	sta fst + 0
-	lda 1, y
-
-keeps:
-	sta fst + 1
-
-this:
-	jsr spush1
-
-jmpnext:
-	jmp next
 
 ;---------------------------------------------------------------------
 ; ( 0 -- $0000) | ( n -- $FFFF) not zero at top ?
@@ -1280,90 +1205,48 @@ def_word "s@", "state", 0
 	beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
-def_word ";", "semis",  FLAG_IMM
-; update last, panic if colon not lead elsewhere 
-	lda back + 0 
-	sta last + 0
-	lda back + 1 
-	sta last + 1
-
-; stat is 'interpret'
-	lda #0
-	sta stat + 0
-
-; compound words must ends with exit
-finish:
-	lda #<exit
-	sta wrd + 0
-	lda #>exit
-	sta wrd + 1
-	jsr wcomma
-
-	; jmp next
-	bcc next    ; always taken
+; ( a -- w ) ; w = [a]
+def_word "@", "fetch", 0
+fetchw:
+	jsr spull1
+	ldx #(fst)
+	ldy #(snd)
+	jsr copyfrom
+	; fall throught
 
 ;---------------------------------------------------------------------
-def_word ":", "colon", 0
-; save here, panic if semis not follow elsewhere
-	lda here + 0
-	sta back + 0 
-	lda here + 1
-	sta back + 1 
+copys:
+	lda 0, y
+	sta fst + 0
+	lda 1, y
 
-; stat is 'compile'
-	lda #1
-	sta stat + 0
+keeps:
+	sta fst + 1
 
-@header:
-; copy last into (here)
-	ldy #(last)
-	jsr comma
+this:
+	jsr spush1
 
-; get following token
-	jsr token
+jmpnext:
+	bra next
 
-; copy it
-	ldy #0
-@loop:	
-	lda (tout), y
-	cmp #32    ; stops at space
-	beq @ends
-	sta (here), y
-	iny
-	bne @loop
+;---------------------------------------------------------------------
+; ( u -- ) ; tos + 1 unchanged
+def_word "emit", "emit", 0
+	jsr spull1
+	lda fst + 0
+	jsr putc
+	; jmp next  ; uncomment if carry could be set
+	bra next ; always taken
 
-@ends:
-; update here 
-	tya
-	ldx #(here)
-	jsr addwx
-
-;~~~~~~~~
-.ifdef use_DTC
-
-; magic NOP (EA) JSR (20), at CFA cell
-; magic = $EA20
-
-magic = $20EA
-
-; inserts the nop call
-	lda #<magic
-	sta wrd + 0
-	lda #>magic
-	jsr stawrd
-
-; inserts the reference
-	lda #<nest
-	sta wrd + 0
-	lda #>nest
-	jsr stawrd
-
-.endif
-;~~~~~~~~
-
-; done
-	; jmp next
-	bcc next    ; always taken
+;---------------------------------------------------------------------
+; ( a w -- ) ; [a] = w
+def_word "!", "store", 0
+storew:
+	jsr spull2
+	ldx #(snd) 
+	ldy #(fst) 
+	jsr copyinto
+	bra next ; always taken
 
 ;---------------------------------------------------------------------
 ; Thread Code Engine
@@ -1410,7 +1293,7 @@ nest:   ; enter
 	ldx #(ipt)
 	jsr incwx
 
-	bcc next
+	bra next
 
 .else
 
@@ -1430,7 +1313,7 @@ nest:   ; enter
 	lda wrd + 1
 	sta ipt + 1
 
-	jmp next
+	bra next
 
 jump: 
 
@@ -1438,6 +1321,90 @@ jump:
 
 .endif
 ;~~~~~~~~
+
+;---------------------------------------------------------------------
+def_word ";", "semis",  FLAG_IMM
+; update last, panic if colon not lead elsewhere 
+	lda back + 0 
+	sta last + 0
+	lda back + 1 
+	sta last + 1
+
+; stat is 'interpret'
+	lda #0
+	sta stat + 0
+
+; compound words must ends with exit
+finish:
+	lda #<exit
+	sta wrd + 0
+	lda #>exit
+	sta wrd + 1
+	jsr wcomma
+
+	bra next    ; always taken
+
+;---------------------------------------------------------------------
+def_word ":", "colon", 0
+; save here, panic if semis not follow elsewhere
+	lda here + 0
+	sta back + 0 
+	lda here + 1
+	sta back + 1 
+
+; stat is 'compile'
+	lda #1
+	sta stat + 0
+
+@header:
+; copy last into (here)
+	ldy #(last)
+	jsr comma
+
+; get following token
+	jsr token
+
+; copy it
+	ldy #0
+@loop:	
+	lda (tout), y
+	cmp #33    ; stops at space + 1
+	bmi @ends
+	sta (here), y
+	iny
+	bne @loop
+
+@ends:
+; update here 
+	tya
+	ldx #(here)
+	jsr addwx
+
+;~~~~~~~~
+.ifdef use_DTC
+
+; magic NOP (EA) JSR (20), at CFA cell
+; magic = $EA20
+
+magic = $20EA
+
+; inserts the nop call
+	lda #<magic
+	sta wrd + 0
+	lda #>magic
+	jsr stawrd
+
+; inserts the reference
+	lda #<nest
+	sta wrd + 0
+	lda #>nest
+	jsr stawrd
+
+.endif
+;~~~~~~~~
+
+; done
+	bra next    ; always taken
 
 ;-----------------------------------------------------------------------
 ; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
