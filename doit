@@ -12,5 +12,7 @@ sh mk a $1
 
 #run6502 -l $LOADT $1.out -R $LOADT -M E000 -X 0 -c -d $DUMPT +800
 
-run6502 -l $LOADT $1.out -R $LOADT -M E000 -X 0 -c
+#run6502 -l $LOADT $1.out -R $LOADT -M E000 -X 0 -c
+
+run6502 -l $LOADT $1.out -R $LOADT -M E000 -X 0 
 
