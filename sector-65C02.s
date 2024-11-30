@@ -314,7 +314,7 @@ warm:
 	sta last + 0
 
 ; next heap free cell, same as init:  
-	lda #>ends + 1
+	lda #>end_of_forth + 1
 	sta here + 1
 	lda #0
 	sta here + 0
@@ -368,6 +368,7 @@ resolve:
 ; get a token
 	jsr token
 
+        
 ;---------------------------------------------------------------------
 find:
 ; load last
@@ -470,6 +471,10 @@ getch:
 
 ;---------------------------------------------------------------------
 getline:
+
+        lda #'G'
+        jsr putc
+
         tay
 
 ; drop rts of getch
@@ -492,8 +497,12 @@ getline:
 ; 7-bit ascii only
 ;	and #$7F        
 
+        pha
+        jsr putc
+        pla
+
 ; less than space ends 
-	cmp #' ' + 1         
+	cmp #' '         
 	bpl @loop
 
 ; clear all if y eq \0
@@ -511,6 +520,11 @@ getline:
 ; no rewinds
 ; TIB must start at $XX00
 token:
+
+
+        lda #'T'
+        jsr putc 
+
 ; last position on tib
 	ldy toin + 0
 
@@ -523,6 +537,9 @@ token:
 ; keep y == first non space 
 	sty tout + 0
 
+        lda #'1'
+        jsr putc 
+
 @scan:
 ; scan spaces
 	iny
@@ -531,6 +548,9 @@ token:
 
 ; keep y == first space after
 	sty toin + 0 
+
+        lda #'2'
+        jsr putc 
 
 @done:
 ; sizeof
@@ -543,6 +563,9 @@ token:
 	dey
 	sta tib, y      ; store size for counted string 
 	sty tout + 0    ; point to c-str
+
+        lda #'3'
+        jsr putc
 
 ; done token
 	rts
@@ -1300,7 +1323,7 @@ nest:   ; enter
 pick:
 ; compare pages (MSBs)
 	lda wrd + 1
-	cmp #>ends + 1
+	cmp #>end_of_forth + 1
 	bmi jump
 
 nest:   ; enter
@@ -1356,6 +1379,9 @@ def_word ":", "colon", 0
 	lda #1
 	sta stat + 0
 
+        lda #'C'
+        jsr putc
+
 @header:
 ; copy last into (here)
 	ldy #(last)
@@ -1406,9 +1432,38 @@ magic = $20EA
 ; done
 	bra next    ; always taken
 
+;----------------------------------------------------------------------
+; ( -- ) dumps all 
+def_word "dump", "dump", 0
+
+	lda #$0
+	sta fst + 0
+	sta fst + 1
+
+	ldx #(fst)
+	ldy #0
+
+@loop:
+	
+	lda (fst), y
+	jsr putc
+	jsr incwx
+
+	lda fst + 0
+	cmp here + 0
+	bne @loop
+
+	lda fst + 1
+	cmp here + 1
+	bne @loop
+
+	jmp next 
+
 ;-----------------------------------------------------------------------
 ; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
-ends:
+
+end_of_forth:
+
 ;-----------------------------------------------------------------------
 ; anything above is not a primitive
 ;----------------------------------------------------------------------

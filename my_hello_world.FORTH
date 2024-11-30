@@ -97,4 +97,6 @@ immediate
 
 ." That's all Folks !" cr
 
+dump
+
 
