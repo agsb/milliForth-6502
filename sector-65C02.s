@@ -368,7 +368,6 @@ resolve:
 ; get a token
 	jsr token
 
-        
 ;---------------------------------------------------------------------
 find:
 ; load last
@@ -464,16 +463,14 @@ execute:
 	
 ;---------------------------------------------------------------------
 getch:
-	lda tib, y
+        lda tib, y
 	beq getline    ; if \0 
-	eor #' '
+        iny
+	cmp #' '
 	rts
 
 ;---------------------------------------------------------------------
 getline:
-
-        lda #'G'
-        jsr putc
 
         tay
 
@@ -486,20 +483,19 @@ getline:
 @loop:  
 ; is valid
 	sta tib, y  ; dummy store on first pass, overwritten
-	iny
+
+        ;tya
+        ;adc #' '
+        ;jsr putc 
 
 ; end of buffer ?
 ;	cpy #tib_end
 ;	beq @ends
 
 	jsr getc
-
+        
 ; 7-bit ascii only
 ;	and #$7F        
-
-        pha
-        jsr putc
-        pla
 
 ; less than space ends 
 	cmp #' '         
@@ -521,50 +517,69 @@ getline:
 ; TIB must start at $XX00
 token:
 
-
-        lda #'T'
-        jsr putc 
-
 ; last position on tib
 	ldy toin + 0
 
+        lda #'1' 
+        jsr putc 
+
+        tya 
+        adc #'a' 
+        jsr putc 
+
 @skip:
 ; skip spaces
-	iny
 	jsr getch
 	beq @skip
 
 ; keep y == first non space 
+        dey
 	sty tout + 0
 
-        lda #'1'
+        tya 
+        clc
+        adc #'a' 
+        jsr putc 
+
+        lda #'2' 
         jsr putc 
 
 @scan:
 ; scan spaces
-	iny
 	jsr getch
 	bne @scan
 
 ; keep y == first space after
 	sty toin + 0 
 
-        lda #'2'
+        tya
+        clc
+        adc #'a' 
         jsr putc 
 
 @done:
 ; sizeof
+        dey
+
 	tya
 	sec
 	sbc tout + 0
 
+        lda #'3' 
+        jsr putc 
+
 ; keep it
 	ldy tout + 0
-	dey
+        dey
 	sta tib, y      ; store size for counted string 
 	sty tout + 0    ; point to c-str
 
-        lda #'3'
+        tya
+        clc
+        adc #'a' 
+        jsr putc 
+
+        lda #10
         jsr putc
 
 ; done token
