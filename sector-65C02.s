@@ -262,7 +262,6 @@ fth:	.word $0 ; fourth
 
 ; used, reserved
 
-tout:   .word $0 ; next token in TIB
 back:   .word $0 ; hold 'here while compile
 
 ; for future expansion, reserved
@@ -324,7 +323,6 @@ warm:
 reset:
 	ldy #>tib
 	sty toin + 1
-	sty tout + 1
 	sty spt + 1
 	sty rpt + 1
 
@@ -368,13 +366,18 @@ resolve:
 ; get a token
 	jsr token
 
+        sec
+        lda toin + 0
+        sub one  + 0
+        sta trd + 0
+
 ;---------------------------------------------------------------------
 find:
 ; load last
-	lda last + 1
-	sta snd + 1
 	lda last + 0
-	sta snd + 0
+        sta snd + 0
+	lda last + 1
+        sta snd + 1
 	
 @loop:
 ; lsb linked list
@@ -399,21 +402,17 @@ find:
 	ldy #(snd) ; into
 	jsr copyfrom
 
-; compare words backwards
+; compare words 
 	ldy #0
-
-        lda (tout), y
-        tay
-        iny
-
 @equal:
-        dey
-        beq @done
-        lda (tout), y
+        lda (one), y
+        iny
         cmp (wrd), y
         beq @equal
-@done:
+        cpy trd + 0
         bne @loop
+        
+@done:
         
 ; save the flag, first byte is (size and flag) 
 	lda (wrd), y
@@ -463,9 +462,9 @@ execute:
 	
 ;---------------------------------------------------------------------
 getch:
+        iny
         lda tib, y
 	beq getline    ; if \0 
-        iny
 	cmp #' '
 	rts
 
@@ -519,68 +518,25 @@ token:
 
 ; last position on tib
 	ldy toin + 0
-
-        lda #'1' 
-        jsr putc 
-
-        tya 
-        adc #'a' 
-        jsr putc 
+        dey
 
 @skip:
 ; skip spaces
 	jsr getch
 	beq @skip
-
 ; keep y == first non space 
-        dey
-	sty tout + 0
-
-        tya 
-        clc
-        adc #'a' 
-        jsr putc 
-
-        lda #'2' 
-        jsr putc 
+	sty one + 0
 
 @scan:
 ; scan spaces
 	jsr getch
 	bne @scan
-
 ; keep y == first space after
 	sty toin + 0 
 
-        tya
-        clc
-        adc #'a' 
-        jsr putc 
-
 @done:
-; sizeof
-        dey
-
-	tya
-	sec
-	sbc tout + 0
-
-        lda #'3' 
-        jsr putc 
-
-; keep it
-	ldy tout + 0
-        dey
-	sta tib, y      ; store size for counted string 
-	sty tout + 0    ; point to c-str
-
-        tya
-        clc
-        adc #'a' 
-        jsr putc 
-
-        lda #10
-        jsr putc
+	ldy toin + 1
+        sta one + 1
 
 ; done token
 	rts
