@@ -252,7 +252,7 @@ the my_hello_world.FORTH is adapted for miiliforth-6502
 [^3]: Mind-blowing sectorLISP: https://justine.lol/sectorlisp2/, https://github.com/jart/sectorlisp
 [^4]: The miniforth: https://github.com/meithecatte/miniforth
 [^5]: Forth standart ANSI X3.215-1994: http://www.forth.org/svfig/Win32Forth/DPANS94.txt
-[^6]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/main/Notes.md
+[^6]: Notes and Times: https://github.com/agsb/milliForth-6502/blob/acc2f8ddc6aafb2dec6346e90f5372ee16b38c8c/docs/Notes.md
 [^7]: A minimal thread code for Forth: https://github.com/agsb/immu/blob/main/The_words_in_MTC_Forth.en.pdf
 
 
