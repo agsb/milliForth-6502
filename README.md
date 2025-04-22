@@ -9,6 +9,8 @@ and smaller than sector Lisp[^3]
 The miniForth[^4] is another Forth to use in a boot sector 
 of less than 512 bytes.
 
+[we are in hackaday](https://hackaday.com/2025/04/20/milliforth-6502-a-forth-for-the-6502-cpu/#comment-8120803)
+
 ## Bytes?
 
 Yes, bytes. But those are for a x86 16-bit CPU. 
