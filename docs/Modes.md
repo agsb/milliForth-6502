@@ -76,7 +76,9 @@ NEST:
     
     RP -= CELL
     (RP) = IP
-    
+
+LINK:
+
     IP = W
     JMP NEXT
     

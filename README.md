@@ -11,6 +11,8 @@ of less than 512 bytes.
 
 [we are in hackaday](https://hackaday.com/2025/04/20/milliforth-6502-a-forth-for-the-6502-cpu/#comment-8120803)
 
+( this repo needs a review ) 
+
 ## Bytes?
 
 Yes, bytes. But those are for a x86 16-bit CPU. 
@@ -39,11 +41,13 @@ This project is also used to verify standart Direct Thread Code against
 variations of Minimum Thread Code.
 
 [Minimal Thread Code](https://github.com/agsb/milliForth-6502/blob/main/The_words_in_MTC_Forth.en.pdf) 
-is an alternative model for inner interpreter, where 
-the dictionary is organized with the primitives words grouped together 
-before the compound words, defining a "tipping point", from where could 
-decide if the reference of a word will be to executed or be pushed into 
-return stack. PS. MTC is a reduced form of [TachyonForth](https://sourceforge.net/projects/tachyon-forth/) inner interpreter.
+is an alternative model for inner interpreter, where the dictionary 
+is organized with the primitives words grouped together before the 
+compound words, defining a "tipping point", from where could decide
+if the reference of a word will be to executed or be pushed into 
+return stack. 
+
+PS. MTC is a reduced form of [TachyonForth](https://sourceforge.net/projects/tachyon-forth/) inner interpreter.
 
 ## Coding for 6502
 
