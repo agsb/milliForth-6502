@@ -11,6 +11,8 @@ of less than 512 bytes.
 
 [we are in hackaday](https://hackaday.com/2025/04/20/milliforth-6502-a-forth-for-the-6502-cpu/#comment-8120803)
 
+[we are alive](https://github.com/rumbledethumps/milliForth)
+
 ( this repo needs a review ) 
 
 ## Bytes?
