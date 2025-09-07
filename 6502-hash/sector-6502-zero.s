@@ -184,10 +184,10 @@ H0000 = 0
 ; use_DTC = 1
 
 ; uncomment to include the extras (sic)
-; use_extras = 1 
+ use_extras = 1 
 
 ; uncomment to include the extensions (sic)
-; use_extensions = 1 
+ use_extensions = 1 
 
 ;---------------------------------------------------------------------
 /*
@@ -216,59 +216,69 @@ tib = $0200
 ; moves forwards
 tib_end = $50
 
+; reserved for scribbles
+pic = tib_end
+
 ; data stack, 36 cells,
 ; moves backwards, push decreases before copy
-sp0 = $98
+DATA_SIZE  = 24 * 2
 
 ; return stack, 36 cells, 
 ; moves backwards, push decreases before copy
-rp0 = $E0
-
-; reserved for scribbles
-pic = rp0
+RETURN_SIZE = 24 * 2
 
 ;----------------------------------------------------------------------
-; no values here or must be a BSS
+; "What happens in Vegas, stays in Vegas", like in page zero
+; but no values here or must be at BSS
+
 .segment "ZERO"
 
-* = $E0
+; * = $TAKE_ME
 
-nil:  ; empty for fixed reference
+; empty for fixed reference
+nil: 
 
-; as user variables
-; order matters for hello_world.forth !
+; cascate allocation
 
-; internal Forth 
+; stacks
 
-stat:   .word $0 ; state at lsb, last size+flag at msb
-toin:   .word $0 ; toin next free byte in TIB
-last:   .word $0 ; last link cell
-here:   .word $0 ; next free cell in heap dictionary, aka dpt
+sp0 = nil + DATA_SIZE
+rp0 = sp0 + RETURN_SIZE
+spi = rp0 + 1
+rpi = spi + 1
 
 ; pointers registers
 
-spt:    .word $0 ; data stack base,
-rpt:    .word $0 ; return stack base
-ipt:    .word $0 ; instruction pointer
-wrd:    .word $0 ; word pointer
+ipt = rpi + 2 ; instruction pointer
+wrd = ipt + 2 ; word pointer
 
-* = $F0
-
-; free for use
-
-fst:    .word $0 ; first
-snd:    .word $0 ; second
-trd:    .word $0 ; third
-fth:    .word $0 ; fourth
+; for future expansion, reserved
+head = wrd + 2 ; heap forward, also DP
+tail = head + 2 ; heap backward
 
 ; used, reserved
 
-tout:   .word $0 ; next token in TIB
-back:   .word $0 ; hold 'here while compile
+tout = tail + 2 ; next token in TIB
+back = tout + 2 ; hold 'here while compile
 
-; for future expansion, reserved
-head:   .word $0 ; heap forward, also DP
-tail:   .word $0 ; heap backward
+; classic, free for use
+
+fst = back + 2 ; first
+snd = fst  + 2 ; second
+trd = snd  + 2 ; third
+fth = trd  + 2 ; fourth
+
+; as user variables
+; sure, order matters for hello_world.forth !
+
+; internal Forth 
+
+stat = fth  + 2 ; state at lsb, last size+flag at msb
+toin = stat + 2 ; toin next free byte in TIB
+last = toin + 2 ; last link cell
+here = last + 2 ; next free cell in heap dictionary, aka dpt
+
+.end 
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -280,7 +290,7 @@ tail:   .word $0 ; heap backward
 
 ;----------------------------------------------------------------------
 .segment "CODE" 
-
+; ram code here
 ;
 ; leave space for page zero, hard stack, 
 ; and buffer, locals, forth stacks
@@ -323,20 +333,19 @@ warm:
 ;---------------------------------------------------------------------
 ; supose never change
 reset:
-    ldy #>tib
-    sty spt + 1
-    sty rpt + 1
+    ldy #02
     sty toin + 1
     sty tout + 1
 
 abort:
-    ldy #<sp0
-    sty spt + 0
+    ldy #sp0
+    sty spi
 
 quit:
-    ldy #<rp0
-    sty rpt + 0
+    ldy #rp0
+    sty rpi
 
+clean:
 ; reset tib
     ldy #0      
 ; clear tib stuff
@@ -656,24 +665,24 @@ spush1:
 ;---------------------------------------------------------------------
 ; push a cell 
 ; from a page zero address indexed by Y
-; into a page zero indirect address indexed by X
+; into a page zero address indexed by X
 spush:
-    ldx #(spt)
+    ldx #(spi)
     ; jmp push
     .byte $2c   ; mask next two bytes, nice trick !
 
 rpush:
-    ldx #(rpt)
+    ldx #(rpi)
 
 ;---------------------------------------------------------------------
 ; classic stack backwards
 push:
-    jsr decwx
+    dex
     lda 1, y
-    sta (0, x)
-    jsr decwx
+    sta 0, x
+    dex
     lda 0, y
-    sta (0, x)
+    sta 0, x
     rts  
 
 ;---------------------------------------------------------------------
@@ -692,25 +701,25 @@ spull1:
 ; from a page zero indirect address indexed by X
 ; into a page zero address indexed by y
 spull:
-    ldx #(spt)
+    ldx #(spi)
     ; jmp pull
     .byte $2c   ; mask next two bytes, nice trick !
 
 rpull:
-    ldx #(rpt)
+    ldx #(rpi)
 
 ;---------------------------------------------------------------------
 ; classic stack backwards
 pull:   ; fall through, same as copyfrom
 
 ;---------------------------------------------------------------------
-; from a page zero indirect address indexed by X
+; from a page zero address indexed by X
 ; into a page zero address indexed by y
 copyfrom:
-    lda (0, x)
+    lda 0, x
     sta 0, y
-    jsr incwx
-    lda (0, x)
+    inx
+    lda 0, x
     sta 1, y
     ; jmp incwx ; fall through
 
@@ -756,9 +765,9 @@ def_word "abort", "abort_", 0
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of data stack
 def_word ".S", "splist", 0
-    lda spt + 0
+    lda spi + 0
     sta fst + 0
-    lda spt + 1
+    lda #00
     sta fst + 1
     lda #'S'
     jsr putchar
@@ -769,9 +778,9 @@ def_word ".S", "splist", 0
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of return stack
 def_word ".R", "rplist", 0
-    lda rpt + 0
+    lda rpi
     sta fst + 0
-    lda rpt + 1
+    lda #00
     sta fst + 1
     lda #'R'
     jsr putchar
@@ -1091,7 +1100,7 @@ puthex:
     jmp putchar
 
 .endif
-
+; .ifdef use_extras
 
 .ifdef numbers
 ;----------------------------------------------------------------------
@@ -1147,6 +1156,7 @@ number:
     rts
 
 .endif
+; .ifdef numbers
 
 ;---------------------------------------------------------------------
 ;
@@ -1180,6 +1190,7 @@ def_word ";$", "donext", 0
     jmp next
 
 .endif
+; .ifdef use_extensions
 
 ;---------------------------------------------------------------------
 ; core primitives minimal 
