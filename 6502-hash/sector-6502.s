@@ -213,18 +213,20 @@ CELL = 2
 FLAG_IMM = $8000
 
 ;---------------------------------------------------------------------
-; primitives djb2 hash cleared of bit 31
- hash_key =    $0B876D32 
- hash_emit =   $7C6B87D0 
- hash_store =  $0002B584 
- hash_fetch =  $0002B5E5 
- hash_nand =   $7C727500 
- hash_plus =   $0002B58E 
- hash_zeroq =  $00596816 
- hash_userat = $00596F90
- hash_colon =  $0002B59F 
- hash_semis =  $8002B59E       ; unique with FLAG_IMM 
- hash_exit =   $7C6BBE85 
+; primitives djb2 hash cleared of bit 16
+
+hash_emit = 07D0
+hash_store = 3584
+hash_plus = 358E
+hash_semis = 359E
+hash_colon = 359F
+hash_fetch = 35E5
+hash_exit = 3E85
+hash_bye = 4AFB
+hash_zeroq = 6816
+hash_key = 6D32
+hash_userq = 6F90
+hash_nand = 7500
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
@@ -257,8 +259,6 @@ locals:
 ; hash djb2 buffer
 hashs:
         .word $0 
-        .word $0
-        .word $0
         .word $0
         
 ;----------------------------------------------------------------------
@@ -452,6 +452,8 @@ tick:
 
         ldy #3
         
+        zzzzz need adjust hashes
+
 @looph:
 ; compare hashes
         lda (wrd), y
@@ -522,17 +524,13 @@ token:
 hashs_DJB2 = 5381
 @hash:
         lda #<hashs_DJB2
-        sta hashs + 4
+        sta hashs + 2
         sta hashs + 0
         
         lda #>hashs_DJB2
-        sta hashs + 5
+        sta hashs + 3
         sta hashs + 1
         
-        lda #0
-        sta hashs + 2
-        sta hashs + 3
-
 @read:
         lda tib, y
         cmp #' '
@@ -556,21 +554,13 @@ hashs_DJB2 = 5381
         
         clc
         
-        lda hashs + 4
+        lda hashs + 2
         adc hashs + 0
         sta hashs + 0
         
-        lda hashs + 5
+        lda hashs + 3
         adc hashs + 1
         sta hashs + 1
-        
-        lda #0
-        adc hashs + 2
-        sta hashs + 2
-        
-        lda #0
-        adc hashs + 3
-        sta hashs + 3
         
 ; xor with character
         pla
@@ -584,8 +574,8 @@ hashs_DJB2 = 5381
 @ends:
 ; clear MSB bit
 ;       lda #127
-        and hashs + 3
-        sta hashs + 3
+        and hashs + 1
+        sta hashs + 1
 
 ; save toin
         sty toin + 0
