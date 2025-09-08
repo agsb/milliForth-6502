@@ -1,0 +1,1 @@
+sh doit $1 < my_tests.FORTH > z3

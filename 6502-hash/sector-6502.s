@@ -214,19 +214,20 @@ FLAG_IMM = $8000
 
 ;---------------------------------------------------------------------
 ; primitives djb2 hash cleared of bit 16
-
-hash_emit = 07D0
-hash_store = 3584
-hash_plus = 358E
-hash_semis = 359E
-hash_colon = 359F
-hash_fetch = 35E5
-hash_exit = 3E85
-hash_bye = 4AFB
-hash_zeroq = 6816
-hash_key = 6D32
-hash_userq = 6F90
-hash_nand = 7500
+; semmis is immediate (ORA $8000)
+;
+hash_emit       = $07D0
+hash_store      = $3584
+hash_plus       = $358E
+hash_colon      = $359F
+hash_semis      = $B59E
+hash_fetch      = $35E5
+hash_exit       = $3E85
+hash_bye        = $4AFB
+hash_zeroq      = $6816
+hash_key        = $6D32
+hash_userq      = $6F90
+hash_nand       = $7500
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
@@ -255,6 +256,8 @@ locals:
         .word $0
         .word $0
         .word $0
+        .word $0
+        .word $0
 
 ; hash djb2 buffer
 hashs:
@@ -267,6 +270,7 @@ hashs:
 ; pointers registers
 ipt:    .word $0 ; instruction pointer
 wrd:    .word $0 ; word pointer
+
 fst:    .word $0 ; first
 snd:    .word $0 ; second
 trd:    .word $0 ; third
@@ -296,6 +300,9 @@ system: .res 256
 ;----------------------------------------------------------------------
 .segment "CODE" 
 
+;----------------------------------------------------------------------
+; leave space for page zero, hard stack, 
+; and buffer, locals, forth stacks
 ; "all in" page $200
 
 * = $200
@@ -303,25 +310,20 @@ system: .res 256
 ; terminal input buffer, forward, must be at page boundary $00
 
 ; reserve 80 bytes, (but 72 is enough), moves forwards
-tib: .res 80
+tib = $0200
 
 ; data stack, moves backwards, 36 words
-sp0t: .res 72
-sp0:
+sp0 = $98
 
 ; return stack, moves backwards, 36 words
-rp0t:  .res 72
-rp0:
-
-; leave 32 bytes free for use
+rp0 = $E0
 
 ;----------------------------------------------------------------------
-;
-; leave space for page zero, hard stack, 
-; and buffer, locals, forth stacks
-;
+; code start
+
 * = $300
 
+;----------------------------------------------------------------------
 main:
 
 ;----------------------------------------------------------------------
@@ -371,6 +373,7 @@ reset:
 
 ; when not found in dictionary
 miss:
+        ; maybe do numbers ?
 
 abort:
         ldy #<sp0
@@ -404,15 +407,15 @@ resolvept:
 okey:
 
 ;   uncomment for feedback
-        lda stat + 0
-        bne resolve
-
-        lda #'O'
-        jsr putchar
-        lda #'K'
-        jsr putchar
-        lda #10
-        jsr putchar
+;        lda stat + 0
+;        bne resolve
+;
+;        lda #'O'
+;        jsr putchar
+;        lda #'K'
+;        jsr putchar
+;        lda #10
+;        jsr putchar
 
 resolve:
 ; get a token and receive a hash :)
@@ -445,33 +448,25 @@ tick:
         lda snd + 1
         sta wrd + 1
 
-; update next link 
+; update next link in snd 
         ldx #(wrd) ; from 
         ldy #(snd) ; into
         jsr pull
 
-        ldy #3
-        
-        zzzzz need adjust hashes
-
-@looph:
 ; compare hashes
+        ldy #0
         lda (wrd), y
-        
-; mask MSB byte
-        cpy #3
-        bne @cont
-        and #$7F
-
-@cont:
         cmp (hashs), y
         bne @loop
-        dey
-        bpl @looph
+        iny
+        lda (wrd), y
+        and #127
+        cmp (hashs), y
+        bne @loop
 
 @done:
-; update wrd
-        lda #4
+; update wrd to code
+        lda #2
         ldx #(wrd)
         jsr addwx
         
@@ -537,17 +532,19 @@ hashs_DJB2 = 5381
         beq @ends
 
         pha
-        sty y_save
 
 ; multiply by 32
-        ldy #5
+        ldx #5
         clc
 
 @loop:        
-        lda hashs, y
+        lda hashs + 0
         rol
-        sta hashs, y
-        dey
+        sta hashs + 0
+        lda hashs + 1
+        rol
+        sta hashs + 1
+        dex
         bne @loop
 
 ; then add, total 33
@@ -567,13 +564,12 @@ hashs_DJB2 = 5381
         eor hashs + 0
         sta hashs + 0
         
-        ldy y_save
         iny
         bne @read
 
 @ends:
 ; clear MSB bit
-;       lda #127
+        lda #127
         and hashs + 1
         sta hashs + 1
 
@@ -662,12 +658,6 @@ decwx:
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
-stawrd:
-        sta wrd + 1
-
-iscomma:
-        ldy #(wrd)
-
 docomma: 
         ldx #(here)
         ; fall throught
@@ -1226,7 +1216,7 @@ def_word ";$", "donext", 0
 ; start of dictionary
 ;---------------------------------------------------------------------
 ; ( -- u ) ; tos + 1 unchanged
-def_word "key", "key", 0
+def_word "key", "key", hash_key
         jsr getchar
         sta fst + 0
         ; jmp this  ; uncomment if char could be \0
@@ -1234,7 +1224,7 @@ def_word "key", "key", 0
         
 ;---------------------------------------------------------------------
 ; ( u -- ) ; tos + 1 unchanged
-def_word "emit", "emit", 0
+def_word "emit", "emit", hash_emit
         jsr spull1
         lda fst + 0
         jsr putchar
@@ -1243,7 +1233,7 @@ def_word "emit", "emit", 0
 
 ;---------------------------------------------------------------------
 ; ( a w -- ) ; [a] = w
-def_word "!", "store", 0
+def_word "!", "store", hash_store
 storew:
         jsr spull2
         ldx #(snd) 
@@ -1254,7 +1244,7 @@ storew:
 
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- NOT(w1 AND w2) )
-def_word "nand", "nand", 0
+def_word "nand", "nand", hash_nand
         jsr spull2
         lda snd + 0
         and fst + 0
@@ -1268,7 +1258,7 @@ def_word "nand", "nand", 0
 
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- w1+w2 ) 
-def_word "+", "plus", 0
+def_word "+", "plus", hash_plus
         jsr spull2
         clc  ; better safe than sorry
         lda snd + 0
@@ -1280,7 +1270,7 @@ def_word "+", "plus", 0
 
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
-def_word "@", "fetch", 0
+def_word "@", "fetch", hash_fetch
 fetchw:
         jsr spull1
         ldx #(fst)
@@ -1306,7 +1296,7 @@ jmpnext:
 
 ;---------------------------------------------------------------------
 ; ( 0 -- $0000) | ( n -- $FFFF) not zero at top ?
-def_word "0#", "zeroq", 0
+def_word "0#", "zeroq", hash_zeroq
         jsr spull1
         lda fst + 1
         ora fst + 0
@@ -1319,14 +1309,14 @@ isfalse:
 
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
-def_word "s@", "state", 0 
+def_word "u@", "state", hash_userq
         lda #<stat
         sta fst + 0
         lda #>stat
         beq keeps   ; always taken
 
 ;---------------------------------------------------------------------
-def_word ";", "semis",  FLAG_IMM
+def_word ";", "semis", hash_semis
 ; update last, panic if colon not lead elsewhere 
         lda head + 0 
         sta last + 0
@@ -1351,7 +1341,7 @@ finish:
         bcc next    ; always taken
 
 ;---------------------------------------------------------------------
-def_word ":", "colon", 0
+def_word ":", "colon", hash_colon
 ; save here, panic if semis not follow elsewhere
         lda here + 0
         sta head + 0 
@@ -1371,9 +1361,6 @@ def_word ":", "colon", 0
         jsr token
 
         ldy #(hashs)
-        jsr docomma
-
-        ldy #(hashs + 2)
 
 @ends:
         bcc finish
@@ -1390,7 +1377,7 @@ def_word ":", "colon", 0
 ;
 ;---------------------------------------------------------------------
 ; ( -- ) 
-def_word "exit", "exit", 0
+def_word "exit", "exit", hash_exit
 unnest: ; exit
 ; pull, ipt = (rpt), rpt += 2 
         ldy #(ipt)

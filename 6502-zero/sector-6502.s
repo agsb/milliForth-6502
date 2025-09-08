@@ -278,7 +278,7 @@ toin = stat + 2 ; toin next free byte in TIB
 last = toin + 2 ; last link cell
 here = last + 2 ; next free cell in heap dictionary, aka dpt
 
-.end 
+;.end 
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
