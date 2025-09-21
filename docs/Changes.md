@@ -98,10 +98,15 @@ ends:
 
         bye     ( -- )  ends the Forth
         abort   ( -- )  abort and reset
-        .S      ( -- )  dumps the data stack
-        .R      ( -- )  dumps the return stack
+        %S      ( -- )  dumps the data stack
+        %R      ( -- )  dumps the return stack
         dump    ( -- )  dumps the dictionary as binary
         words   ( -- )  dumps the dictionary as extended
         .       ( w -- w ) shows cell as hexadecimal
+
+
+21/09/2025
+
+    Changed .S to %S and .R to %R, due standarts conflits.
 
 

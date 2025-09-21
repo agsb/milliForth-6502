@@ -755,7 +755,7 @@ def_word "abort", "abort_", 0
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of data stack
-def_word ".S", "splist", 0
+def_word "%S", "splist", 0
     lda spt + 0
     sta fst + 0
     lda spt + 1
@@ -768,7 +768,7 @@ def_word ".S", "splist", 0
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of return stack
-def_word ".R", "rplist", 0
+def_word "%R", "rplist", 0
     lda rpt + 0
     sta fst + 0
     lda rpt + 1
