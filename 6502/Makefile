@@ -10,7 +10,7 @@ LD = cl65
 
 LDFLAGS = --cpu 6502 --memory-model near \
 	--no-target-lib --target none -t none \
-	--debug --debug-info
+#	--debug --debug-info
 
 MY = sector-6502
 
