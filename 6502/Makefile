@@ -14,7 +14,7 @@ LDFLAGS = --cpu 6502 --memory-model near \
 
 MY = sector-6502
 
-LOADD = 0300
+LOADD = 0400
 
 ########################################
 

@@ -24,7 +24,7 @@
 ;   Changes:
 ;
 ;   all data (36 cells) and return (36 cells) stacks, TIB (80 bytes) 
-;       and PIC (32 bytes) are in same page $200, 256 bytes; 
+;       and PIC (32 bytes) are in same page $300, 256 bytes;
 ;
 ;   TIB and PIC grows forward, stacks grows backwards;
 ;
@@ -92,15 +92,15 @@
 ;   then backward stacks allow to use the slack space ... 
 ;
 ;   this 6502 Forth memory model blocked in pages of 256 bytes:
-;   [page0][page1][page2][core ... forth dictionary ...here...]
+;   [page0][page1][page2]I[page3]. forth dictionary ...here...]
 ;   
-;   At page2: 
+;   At page3:
 ;
 ;   |$00 tib> .. $50| <spt..sp0 $98| <rpt..rp0 $E0|pic> ..$FF|
 ;
-;   From page 3 onwards:
+;   From page 4 onwards:
 ;
-;   |$0300 cold:, warm:, forth code, init: here> heap ... tail| 
+;   |$0400 cold:, warm:, forth code, init: here> heap ... tail|
 ;
 ;   PIC is a transient area of 32 bytes 
 ;   PAD could be allocated from here
@@ -184,10 +184,17 @@ H0000 = 0
 ; use_DTC = 1
 
 ; uncomment to include the extras (sic)
-; use_extras = 1 
+; uncommented RAH
+use_extras = 1
 
 ; uncomment to include the extensions (sic)
 ; use_extensions = 1 
+
+; uncomment to include the io code for the OSI C1E or UK101
+; uncommented RAH
+use_UK101_io = 1
+use_UK101_mem = 1
+
 
 ;---------------------------------------------------------------------
 /*
@@ -206,11 +213,16 @@ CELL = 2
 ; highlander, immediate flag.
 FLAG_IMM = 1<<7
 
-; "all in" page $200
+; "all in" page $300
 
 ; terminal input buffer, forward
 ; getline, token, skip, scan, depends on page boundary
+.ifdef UK101_mem
+; RAH. overlaps with CEGMON so move a page higher
+tib = $0300
+.else
 tib = $0200
+.endif
 
 ; reserve 80 bytes, (72 is enough) 
 ; moves forwards
@@ -231,7 +243,15 @@ pic = rp0
 ; no values here or must be a BSS
 .segment "ZERO"
 
+.ifdef UK101_mem
+; RAH. overlaps with CEGMON so move a page higher
+; RAH clashes with CEGMON editor controls so move to zero page $20.
+; The BASIC input buffer runs from $13 to $59 inclusive
+; so these will be over-written if you run BASIC but otherwise are safe
+* = $20
+.else
 * = $E0
+.endif
 
 nil:  ; empty for fixed reference
 
@@ -252,7 +272,12 @@ rpt:    .word $0 ; return stack base
 ipt:    .word $0 ; instruction pointer
 wrd:    .word $0 ; word pointer
 
+.ifdef UK101_mem
+; clashed with CEGMON so move from F0 to 30
+* = $30
+.else
 * = $F0
+.endif
 
 ; free for use
 
@@ -285,7 +310,8 @@ tail:   .word $0 ; heap backward
 ; leave space for page zero, hard stack, 
 ; and buffer, locals, forth stacks
 ;
-* = $300
+;* = $300
+* = $400
 
 main:
 
@@ -358,14 +384,18 @@ resolvept:
 okey:
 
 ;;   uncomment for feedback
-;    lda stat + 0
-;    bne resolve
-;    lda #'O'
-;    jsr putchar
-;    lda #'K'
-;    jsr putchar
-;    lda #10
-;    jsr putchar
+    lda stat + 0
+    bne resolve
+    lda #'O'
+    jsr putchar
+    lda #'K'
+    jsr putchar
+    lda #10
+    jsr putchar
+.ifdef use_UK101_io
+    lda #13
+    jsr putchar
+.endif
 
 resolve:
 ; get a token
@@ -515,8 +545,13 @@ getline:
 ; would be better with 
 ; 7-bit ascii only
 ;    and #$7F        
+; RAH UK101 CR
+.ifdef use_UK101_io
+    cmp #13
+.else
 ; unix \n
-    cmp #10         
+    cmp #10
+.endif
     bne @loop
 ; would be better with 
 ; no controls
@@ -580,8 +615,37 @@ token:
 ;---------------------------------------------------------------------
 ;  this code depends on systems or emulators
 ;
-;  lib6502  emulator
 ; 
+.ifdef use_UK101_io
+; Ray Hunter 2026 inspired from code for the Ohio Scientific C1E or UK101
+; BY G. SEARLE 2013 and the authors of CEGMON 1980
+INPUT := $FB46          ; blocking input routine in CEGMON
+OUTPUT := $FF9B         ; output routine in CEGMON
+getchar:
+    jsr INPUT
+eofs:
+; EOF ?
+    cmp #$04 ; ctrl-d to exit (choice of char is arbitrary). also clean carry :)
+    beq byes
+putchar:
+    pha
+    cmp #13
+    bne not_cr
+    jsr OUTPUT ; output the CR
+    lda #10 ; LF ; and now add an LF
+not_cr:
+    jsr OUTPUT
+    pla
+    rts
+
+; exit to CEGMON NEWMON (machine code monitor)
+byes:
+    jmp $FE00
+; end Ray Hunter inspired from code by Grant Searle and authors of CEGMON
+
+.else
+; original 6502 emulator code
+;  lib6502  emulator
 getchar:
     lda $E000
 
@@ -597,7 +661,7 @@ putchar:
 ; exit for emulator  
 byes:
     jmp $0000
-
+.endif
 ;
 ;   lib6502 emulator
 ;---------------------------------------------------------------------
