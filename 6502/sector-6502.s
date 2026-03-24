@@ -310,8 +310,12 @@ tail:   .word $0 ; heap backward
 ; leave space for page zero, hard stack, 
 ; and buffer, locals, forth stacks
 ;
-;* = $300
+.ifdef UK101_mem
+; RAH. overlaps with CEGMON so move a page higher
 * = $400
+.else
+* = $300
+.endif
 
 main:
 
@@ -629,7 +633,7 @@ eofs:
     beq byes
 putchar:
     pha
-    cmp #13
+    cmp #13    ; convert CR to print CR/LF. Possibly not reliable for all code.
     bne not_cr
     jsr OUTPUT ; output the CR
     lda #10 ; LF ; and now add an LF
