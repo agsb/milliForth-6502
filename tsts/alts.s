@@ -167,7 +167,6 @@ addbx:
     lda 1, x
     adc #$00
     sta 1, x
-    clc ; keep carry clean
 @ends:
     rts
 
@@ -180,7 +179,6 @@ subbx:
     lda 1, x
     sbc #$00
     sta 1, x
-    clc ; keep carry clean
 @ends:
     rts
 
@@ -195,7 +193,6 @@ addwx:
     lda 1, x
     adc 3, x
     sta 3, x
-    clc ; keep carry clean
     rts
 
 ;---------------------------------------------------------------------
@@ -210,7 +207,6 @@ subwx:
     lda 1, x
     sbc 3, x
     sta 3, x
-    clc ; keep carry clean
     rts
 
 ;---------------------------------------------------------------------

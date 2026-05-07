@@ -64,7 +64,7 @@ The way at 6502 is use a page zero and lots of lda/sta bytes.
 Both DTC and MTC runs with my_hello_world.FORTH, with these numbers. 
 
 
-    MTC, Instructions: 35796948, Cycles: 148802145, SIZE: 582
+    MTC, Instructions: 35796948, Cycles: 148802145, SIZE: 584
 
     DTC, Instructions: 35211469, Cycles: 148450585, SIZE: 596
 
