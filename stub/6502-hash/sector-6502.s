@@ -42,20 +42,22 @@
 ;----------------------------------------------------------------------
 ;   Changes:
 ;
-;   all data (36 cells) and return (36 cells) stacks, TIB (80 bytes) 
-;       and PIC (32 bytes) are in same page $200, 256 bytes; 
+;   This version uses hash djb2 instead of size+name
 ;
-;   TIB and PIC grows forward, stacks grows backwards;
+;   There is no names and no terminal input buffer
 ;
-;   no overflow or underflow checks;
+;   All data (36 cells) and return (36 cells) stacks, 
+;   in same page $200, 256 bytes; 
 ;
-;   the header order is LINK, SIZE+FLAG, NAME.
+;   Stacks grows backwards;
 ;
-;   only IMMEDIATE flag used as $80, no hide, no compile;
+;   No overflow or underflow checks;
+;
+;   the header order is LINK, HASH, CODE.
+;
+;   only IMMEDIATE flag used as $8000, no hide, no compile;
 ;
 ;   As ANSI Forth 1994: FALSE is $0000 ; TRUE is $FFFF ;
-;
-;   This version uses hash djb2 instead of size+name
 ;
 ;----------------------------------------------------------------------
 ;   Remarks:
@@ -66,20 +68,15 @@
 ;
 ;       no TOS register, all values keeped at stacks;
 ;
-;       TIB (terminal input buffer) is like a stream;
+;       Use of stream model for input and output;
+;
+;       There is no lines;
 ;
 ;       Chuck Moore uses 64 columns, be wise, obey rule 72 CPL; 
 ;
-;       words must be between spaces, before and after;
+;       Tokens must be between spaces, before and after;
 ;
-;       no line wrap, do not break words between lines;
-;
-;       only 7-bit ASCII characters, plus \n, no controls;
-;           ( later maybe \b backspace and \u cancel )
-;
-;       words are case-sensitivy and less than 16 characters;
-;
-;       no need named-'pad' at end of even names;
+;       Tokens are case-sensitivy and no length limit;
 ;
 ;       no multiuser, no multitask, no checks, not faster;
 ;
@@ -115,14 +112,11 @@
 ;   
 ;   At page2: 
 ;
-;   |$00 tib> .. $50| <spt..sp0 $98| <rpt..rp0 $E0|pic> ..$FF|
+;   |$00  <spt..sp0 $48| <rpt..rp0 $90| free $FF|
 ;
 ;   From page 3 onwards:
 ;
-;   |$0300 cold:, warm:, forth code, init: here> heap ... tail| 
-;
-;   PIC is a transient area of 32 bytes 
-;   PAD could be allocated from here
+;   |$0300 cold:, warm:, forth code, init: here> heap ... ceil| 
 ;
 ;----------------------------------------------------------------------
 ;   For Devs:
@@ -137,8 +131,8 @@
 ;   Never mess with two underscore variables;
 ;
 ;   Not using smudge, 
-;       colon saves "here" into "head" and 
-;       semis loads "lastest" from "head";
+;       colon saves "here" into "peek" and 
+;       semis loads "lastest" from "peek";
 ;
 ;   Do not risk to put stacks with $FF.
 ;
@@ -149,8 +143,10 @@
 ;----------------------------------------------------------------------
 ;
 ;   Stacks represented as (standart)
-;       S:(w1 w2 w3 -- u1 u2)  R:(w1 w2 w3 -- u1 u2)
-;       before -- after, top at left.
+;
+;       (w1 w2 w3 -- u1 u2 ; w1 w2 w3 -- u1 u2)
+;       
+;       S ; R, before -- after, top at right.
 ;
 ;----------------------------------------------------------------------
 ;
@@ -177,15 +173,15 @@
 .endmacro
 
 ; header for primitives
-; the entry point for dictionary is h_~name~
-; the entry point for code is ~name~
+; the entry point for head is it_~name~
+; the entry point for code is is_~name~
 .macro def_word name, label, hashed
-makelabel "h_", label
+makelabel "it_", label
 .ident(.sprintf("H%04X", hcount + 1)) = *
 .word .ident (.sprintf ("H%04X", hcount))
 hcount .set hcount + 1
 .dword hashed
-makelabel "", label
+makelabel "is_", label
 .endmacro
 
 ;---------------------------------------------------------------------
@@ -209,61 +205,87 @@ H0000 = 0
 ; cell size, two bytes, 16-bit
 CELL = 2    
 
-; highlander, immediate flag.
-FLAG_IMM = $8000
+; highlander, immediate flag. just compare high byte
+FLAG_IMM = $80
 
 ;---------------------------------------------------------------------
 ; primitives djb2 hash cleared of bit 16
-; semmis is immediate (ORA $8000)
+; semmis is immediate (ORA $80)
 ;
-hash_emit       = $07D0
-hash_store      = $3584
-hash_plus       = $358E
-hash_colon      = $359F
-hash_semis      = $B59E
-hash_fetch      = $35E5
-hash_exit       = $3E85
-hash_bye        = $4AFB
-hash_zeroq      = $6816
-hash_key        = $6D32
-hash_userq      = $6F90
-hash_nand       = $7500
+; 16 bits
+;hash_key        = $6D32
+;hash_emit       = $07D0
+;hash_fetch      = $35E5
+;hash_store      = $3584
+;hash_nand       = $7500
+;hash_plus       = $358E
+;hash_zeroq      = $6816
+;hash_userq      = $6F90
+;hash_colon      = $359F
+;hash_semis      = $B59E
+;hash_exit       = $3E85
+
+;---------------------------------------------------------------------
+; primitives djb2 hash cleared of bit 32
+; semmis is immediate (ORA $80)
+;
+; 32 bits
+hash_key        = $0B876D32  
+hash_emit       = $7C6B87D0  
+hash_fetch      = $0002B5E5  
+hash_store      = $0002B584  
+hash_nand       = $7C727500  
+hash_plus       = $0002B58E  
+hash_zeroq      = $00596816  
+hash_userq      = $00596F90  
+hash_semis      = $8002B59E  
+hash_colon      = $0002B59F  
+hash_exit       = $7C6BBE85  
+
+; BYE = $0B874AFB  
+; ABORT = $0A1DFF4F  
+; .S = $005966B8  
+; .R = $005966B9  
+; DUMP = $7C6B2FE9  
+; WORDS = $0B6953F8  
+; . = $0002B58B  
+; 2/ = $00596858  
+; EXEC = $7C6BC01E  
+; ;$ = $0059697A  
+;  = $00001505  
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
 
-; order matters for hello_world.forth !
 
 ;----------------------------------------------------------------------
 * = $D0
 
-; as user variables
-stat:   .word $0 ; state at lsb, last size+flag at msb
-toin:   .word $0 ; toin next free byte in TIB
-last:   .word $0 ; last link cell
-here:   .word $0 ; next free cell in heap dictionary, aka dpt
+; order matters for hello_world.forth !
+; user variables
 sptr:   .word $0 ; data stack base,
 rptr:   .word $0 ; return stack base
-head:   .word $0 ; heap forward
-tail:   .word $0 ; heap backward
+last:   .word $0 ; last link cell
+here:   .word $0 ; next unused cell, aka dpt
+stat:   .word $0 ; state at lsb, last size+flag at msb
+peek:   .word $0 ; last here before compiling
+ceil:   .word $0 ; last unused cell 
 
 ;----------------------------------------------------------------------
 * = $E0
 
-; free for locals
-locals:
+; hash djb2 buffer
+hashp:
+        .word $0 
+        .word $0 
         .word $0 
         .word $0
-        .word $0
-        .word $0
-        .word $0
+hashq:
+        .word $0 
+        .word $0 
+        .word $0 
         .word $0
 
-; hash djb2 buffer
-hashs:
-        .word $0 
-        .word $0
-        
 ;----------------------------------------------------------------------
 * = $F0
 
@@ -302,21 +324,17 @@ system: .res 256
 
 ;----------------------------------------------------------------------
 ; leave space for page zero, hard stack, 
-; and buffer, locals, forth stacks
-; "all in" page $200
+; forth stacks "all in" page $200
 
 * = $200
 
-; terminal input buffer, forward, must be at page boundary $00
-
-; reserve 80 bytes, (but 72 is enough), moves forwards
-tib = $0200
+allin = $0200
 
 ; data stack, moves backwards, 36 words
-sp0 = $98
+sp0 = $48
 
 ; return stack, moves backwards, 36 words
-rp0 = $E0
+rp0 = $90
 
 ;----------------------------------------------------------------------
 ; code start
@@ -345,9 +363,9 @@ cold:
 
 ;----------------------------------------------------------------------
 
-h_last = h_exit
+h_last = it_exit
 
-h_here = ends
+h_here = it_ends
 
 ;----------------------------------------------------------------------
 warm:
@@ -363,11 +381,8 @@ warm:
         lda #<h_here
         sta here + 0
 
-;---------------------------------------------------------------------
 ; supose never change
-reset:
-        ldy #>tib
-        sty toin + 1
+        ldy #>allin
         sty sptr + 1
         sty rptr + 1
 
@@ -383,28 +398,20 @@ quit:
         ldy #<rp0
         sty rptr + 0
 
-; reset tib
-        ldy #0  
-
-; clear tib stuff
-        sty tib + 0
-
-; clear cursor
-        sty toin + 0
-
-; stat is 'interpret' == \0
+; stat is 'execute' == \0
+        ldy #0
         sty stat + 0
         
-        .byte $2c   ; mask next two bytes, nice trick !
-
 ;---------------------------------------------------------------------
 ; the outer loop
 
-resolvept:
-        .word okey
+        .byte $2c   ; mask next two bytes, nice trick !
+
+warptip:
+        .word warp
 
 ;---------------------------------------------------------------------
-okey:
+warp:
 
 ;   uncomment for feedback
 ;        lda stat + 0
@@ -417,7 +424,6 @@ okey:
 ;        lda #10
 ;        jsr putchar
 
-resolve:
 ; get a token and receive a hash :)
 ;
         jsr token
@@ -427,22 +433,19 @@ resolve:
 
 tick:
 ; load last entry
-        lda last + 1
-        sta snd + 1
         lda last + 0
         sta snd + 0
+        lda last + 1
+        sta snd + 1
         
 @loop:
 ; lsb linked list
         lda snd + 0
         sta wrd + 0
 
-; verify \0x0
+; verify \0x0, end of linked list
         ora snd + 1
         beq miss
-
-;   maybe to place a code for number? 
-;   but not for now.
 
 ; msb linked list
         lda snd + 1
@@ -453,20 +456,23 @@ tick:
         ldy #(snd) ; into
         jsr pull
 
-; compare hashes
+; compare hashes, for 32 bits
         ldy #0
+@a100:
         lda (wrd), y
-        cmp (hashs), y
+        cpy #3
+        bne @a200
+        and #127
+@a200:
+        cmp (hashp), y
         bne @loop
         iny
-        lda (wrd), y
-        and #127
-        cmp (hashs), y
-        bne @loop
+        cpy #4
+        bne @a100
 
 @done:
-; update wrd to code
-        lda #2
+; update wrd to code, 4 bytes of hash
+        lda #4
         ldx #(wrd)
         jsr addwx
         
@@ -481,135 +487,97 @@ eval:
 
 compile:
 
-        ; lda #'C'
-        ; jsr putchar
-
         jsr docomma
 
-        bcc resolve
+        ; or branch bcc?
+        jmp warp
 
 immediate:
 execute:
 
-        ; lda #'E'
-        ; jsr putchar
-
-        lda #>resolvept
-        sta ipt + 1
-        lda #<resolvept
+        lda #<warptip
         sta ipt + 0
+        lda #>warptip
+        sta ipt + 1
 
         jmp pick
 
 ;---------------------------------------------------------------------
-; in place every token,
-; the counter is placed at last space before word
-; no rewinds
+; in place crude token,
 token:
-; last position on tib
-        ldy toin + 0
+
+hash_DJB2 = 5381
+@hash:
+        lda #<hash_DJB2
+        sta hashp + 0
+        sta hashq + 0
+        
+        lda #>hash_DJB2
+        sta hashp + 1
+        sta hashq + 1
+        
+        lda $0
+        sta hashp + 2
+        sta hashp + 3
+        sta hashq + 2
+        sta hashq + 3
 
 @skip:
-        lda tib, y
-        beq gets
-        iny
-        eor #' '
+        jsr getchar
+        cmp #' '
+        bmi @skip
         beq @skip
 
-hashs_DJB2 = 5381
-@hash:
-        lda #<hashs_DJB2
-        sta hashs + 2
-        sta hashs + 0
-        
-        lda #>hashs_DJB2
-        sta hashs + 3
-        sta hashs + 1
-        
-@read:
-        lda tib, y
-        cmp #' '
-        beq @ends
-
+@again:
         pha
 
 ; multiply by 32
-        ldx #5
         clc
 
-@loop:        
-        lda hashs + 0
+        ldx #5
+@loopi:        
+        ldy #0
+@loopj:
+        lda hashp, y
         rol
-        sta hashs + 0
-        lda hashs + 1
-        rol
-        sta hashs + 1
+        sta hashp, y
+        iny
+        cmp #4
+        bne @loopj
         dex
-        bne @loop
+        bne @loopi
 
 ; then add, total 33
         
         clc
         
-        lda hashs + 2
-        adc hashs + 0
-        sta hashs + 0
-        
-        lda hashs + 3
-        adc hashs + 1
-        sta hashs + 1
-        
+        ldy #0
+@loopk:
+        lda hashp, y
+        adc hashq, y
+        sta hashp, y
+        iny
+        cmp #4
+        bne @loopk
+
 ; xor with character
         pla
-        eor hashs + 0
-        sta hashs + 0
+        eor hashp + 0
+        sta hashp + 0
         
-        iny
-        bne @read
+@scan:
+        jsr getchar
+        cmp #' '
+        bmi @scan
+        bne @again
 
-@ends:
+mask:
 ; clear MSB bit
         lda #127
-        and hashs + 1
-        sta hashs + 1
-
-; save toin
-        sty toin + 0
+        and hashp + 3
+        sta hashp + 3
 
         rts
-
-;---------------------------------------------------------------------
-gets:
-
-; start with space
-        ldy #0
-        lda #' '
-@loop:  
-; is valid
-        sta tib, y  
-        iny
-        jsr getchar
-
-; 7-bit ascii only
-        and #$7F        
-; unix \n, ^J
-        cmp #10         
-        bne @loop
-
-@ends:
-; grace \b
-        lda #' '
-        sta tib, y  ; ends with space
-
-; grace \0
-        lda #0
-        sta tib + 1, y
-
-; start it
-        
-        sta toin + 0
-
-        bcc token
 
 ;---------------------------------------------------------------------
 ;  this code depends on systems or emulators
@@ -1186,27 +1154,9 @@ number:
 .ifdef use_extensions
 
 ;---------------------------------------------------------------------
-; ( w -- w/2 ) ; shift right
-def_word "2/", "shr", 0
-        jsr spull1
-        lsr fst + 1
-        ror fst + 0
-        jmp this
-
-;---------------------------------------------------------------------
-; ( a -- ) execute a jump to a reference at top of data stack
-def_word "exec", "exec", 0 
-        jsr spull1
-        jmp (fst)
-
-;---------------------------------------------------------------------
 ; ( -- ) execute a jump to a reference at IP
-def_word ":$", "docode", 0 
-        jmp (ipt)
-
-;---------------------------------------------------------------------
-; ( -- ) execute a jump to next
-def_word ";$", "donext", 0 
+def_word ";$", "docode", 0 
+        jsr (ipt)
         jmp next
 
 .endif
@@ -1310,43 +1260,18 @@ isfalse:
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
 def_word "u@", "state", hash_userq
-        lda #<stat
+        lda #<sptr
         sta fst + 0
-        lda #>stat
+        lda #>sptr
         beq keeps   ; always taken
-
-;---------------------------------------------------------------------
-def_word ";", "semis", hash_semis
-; update last, panic if colon not lead elsewhere 
-        lda head + 0 
-        sta last + 0
-        lda head + 1 
-        sta last + 1
-
-; stat is 'interpret'
-        lda #0
-        sta stat + 0
-
-; compound words must ends with exit
-        lda #<exit
-        sta fst + 0
-        lda #>exit
-        sta fst + 1
-
-        ldy #(fst)
-
-finish:
-        jsr docomma
-        
-        bcc next    ; always taken
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", hash_colon
 ; save here, panic if semis not follow elsewhere
         lda here + 0
-        sta head + 0 
+        sta peek + 0 
         lda here + 1
-        sta head + 1 
+        sta peek + 1 
 
 ; stat is 'compile'
         lda #1
@@ -1360,10 +1285,45 @@ def_word ":", "colon", hash_colon
 ; get a token and receive a hash :)
         jsr token
 
-        ldy #(hashs)
+; lower word
+
+        ldy #(hashp+0)
+
+        jsr docomma
+        
+; upper word
+
+        ldy #(hashp+2)
+
+        jsr docomma
 
 @ends:
-        bcc finish
+        bcc next
+
+;---------------------------------------------------------------------
+def_word ";", "semis", hash_semis
+; update last, panic if colon not lead elsewhere 
+        lda peek + 0 
+        sta last + 0
+        lda peek + 1 
+        sta last + 1
+
+; stat is 'execute'
+        lda #0
+        sta stat + 0
+
+; compound words must ends with exit
+        lda #<is_exit
+        sta fst + 0
+        lda #>is_exit
+        sta fst + 1
+
+        ldy #(fst)
+
+finish:
+        jsr docomma
+        
+        bcc next    ; always taken
 
 ;---------------------------------------------------------------------
 ; Thread Code Engine
@@ -1392,7 +1352,7 @@ next:
 pick:
 ; compare pages (MSBs)
         lda wrd + 1
-        cmp #>ends + 1
+        cmp #>it_ends + 1
         bmi jump
 
 nest:   ; enter
@@ -1413,7 +1373,7 @@ jump:
 
 ;-----------------------------------------------------------------------
 ; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
-ends:
+it_ends:
 
 ;-----------------------------------------------------------------------
 ; anything above is not a primitive

@@ -1,25 +1,23 @@
  
- : myhost s@ s@ s@ s@ nand + + ;
- 
- : -1 s@ s@ nand s@ nand ;
+ : void ;
+
+ : -1 u@ 0# ;
  : 0 -1 -1 nand ;
  : 1 -1 -1 + -1 nand ;
- 
  : 2 1 1 + ;
- : 4 2 2 + ;
- : 6 2 4 + ;
- 
- : >in s@ 2 + ;
- : latest s@ 4 + ;
- : here s@ 6 + ;
- 
- : 8 6 2 + ;
- : 10 6 4 + ;
- 
- : sp s@ 8 + ;
- : rp s@ 10 + ;
- 
+
  : cell 2 ;
+ 
+ : 4 2 2 + ;
+ : 8 4 4 + ;
+
+ : sp u@ ;
+ : rp sp cell + ;
+ : latest rp cell + ;
+ : here latest cell + ;
+ : stat here cell + ;
+
+ : 10 8 2 + ;
  
  : cr 10 emit ;
  
@@ -55,11 +53,8 @@
  
  : rot >r swap r> swap ;
  
- : ] 1 s@ ! ;
- : [ 0 s@ ! ; 
- 
- immediate
- 
+ : ] 1 u@ ! ;
+ : [ 0 u@ ! ; immediate
  
  : if ['] ?branch , here @ 0 , ; immediate
  : then dup here @ swap - swap ! ; immediate
