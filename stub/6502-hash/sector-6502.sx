@@ -17,6 +17,8 @@
 ;
 ;----------------------------------------------------------------------
 ;
+;----------------------------------------------------------------------
+;
 ;   A MilliForth for 6502 
 ;
 ;   original for the 6502, by Alvaro G. S. Barcellos, 2023
@@ -210,6 +212,23 @@ CELL = 2
 FLAG_IMM = $80
 
 ;---------------------------------------------------------------------
+; primitives djb2 hash cleared of bit 16
+; semmis is immediate (ORA $80)
+;
+; 16 bits
+;hash_key        = $6D32
+;hash_emit       = $07D0
+;hash_fetch      = $35E5
+;hash_store      = $3584
+;hash_nand       = $7500
+;hash_plus       = $358E
+;hash_zeroq      = $6816
+;hash_userq      = $6F90
+;hash_colon      = $359F
+;hash_semis      = $B59E
+;hash_exit       = $3E85
+
+;---------------------------------------------------------------------
 ; primitives djb2 hash cleared of bit 32
 ; semmis is immediate (ORA $80)
 ;
@@ -335,7 +354,6 @@ main:
 ; common must
 ;
 cold:
-
 ;   disable interrupts
         sei
 
@@ -416,6 +434,9 @@ warp:
 ;
         jsr token
 
+        ; lda #'P'
+        ; jsr putchar
+
 find:
 ; load last entry
         lda last + 0
@@ -461,7 +482,7 @@ find:
         lda #4
         ldx #(wrd)
         jsr addwx
-
+        
 eval:
 ; executing ? if == \0
         lda stat + 0   
@@ -472,6 +493,7 @@ eval:
         bmi immediate      
 
 compile:
+
         jsr docomma
 
         ; or branch bcc?
@@ -490,6 +512,7 @@ execute:
 ;---------------------------------------------------------------------
 ; in place crude token,
 token:
+
 hash_DJB2 = 5381
 @hash:
         lda #<hash_DJB2
@@ -508,7 +531,6 @@ hash_DJB2 = 5381
 
 @skip:
         jsr getchar
-        
         cmp #' '
         bmi @skip
         beq @skip
@@ -527,7 +549,7 @@ hash_DJB2 = 5381
         rol
         sta hashp, y
         iny
-        cpy #4
+        cmp #4
         bne @loopj
         dex
         bne @loopi
@@ -542,7 +564,7 @@ hash_DJB2 = 5381
         adc hashq, y
         sta hashp, y
         iny
-        cpy #4
+        cmp #4
         bne @loopk
 
 ; xor with character

@@ -1,22 +1,28 @@
  
- : void ;
-
- : -1 u@ 0# ;
+ : myhost s@ s@ s@ s@ nand + + ;
+ 
+ : -1 s@ s@ nand s@ nand ;
  : 0 -1 -1 nand ;
  : 1 -1 -1 + -1 nand ;
+ 
  : 2 1 1 + ;
-
+ : 4 2 2 + ;
+ : 6 2 4 + ;
+ 
+ : >in s@ 2 + ;
+ : latest s@ 4 + ;
+ : here s@ 6 + ;
+ 
+ : 8 6 2 + ;
+ : 10 6 4 + ;
+ 
+ : sp s@ 8 + ;
+ : rp s@ 10 + ;
+ 
  : cell 2 ;
  
- : 4 2 2 + ;
- : 8 4 4 + ;
-
- : sp u@ ;
- : rp sp cell + ;
- : latest rp cell + ;
- : here latest cell + ;
- : stat here cell + ;
-
+ : cr 10 emit ;
+ 
  : dup sp @ @ ;
  : invert dup nand ;
  : and nand invert ;
@@ -48,31 +54,29 @@
  : ['] rp @ @ dup 2 + rp @ ! @ ;
  
  : rot >r swap r> swap ;
- : -rot swap >r swap r> ;
  
- : ] 1 u@ ! ;
- : [ 0 u@ ! ; immediate
+ : ] 1 s@ ! ;
+ : [ 0 s@ ! ; 
+ 
+ immediate
+ 
  
  : if ['] ?branch , here @ 0 , ; immediate
  : then dup here @ swap - swap ! ; immediate
- : else ['] branch , here @ 0 , swap 
-        dup here @ swap - swap ! ; immediate
+ : else ['] branch , here @ 0 , swap dup 
+     here @ swap - swap ! ; immediate
  
  : begin here @ ; immediate
  : again ['] branch , here @ - , ; immediate
  : until ['] ?branch , here @ - , ; immediate
  : while ['] ?branch , here @ 0 , ; immediate
  : repeat swap ['] branch , here @ - , 
-        dup here @ swap - swap ! ; immediate
+     dup here @ swap - swap ! ; immediate
  
  : do here @ ['] >r , ['] >r , ; immediate
  : loop ['] r> , ['] r> , ['] lit , 1 , ['] + , 
-        ['] 2dup , ['] = , ['] ?branch , 
-        here @ - , ['] 2drop , ; immediate
- 
- : 10 lit [ 8 2 + , ] ;
- 
- : cr 10 emit ;
+     ['] 2dup , ['] = , ['] ?branch , 
+     here @ - , ['] 2drop , ; immediate
  
  : bl lit [ 1 2* 2* 2* 2* 2* , ] ;
  : 0fh lit [ 4 4 4 4 + + + 1 - , ] ;
@@ -81,15 +85,12 @@
  : type 0 do dup c@ emit 1 + loop drop ;
  
  : in> >in @ c@ >in dup @ 1 + swap ! ;
-
  : parse in> drop >in @ swap 0 begin over in> 
-        <> while 1 + repeat swap bl 
-        = if >in dup @ 1 - swap ! then ;
-
+     <> while 1 + repeat swap bl 
+     = if >in dup @ 1 - swap ! then ;
  : word in> drop begin dup in> <> until >in @ 2 - >in ! parse ;
  
  : [char] ['] lit , bl word drop c@ , ; immediate
-
  : ." [char] " parse type ; immediate
  
  : ( [char] ) parse drop drop ; immediate

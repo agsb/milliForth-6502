@@ -15,7 +15,7 @@
  : rp sp cell + ;
  : latest rp cell + ;
  : here latest cell + ;
- : stat here cell + ;
+ : state here cell + ;
 
  : dup sp @ @ ;
  : invert dup nand ;
@@ -50,8 +50,8 @@
  : rot >r swap r> swap ;
  : -rot swap >r swap r> ;
  
- : ] 1 u@ ! ;
- : [ 0 u@ ! ; immediate
+ : ] 1 state ! ;
+ : [ 0 state ! ; immediate
  
  : if ['] ?branch , here @ 0 , ; immediate
  : then dup here @ swap - swap ! ; immediate
@@ -98,6 +98,6 @@
  
  ." That's all Folks !" cr
  
- dump
- 
- 
+ ." one more line " cr
+
+

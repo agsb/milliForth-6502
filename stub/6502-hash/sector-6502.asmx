@@ -17,6 +17,8 @@
 ;
 ;----------------------------------------------------------------------
 ;
+;----------------------------------------------------------------------
+;
 ;   A MilliForth for 6502 
 ;
 ;   original for the 6502, by Alvaro G. S. Barcellos, 2023
@@ -40,9 +42,9 @@
 ;----------------------------------------------------------------------
 ;   Changes:
 ;
-;   This version uses hash djb2 instead of size+name.
+;   This version uses hash djb2 instead of size+name
 ;
-;   There is no names and no terminal input buffer.
+;   There is no names and no terminal input buffer
 ;
 ;   All data (36 cells) and return (36 cells) stacks, 
 ;   in same page $200, 256 bytes; 
@@ -51,9 +53,9 @@
 ;
 ;   No overflow or underflow checks;
 ;
-;   the header order is LINK, HASH, theh CODE;
+;   the header order is LINK, HASH, CODE.
 ;
-;   only IMMEDIATE flag used as $80 on high byte;
+;   only IMMEDIATE flag used as $8000, no hide, no compile;
 ;
 ;   As ANSI Forth 1994: FALSE is $0000 ; TRUE is $FFFF ;
 ;
@@ -114,7 +116,7 @@
 ;
 ;   From page 3 onwards:
 ;
-;   |$0300 forth code, primitives | user words | heap ... ceil| 
+;   |$0300 cold:, warm:, forth code, init: here> heap ... ceil| 
 ;
 ;----------------------------------------------------------------------
 ;   For Devs:
@@ -159,9 +161,6 @@
 
 ;---------------------------------------------------------------------
 ; macros for dictionary, makes:
-;
-;       best macros I saw for linkede list dictionary
-;       can reorder without define previous or next
 ;
 ;   h_name:
 ;   .word   link_to_previous_entry
@@ -210,13 +209,27 @@ CELL = 2
 FLAG_IMM = $80
 
 ;---------------------------------------------------------------------
+; primitives djb2 hash cleared of bit 16
+; semmis is immediate (ORA $80)
+;
+; 16 bits
+;hash_key        = $6D32
+;hash_emit       = $07D0
+;hash_fetch      = $35E5
+;hash_store      = $3584
+;hash_nand       = $7500
+;hash_plus       = $358E
+;hash_zeroq      = $6816
+;hash_userq      = $6F90
+;hash_colon      = $359F
+;hash_semis      = $B59E
+;hash_exit       = $3E85
+
+;---------------------------------------------------------------------
 ; primitives djb2 hash cleared of bit 32
 ; semmis is immediate (ORA $80)
 ;
-; 32 bits, lowercase !
-;
-; BEWARE: a $00010203 constant is LSB 03020100 MSB in memory
-;
+; 32 bits
 hash_key        = $0B876D32  
 hash_emit       = $7C6B87D0  
 hash_fetch      = $0002B5E5  
@@ -229,19 +242,21 @@ hash_semis      = $8002B59E
 hash_colon      = $0002B59F  
 hash_exit       = $7C6BBE85  
 
-hash_bye        = $0B874AFB  
-hash_abort      = $0A1DFF4F  
-hash_slist      = $005966B8  
-hash_rlist      = $005966B9  
-hash_dump       = $7C6B2FE9  
-hash_words      = $0B6953F8  
-hash_dot        = $0002B58B  
-hash_srl        = $00596858  
-hash_exec       = $7C6BC01E  
-hash_docode     = $0059697A  
+; BYE = $0B874AFB  
+; ABORT = $0A1DFF4F  
+; .S = $005966B8  
+; .R = $005966B9  
+; DUMP = $7C6B2FE9  
+; WORDS = $0B6953F8  
+; . = $0002B58B  
+; 2/ = $00596858  
+; EXEC = $7C6BC01E  
+; ;$ = $0059697A  
+;  = $00001505  
 
 ;----------------------------------------------------------------------
 .segment "ZERO"
+
 
 ;----------------------------------------------------------------------
 * = $D0
@@ -252,11 +267,9 @@ sptr:   .word $0 ; data stack base,
 rptr:   .word $0 ; return stack base
 last:   .word $0 ; last link cell
 here:   .word $0 ; next unused cell, aka dpt
-
 stat:   .word $0 ; state at lsb, last size+flag at msb
 peek:   .word $0 ; last here before compiling
 ceil:   .word $0 ; last unused cell 
-void:   .word $0 ; nothing
 
 ;----------------------------------------------------------------------
 * = $E0
@@ -277,13 +290,13 @@ hashq:
 * = $F0
 
 ; pointers registers
+ipt:    .word $0 ; instruction pointer
+wrd:    .word $0 ; word pointer
+
 fst:    .word $0 ; first
 snd:    .word $0 ; second
 trd:    .word $0 ; third
 fth:    .word $0 ; fourth
-
-ipt:    .word $0 ; instruction pointer
-wrd:    .word $0 ; word pointer
 
 ; temporary
 a_save: .byte $0
@@ -315,7 +328,7 @@ system: .res 256
 
 * = $200
 
-allin = $02
+allin = $0200
 
 ; data stack, moves backwards, 36 words
 sp0 = $48
@@ -335,7 +348,6 @@ main:
 ; common must
 ;
 cold:
-
 ;   disable interrupts
         sei
 
@@ -358,19 +370,19 @@ h_here = it_ends
 ;----------------------------------------------------------------------
 warm:
 ; link list of headers
-        lda #<h_last
-        sta last + 0
         lda #>h_last
         sta last + 1
+        lda #<h_last
+        sta last + 0
 
 ; next heap free cell, take a page
-        lda #<h_here
-        sta here + 0
         lda #>h_here
         sta here + 1
+        lda #<h_here
+        sta here + 0
 
 ; supose never change
-        ldy #<allin
+        ldy #>allin
         sty sptr + 1
         sty rptr + 1
 
@@ -402,9 +414,9 @@ warptip:
 warp:
 
 ;   uncomment for feedback
+;        lda stat + 0
+;        bne resolve
 ;
-;        lda #10
-;        jsr putchar
 ;        lda #'O'
 ;        jsr putchar
 ;        lda #'K'
@@ -416,7 +428,10 @@ warp:
 ;
         jsr token
 
-find:
+        ; lda #'P'
+        ; jsr putchar
+
+tick:
 ; load last entry
         lda last + 0
         sta snd + 0
@@ -447,7 +462,6 @@ find:
         lda (wrd), y
         cpy #3
         bne @a200
-        ; mask high byte
         and #127
 @a200:
         cmp (hashp), y
@@ -461,7 +475,7 @@ find:
         lda #4
         ldx #(wrd)
         jsr addwx
-
+        
 eval:
 ; executing ? if == \0
         lda stat + 0   
@@ -472,6 +486,7 @@ eval:
         bmi immediate      
 
 compile:
+
         jsr docomma
 
         ; or branch bcc?
@@ -490,6 +505,7 @@ execute:
 ;---------------------------------------------------------------------
 ; in place crude token,
 token:
+
 hash_DJB2 = 5381
 @hash:
         lda #<hash_DJB2
@@ -502,13 +518,12 @@ hash_DJB2 = 5381
         
         lda $0
         sta hashp + 2
-        sta hashq + 2
         sta hashp + 3
+        sta hashq + 2
         sta hashq + 3
 
 @skip:
         jsr getchar
-        
         cmp #' '
         bmi @skip
         beq @skip
@@ -527,7 +542,7 @@ hash_DJB2 = 5381
         rol
         sta hashp, y
         iny
-        cpy #4
+        cmp #4
         bne @loopj
         dex
         bne @loopi
@@ -542,7 +557,7 @@ hash_DJB2 = 5381
         adc hashq, y
         sta hashp, y
         iny
-        cpy #4
+        cmp #4
         bne @loopk
 
 ; xor with character
@@ -728,17 +743,17 @@ addwx:
 ; extras
 ;----------------------------------------------------------------------
 ; ( -- ) ae exit forth
-def_word "bye", "bye", hash_bye
+def_word "bye", "bye", 0
         jmp byes
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae abort
-def_word "abort", "abort_", hash_abort
+def_word "abort", "abort_", 0
         jmp abort
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of data stack
-def_word ".S", "splist", hash_slist
+def_word ".S", "splist", 0
         lda spt + 0
         sta fst + 0
         lda spt + 1
@@ -751,7 +766,7 @@ def_word ".S", "splist", hash_slist
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of return stack
-def_word ".R", "rplist", hash_rlist
+def_word ".R", "rplist", 0
         lda rpt + 0
         sta fst + 0
         lda rpt + 1
@@ -808,7 +823,7 @@ list:
         
 ;----------------------------------------------------------------------
 ; ( -- ) dumps the user dictionary
-def_word "dump", "dump", hash_dump
+def_word "dump", "dump", 0
 
         lda #$0
         sta fst + 0
@@ -837,7 +852,7 @@ def_word "dump", "dump", hash_dump
 
 ;----------------------------------------------------------------------
 ; ( -- ) words in dictionary, 
-def_word "words", "words", hash_words
+def_word "words", "words", 0
 
 ; load lastest
         lda last + 1
@@ -1042,7 +1057,7 @@ seek:
 
 ;----------------------------------------------------------------------
 ; ( u -- u ) print tos in hexadecimal, swaps order
-def_word ".", "dot", hash_dot
+def_word ".", "dot", 0
         lda #' '
         jsr putchar
         jsr spull1
@@ -1140,7 +1155,7 @@ number:
 
 ;---------------------------------------------------------------------
 ; ( -- ) execute a jump to a reference at IP
-def_word ";$", "docode", hash_docode 
+def_word ";$", "docode", 0 
         jsr (ipt)
         jmp next
 
@@ -1163,6 +1178,17 @@ def_word "emit", "emit", hash_emit
         jsr spull1
         lda fst + 0
         jsr putchar
+        ; jmp next  ; uncomment if carry could be set
+        bcc jmpnext ; always taken
+
+;---------------------------------------------------------------------
+; ( a w -- ) ; [a] = w
+def_word "!", "store", hash_store
+storew:
+        jsr spull2
+        ldx #(snd) 
+        ldy #(fst) 
+        jsr copyinto
         ; jmp next  ; uncomment if carry could be set
         bcc jmpnext ; always taken
 
@@ -1191,17 +1217,6 @@ def_word "+", "plus", hash_plus
         lda snd + 1
         adc fst + 1
         jmp keeps
-
-;---------------------------------------------------------------------
-; ( a w -- ) ; [a] = w
-def_word "!", "store", hash_store
-storew:
-        jsr spull2
-        ldx #(snd) 
-        ldy #(fst) 
-        jsr copyinto
-        ; jmp next  ; uncomment if carry could be set
-        bcc jmpnext ; always taken
 
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
@@ -1265,7 +1280,6 @@ def_word ":", "colon", hash_colon
 @header:
 ; copy last into (here)
         ldy #(last)
-
         jsr docomma
 
 ; get a token and receive a hash :)
