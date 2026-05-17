@@ -239,6 +239,7 @@ hash_semis      = $8002B59E
 hash_colon      = $0002B59F  
 hash_exit       = $7C6BBE85  
 
+;---------------------------------------------------------------------
 hash_bye        = $0B874AFB  
 hash_abort      = $0A1DFF4F  
 hash_slist      = $005966B8  
@@ -407,8 +408,6 @@ warpit:
 
 ;---------------------------------------------------------------------
 warp:
-        lda #'='
-        jsr putchar
 
 .ifdef emote
         lda stat + 1
@@ -429,7 +428,11 @@ warp:
 ; get a token and receive a hash :)
         jsr token
 
+        lda #'*'
+        jsr putchar
+
         jsr hashp
+        jsr cr
 
 find:
 ; load last entry
@@ -458,11 +461,6 @@ find:
 
 ;----------------------------------------------
 ; XXX
-        jsr phash
-
-        lda #32
-        jsr putchar
-
         ldy #0
 @10:
         lda (wrd), y
@@ -543,17 +541,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
         sta hashp + 3
         sta hashq + 3
 
-; XXX ----------------------------------------------------------------
-        lda #'>'
-        jsr putchar
-
-        jsr phash
-
-        lda #10
-        jsr putchar
-
-; XXX ----------------------------------------------------------------
-
 @skip:
         jsr getchar
         
@@ -573,11 +560,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
         rol hashp + 1
         rol hashp + 2
         rol hashp + 3
-
-        txa
-        adc #'A'
-        jsr putchar
-
         dex
         bne @loopi
 
@@ -585,16 +567,10 @@ hash_DJB2 = 5381 ; 32bit $00001505
         
         ldx #0
         clc
-        
 @loopk:
         lda hashp, x
         adc hashq, x
         sta hashp, x
-        
-        txa
-        adc #'a'
-        jsr putchar
-
         inx
         cpx #4
         bne @loopk
@@ -604,10 +580,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
         eor hashp + 0
         sta hashp + 0
         
-        jsr phash
-
-        jsr cr
-
 @scan:
         jsr getchar
         cmp #' '
@@ -621,6 +593,7 @@ hash_DJB2 = 5381 ; 32bit $00001505
         sta hashp + 3
 
         jsr phash
+        jsr cr
 
         rts
 
@@ -715,9 +688,6 @@ cr:
         rts
 
 phash:
-        lda #'>'
-        jsr putchar
-
         lda hashp + 0
         jsr puthex
         lda hashp + 1
@@ -726,7 +696,6 @@ phash:
         jsr puthex
         lda hashp + 3
         jsr puthex
-
         rts
 
 ;---------------------------------------------------------------------
