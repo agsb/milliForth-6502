@@ -2,9 +2,7 @@
 
 # load address
 
-LOADT=300
-
-DUMPT=A00
+LOADT=400
 
 sh mk x $1
 

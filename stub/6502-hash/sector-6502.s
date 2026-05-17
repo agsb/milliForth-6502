@@ -114,15 +114,17 @@
 ;   then backward stacks allow to use the slack space ... 
 ;
 ;   this 6502 Forth memory model blocked in pages of 256 bytes:
-;   [page0][page1][page2]|$400[core ... forth dictionary ...here...]
+;   |$00|$01|$02|$03|$04[core..][dictionary..latest..]|here.. $FF|
 ;   
-;   At page2: 
+;   Stacks at page2: 
 ;
-;   |$00  <spt..sp0 $48| <rpt..rp0 $90| free $FF|
+;   |$00  <spt..sp0 $48| <rpt..rp0 $90| free $FE..|$FF..|
 ;
-;   From page 3 onwards:
+;   From page 4 onwards:
 ;
-;   |$0300 forth code, primitives | user words | heap ... ceil| 
+;   |$0400 forth code, primitives | user words | heap ... ceil| 
+;
+;   Page $FF is reserved.
 ;
 ;----------------------------------------------------------------------
 ;   For Devs:
@@ -168,13 +170,13 @@
 ;---------------------------------------------------------------------
 ; macros for dictionary, makes:
 ;
-;       best macros I saw for linked list dictionary
-;       can reorder without define previous or next
+;       best macros I had saw for linked list dictionary
+;       it can be reorder without define previous or next
 ;
-;   h_name:
+;   it_label:
 ;   .word   link_to_previous_entry
 ;   .dword  hash
-;   name:
+;   is_label:
 ;
 ; label for primitives
 .macro makelabel arg1, arg2
@@ -214,7 +216,7 @@ H0000 = 0
 ; cell size, two bytes, 16-bit
 CELL = 2    
 
-; highlander, immediate flag. just compare high byte
+; highlander, immediate flag. just compare high byte.
 FLAG_IMM = $80
 
 ;---------------------------------------------------------------------
@@ -251,8 +253,23 @@ hash_docode     = $0059697A
 ;----------------------------------------------------------------------
 .segment "ZERO"
 
-;----------------------------------------------------------------------
 * = $D0
+ 
+; hash djb2 buffer
+hashp:
+        .dword $0 
+hashq:
+        .dword $0 
+ 
+; math buffer
+maths:
+        .word $0
+        .word $0
+        .word $0
+        .word $0
+ 
+;----------------------------------------------------------------------
+* = $E0
 
 ; order matters for hello_world.forth !
 ; user variables
@@ -265,21 +282,6 @@ stat:   .word $0 ; state at lsb, last size+flag at msb
 peek:   .word $0 ; last here before compiling
 ceil:   .word $0 ; last unused cell 
 void:   .word $0 ; nothing
-
-;----------------------------------------------------------------------
-* = $E0
-
-; hash djb2 buffer
-hashp:
-        .word $0 
-        .word $0 
-        .word $0 
-        .word $0
-hashq:
-        .word $0 
-        .word $0 
-        .word $0 
-        .word $0
 
 ;----------------------------------------------------------------------
 * = $F0
@@ -300,11 +302,8 @@ x_save: .byte $0
 s_save: .byte $0
 
 ;----------------------------------------------------------------------
-* = $100
-
 ; system stack, reserve
-;
-system: .res 256
+* = $100
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -318,21 +317,16 @@ system: .res 256
 .segment "CODE" 
 
 ;----------------------------------------------------------------------
-; leave space for page zero, hard stack, 
-; forth stacks "all in" page $200
+; leave space for page zero, hard stack, forth stacks 
 
 * = $200
 
-allin = $02
+sp0 = 48
 
-; data stack, moves backwards, 36 words
-sp0 = $48
-
-; return stack, moves backwards, 36 words
-rp0 = $90
+rp0 = 90
 
 ;----------------------------------------------------------------------
-; this page is for user buffers 
+; this page is reserved for user buffers 
 
 * = $300
 
@@ -383,7 +377,7 @@ warm:
         sta here + 1
 
 ; supose never change
-        ldy #<allin
+        ldy #02
         sty sptr + 1
         sty rptr + 1
 
@@ -408,26 +402,34 @@ quit:
 
         .byte $2c   ; mask next two bytes, nice trick !
 
-warptip:
+warpit:
         .word warp
 
 ;---------------------------------------------------------------------
 warp:
+        lda #'='
+        jsr putchar
 
-;   uncomment for feedback
-;
-;        lda #10
-;        jsr putchar
-;        lda #'O'
-;        jsr putchar
-;        lda #'K'
-;        jsr putchar
-;        lda #10
-;        jsr putchar
+.ifdef emote
+        lda stat + 1
+        beq @100          
+        lda #0
+        sta stat + 1
+        lda #10
+        jsr putchar
+        lda #'O'
+        jsr putchar
+        lda #'K'
+        jsr putchar
+        lda #10
+        jsr putchar
+@100:
+.endif
 
 ; get a token and receive a hash :)
-;
         jsr token
+
+        jsr hashp
 
 find:
 ; load last entry
@@ -453,7 +455,6 @@ find:
         ldx #(wrd) ; from 
         ldy #(snd) ; into
         jsr pull
-
 
 ;----------------------------------------------
 ; XXX
@@ -516,9 +517,9 @@ compile:
 immediate:
 execute:
 
-        lda #<warptip
+        lda #<warpit
         sta ipt + 0
-        lda #>warptip
+        lda #>warpit
         sta ipt + 1
 
         jmp pick
@@ -536,12 +537,13 @@ hash_DJB2 = 5381 ; 32bit $00001505
         sta hashp + 1
         sta hashq + 1
         
-        lda $0
+        lda #0
         sta hashp + 2
         sta hashq + 2
         sta hashp + 3
         sta hashq + 3
 
+; XXX ----------------------------------------------------------------
         lda #'>'
         jsr putchar
 
@@ -549,6 +551,8 @@ hash_DJB2 = 5381 ; 32bit $00001505
 
         lda #10
         jsr putchar
+
+; XXX ----------------------------------------------------------------
 
 @skip:
         jsr getchar
@@ -562,29 +566,19 @@ hash_DJB2 = 5381 ; 32bit $00001505
 
 ; multiply by 32
 
-        ldy #5
+        ldx #5
 @loopi:        
-        ldx #0
         clc
-@loopj:
-        rol hashp, x
+        rol hashp + 0
+        rol hashp + 1
+        rol hashp + 2
+        rol hashp + 3
 
         txa
-        adc #'0'
-        jsr putchar
-
-        inx
-        cpx #4
-        bne @loopj
-        
-        tya
         adc #'A'
         jsr putchar
 
-        lda #10
-        jsr putchar
-
-        dey
+        dex
         bne @loopi
 
 ; then add, total 33
@@ -614,6 +608,86 @@ hash_DJB2 = 5381 ; 32bit $00001505
 
         jsr cr
 
+@scan:
+        jsr getchar
+        cmp #' '
+        bmi @scan
+        bne @again
+
+;mask:
+; clear MSB bit
+        lda #127
+        and hashp + 3
+        sta hashp + 3
+
+        jsr phash
+
+        rts
+
+;---------------------------------------------------------------------
+; in place crude token,
+tokenx:
+; hash_DJB2 = 5381 ; 32bit $00001505
+@hash:
+        lda #<hash_DJB2
+        sta hashp + 0
+        sta hashq + 0
+        
+        lda #>hash_DJB2
+        sta hashp + 1
+        sta hashq + 1
+        
+        lda $0
+        sta hashp + 2
+        sta hashq + 2
+        sta hashp + 3
+        sta hashq + 3
+
+@skip:
+        jsr getchar
+        
+        cmp #' '
+        bmi @skip
+        beq @skip
+
+@again:
+        pha
+
+; multiply by 32
+
+        ldy #5
+@loopi:        
+        ldx #0
+        clc
+@loopj:
+        rol hashp, x
+
+        inx
+        cpx #4
+        bne @loopj
+        
+        dey
+        bne @loopi
+
+; then add, total 33
+        
+        ldx #0
+        clc
+        
+@loopk:
+        lda hashp, x
+        adc hashq, x
+        sta hashp, x
+        
+        inx
+        cpx #4
+        bne @loopk
+
+; xor with character
+        pla
+        eor hashp + 0
+        sta hashp + 0
+        
 @scan:
         jsr getchar
         cmp #' '
@@ -1389,13 +1463,13 @@ def_word ":", "colon", hash_colon
 
 ; lower word
 
-        ldy #(hashp+0)
+        ldy #<(hashp+0)
 
         jsr docomma
         
 ; upper word
 
-        ldy #(hashp+2)
+        ldy #>(hashp+2)
 
         jsr docomma
 
@@ -1428,7 +1502,12 @@ def_word ";", "semis", hash_semis
 
 finish:
         jsr docomma
-        
+
+.ifdef emote
+        lda #1
+        sta stat+1
+.endif
+
         bcc next    ; always taken
 
 ;---------------------------------------------------------------------
