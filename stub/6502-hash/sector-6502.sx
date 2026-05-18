@@ -133,12 +133,12 @@
 ;       to allow : dup sp@ @ ; so sp must point to actual TOS.
 ;   
 ;   The movement will be:
-;       pull is 'fetch and increase'
 ;       push is 'decrease and store'
+;       pull is 'fetch and increase'
 ;
 ;   Never mess with two underscore variables;
 ;
-;   Not using smudge, 
+;   Not using smudge: 
 ;       colon saves "here" into "peek" and 
 ;       semis loads "lastest" from "peek";
 ;
@@ -239,6 +239,9 @@ hash_semis      = $8002B59E
 hash_colon      = $0002B59F  
 hash_exit       = $7C6BBE85  
 
+;---------------------------------------------------------------------
+; extras
+;
 hash_bye        = $0B874AFB  
 hash_abort      = $0A1DFF4F  
 hash_slist      = $005966B8  
@@ -254,19 +257,20 @@ hash_docode     = $0059697A
 .segment "ZERO"
 
 * = $D0
-
+ 
 ; hash djb2 buffer
 hashp:
         .dword $0 
 hashq:
         .dword $0 
-
+ 
 ; math buffer
 maths:
         .word $0
         .word $0
         .word $0
         .word $0
+ 
 ;----------------------------------------------------------------------
 * = $E0
 
@@ -301,11 +305,8 @@ x_save: .byte $0
 s_save: .byte $0
 
 ;----------------------------------------------------------------------
+; system stack, reserved
 * = $100
-
-; system stack, reserve
-;
-hstack: .res 256
 
 ;----------------------------------------------------------------------
 ;.segment "ONCE" 
@@ -319,25 +320,15 @@ hstack: .res 256
 .segment "CODE" 
 
 ;----------------------------------------------------------------------
-; leave space for page zero, hard stack, 
-; forth stacks "all in" page $200
+; leave space for page zero, hard stack, forth stacks 
 
 * = $200
 
-; stack size 36 cells
-stack_size = 36 * 2
+; start of data stack
+sp0 = $0248
 
-; data stack, moves backwards 
-_stacks:
-        .res stack_size
-sp0:
-        .word $0
-
-; return stack, moves backwards
-_stackr:
-        .res stack_size
-rp0:
-        .word $0
+; start of return stack
+rp0 = $0290
 
 ;----------------------------------------------------------------------
 ; this page is reserved for user buffers 
@@ -372,7 +363,7 @@ cold:
 
 ;----------------------------------------------------------------------
 
-h_last = it_exit
+h_last = it_last
 
 h_here = it_ends
 
@@ -397,7 +388,7 @@ warm:
 
 ; when not found in dictionary
 miss:
-        ; maybe do numbers ?
+        ; emote ??
 
 abort:
         ldy #<sp0
@@ -419,14 +410,16 @@ quit:
 warpit:
         .word warp
 
+; zzzz
 ;---------------------------------------------------------------------
 warp:
-        lda #'='
-        jsr putchar
 
 .ifdef emote
-; using carry for flag end of semis ;
-        bcc @100          
+        ; use high byte of stat for flag
+        lda stat + 1
+        beq @100          
+        lda #0
+        sta stat + 1
         lda #10
         jsr putchar
         lda #'O'
@@ -440,8 +433,6 @@ warp:
 
 ; get a token and receive a hash :)
         jsr token
-
-        jsr hashp
 
 find:
 ; load last entry
@@ -464,32 +455,14 @@ find:
         sta wrd + 1
 
 ; update next link in snd 
-        ldx #(wrd) ; from 
-        ldy #(snd) ; into
+        ldx #wrd ; from 
+        ldy #snd ; into
         jsr pull
-
-;----------------------------------------------
-; XXX
-        jsr phash
-
-        lda #32
-        jsr putchar
-
-        ldy #0
-@10:
-        lda (wrd), y
-        jsr puthex
-
-        iny
-        cpy #4
-        bne @10
-
-        lda #10
-        jsr putchar
 
 ;----------------------------------------------
 
 ; compare hashes, for 32 bits
+        
         ldy #0
 @a100:
         lda (wrd), y
@@ -508,8 +481,13 @@ find:
 @done:
 ; update wrd to code, 4 bytes of hash
         lda #4
-        ldx #(wrd)
+        ldx #wrd 
         jsr addwx
+
+        lda #'>'
+        jsr putchar
+        jsr pword
+        jsr cr
 
 eval:
 ; executing ? if == \0
@@ -521,6 +499,10 @@ eval:
         bmi immediate      
 
 compile:
+        lda #'c'
+        jsr putchar
+        jsr cr
+
         jsr docomma
 
         ; or branch bcc?
@@ -528,6 +510,9 @@ compile:
 
 immediate:
 execute:
+        lda #'e'
+        jsr putchar
+        jsr cr
 
         lda #<warpit
         sta ipt + 0
@@ -549,22 +534,11 @@ hash_DJB2 = 5381 ; 32bit $00001505
         sta hashp + 1
         sta hashq + 1
         
-        lda $0
+        lda #0
         sta hashp + 2
         sta hashq + 2
         sta hashp + 3
         sta hashq + 3
-
-; XXX ----------------------------------------------------------------
-        lda #'>'
-        jsr putchar
-
-        jsr phash
-
-        lda #10
-        jsr putchar
-
-; XXX ----------------------------------------------------------------
 
 @skip:
         jsr getchar
@@ -585,11 +559,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
         rol hashp + 1
         rol hashp + 2
         rol hashp + 3
-
-        txa
-        adc #'A'
-        jsr putchar
-
         dex
         bne @loopi
 
@@ -597,16 +566,10 @@ hash_DJB2 = 5381 ; 32bit $00001505
         
         ldx #0
         clc
-        
 @loopk:
         lda hashp, x
         adc hashq, x
         sta hashp, x
-        
-        txa
-        adc #'a'
-        jsr putchar
-
         inx
         cpx #4
         bne @loopk
@@ -616,10 +579,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
         eor hashp + 0
         sta hashp + 0
         
-        jsr phash
-
-        jsr cr
-
 @scan:
         jsr getchar
         cmp #' '
@@ -631,8 +590,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
         lda #127
         and hashp + 3
         sta hashp + 3
-
-        jsr phash
 
         rts
 
@@ -727,9 +684,6 @@ cr:
         rts
 
 phash:
-        lda #'>'
-        jsr putchar
-
         lda hashp + 0
         jsr puthex
         lda hashp + 1
@@ -738,6 +692,18 @@ phash:
         jsr puthex
         lda hashp + 3
         jsr puthex
+        rts
+
+pword:
+
+        ldy #0
+@10:
+        lda (wrd), y
+        jsr puthex
+
+        iny
+        cpy #4
+        bne @10
 
         rts
 
@@ -1514,7 +1480,12 @@ def_word ";", "semis", hash_semis
 
 finish:
         jsr docomma
-        
+
+.ifdef emote
+        lda #1
+        sta stat+1
+.endif
+
         bcc next    ; always taken
 
 ;---------------------------------------------------------------------
@@ -1564,10 +1535,14 @@ jump:
         jmp (wrd)
 
 ;-----------------------------------------------------------------------
+
+it_last = it_exit
+
+;-----------------------------------------------------------------------
 ; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
 it_ends:
 
 ;-----------------------------------------------------------------------
 ; anything above is not a primitive
 ;----------------------------------------------------------------------
-
+.end

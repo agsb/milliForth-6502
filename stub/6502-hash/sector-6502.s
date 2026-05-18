@@ -133,12 +133,12 @@
 ;       to allow : dup sp@ @ ; so sp must point to actual TOS.
 ;   
 ;   The movement will be:
-;       pull is 'fetch and increase'
 ;       push is 'decrease and store'
+;       pull is 'fetch and increase'
 ;
 ;   Never mess with two underscore variables;
 ;
-;   Not using smudge, 
+;   Not using smudge: 
 ;       colon saves "here" into "peek" and 
 ;       semis loads "lastest" from "peek";
 ;
@@ -240,6 +240,8 @@ hash_colon      = $0002B59F
 hash_exit       = $7C6BBE85  
 
 ;---------------------------------------------------------------------
+; extras
+;
 hash_bye        = $0B874AFB  
 hash_abort      = $0A1DFF4F  
 hash_slist      = $005966B8  
@@ -303,7 +305,7 @@ x_save: .byte $0
 s_save: .byte $0
 
 ;----------------------------------------------------------------------
-; system stack, reserve
+; system stack, reserved
 * = $100
 
 ;----------------------------------------------------------------------
@@ -322,9 +324,11 @@ s_save: .byte $0
 
 * = $200
 
-sp0 = 48
+; start of data stack
+sp0 = $0248
 
-rp0 = 90
+; start of return stack
+rp0 = $0290
 
 ;----------------------------------------------------------------------
 ; this page is reserved for user buffers 
@@ -359,7 +363,7 @@ cold:
 
 ;----------------------------------------------------------------------
 
-h_last = it_exit
+h_last = it_last
 
 h_here = it_ends
 
@@ -384,7 +388,7 @@ warm:
 
 ; when not found in dictionary
 miss:
-        ; maybe do numbers ?
+        ; emote ??
 
 abort:
         ldy #<sp0
@@ -406,10 +410,12 @@ quit:
 warpit:
         .word warp
 
+; zzzz
 ;---------------------------------------------------------------------
 warp:
 
 .ifdef emote
+        ; use high byte of stat for flag
         lda stat + 1
         beq @100          
         lda #0
@@ -427,12 +433,6 @@ warp:
 
 ; get a token and receive a hash :)
         jsr token
-
-        lda #'*'
-        jsr putchar
-
-        jsr hashp
-        jsr cr
 
 find:
 ; load last entry
@@ -454,33 +454,24 @@ find:
         lda snd + 1
         sta wrd + 1
 
-; update next link in snd 
-        ldx #(wrd) ; from 
-        ldy #(snd) ; into
+; update next link in snd, wrd + cell, point to hash  
+        ldx #wrd ; from 
+        ldy #snd ; into
         jsr pull
-
-;----------------------------------------------
-; XXX
-        ldy #0
-@10:
-        lda (wrd), y
-        jsr puthex
-
-        iny
-        cpy #4
-        bne @10
-
-        lda #10
-        jsr putchar
 
 ;----------------------------------------------
 
 ; compare hashes, for 32 bits
+        
+
         ldy #0
 @a100:
         lda (wrd), y
+
         cpy #3
         bne @a200
+        ; save immediate flag
+        sta s_save
         ; mask high byte
         and #127
 @a200:
@@ -491,10 +482,11 @@ find:
         cpy #4
         bne @a100
 
+
 @done:
 ; update wrd to code, 4 bytes of hash
         lda #4
-        ldx #(wrd)
+        ldx #wrd 
         jsr addwx
 
 eval:
@@ -503,10 +495,15 @@ eval:
         beq execute
 
 ; immediate ? if < \0
-        lda stat + 1   
+        lda s_save
         bmi immediate      
 
 compile:
+        lda #'c'
+        jsr putchar
+        jsr pword
+        jsr cr
+
         jsr docomma
 
         ; or branch bcc?
@@ -514,6 +511,10 @@ compile:
 
 immediate:
 execute:
+        lda #'e'
+        jsr putchar
+        jsr pword
+        jsr cr
 
         lda #<warpit
         sta ipt + 0
@@ -592,96 +593,17 @@ hash_DJB2 = 5381 ; 32bit $00001505
         and hashp + 3
         sta hashp + 3
 
+        lda #'\'
+        jsr putchar
+        
         jsr phash
+
         jsr cr
 
         rts
 
+
 ;---------------------------------------------------------------------
-; in place crude token,
-tokenx:
-; hash_DJB2 = 5381 ; 32bit $00001505
-@hash:
-        lda #<hash_DJB2
-        sta hashp + 0
-        sta hashq + 0
-        
-        lda #>hash_DJB2
-        sta hashp + 1
-        sta hashq + 1
-        
-        lda $0
-        sta hashp + 2
-        sta hashq + 2
-        sta hashp + 3
-        sta hashq + 3
-
-@skip:
-        jsr getchar
-        
-        cmp #' '
-        bmi @skip
-        beq @skip
-
-@again:
-        pha
-
-; multiply by 32
-
-        ldy #5
-@loopi:        
-        ldx #0
-        clc
-@loopj:
-        rol hashp, x
-
-        inx
-        cpx #4
-        bne @loopj
-        
-        dey
-        bne @loopi
-
-; then add, total 33
-        
-        ldx #0
-        clc
-        
-@loopk:
-        lda hashp, x
-        adc hashq, x
-        sta hashp, x
-        
-        inx
-        cpx #4
-        bne @loopk
-
-; xor with character
-        pla
-        eor hashp + 0
-        sta hashp + 0
-        
-@scan:
-        jsr getchar
-        cmp #' '
-        bmi @scan
-        bne @again
-
-mask:
-; clear MSB bit
-        lda #127
-        and hashp + 3
-        sta hashp + 3
-
-        jsr phash
-
-        rts
-
-bl:
-        lda #32
-        jsr putchar
-        rts
-
 cr:
         lda #10
         jsr putchar
@@ -696,6 +618,19 @@ phash:
         jsr puthex
         lda hashp + 3
         jsr puthex
+        rts
+
+pword:
+
+        ldy #0
+@10:
+        lda (wrd), y
+        jsr puthex
+
+        iny
+        cpy #4
+        bne @10
+
         rts
 
 ;---------------------------------------------------------------------
@@ -860,8 +795,6 @@ addwx:
 .ifdef use_extras
 
 ;----------------------------------------------------------------------
-; extras
-;----------------------------------------------------------------------
 ; ( -- ) ae exit forth
 def_word "bye", "bye", hash_bye
         jmp byes
@@ -870,6 +803,282 @@ def_word "bye", "bye", hash_bye
 ; ( -- ) ae abort
 def_word "abort", "abort_", hash_abort
         jmp abort
+
+;----------------------------------------------------------------------
+; ( u -- u ) print tos in hexadecimal, swaps order
+def_word ".", "dot", hash_dot
+        lda #' '
+        jsr putchar
+        jsr spull1
+        lda fst + 1
+        jsr puthex
+        lda fst + 0
+        jsr puthex
+        jsr spush1
+        jmp next
+
+.endif
+;----------------------------------------------------------------------
+; code a byte in ASCII hexadecimal 
+puthex:
+        pha
+        lsr
+        ror
+        ror
+        ror
+        jsr @conv
+        pla
+@conv:
+        and #$0F
+        ora #$30
+        cmp #$3A
+        bcc @ends
+        adc #$06
+@ends:
+        clc  ; clean
+        jmp putchar
+
+
+;---------------------------------------------------------------------
+
+.ifdef use_extensions
+
+;---------------------------------------------------------------------
+; ( -- ) execute a jump to a reference at IP
+def_word ";$", "docode", hash_docode 
+        jsr (ipt)
+        jmp next
+
+.endif
+
+;---------------------------------------------------------------------
+; core primitives minimal 
+; start of dictionary
+;---------------------------------------------------------------------
+; ( -- u ) ; tos + 1 unchanged
+def_word "key", "key", hash_key
+        jsr getchar
+        sta fst + 0
+        ; jmp this  ; uncomment if char could be \0
+        bne this    ; always taken
+        
+;---------------------------------------------------------------------
+; ( u -- ) ; tos + 1 unchanged
+def_word "emit", "emit", hash_emit
+        jsr spull1
+        lda fst + 0
+        jsr putchar
+        ; jmp next  ; uncomment if carry could be set
+        bcc jmpnext ; always taken
+
+;---------------------------------------------------------------------
+; ( w1 w2 -- NOT(w1 AND w2) )
+def_word "nand", "nand", hash_nand
+        jsr spull2
+        lda snd + 0
+        and fst + 0
+        eor #$FF
+        sta fst + 0
+        lda snd + 1
+        and fst + 1
+        eor #$FF
+        ; jmp keeps  ; uncomment if carry could be set
+        bcc keeps ; always taken
+
+;---------------------------------------------------------------------
+; ( w1 w2 -- w1+w2 ) 
+def_word "+", "plus", hash_plus
+        jsr spull2
+        clc  ; better safe than sorry
+        lda snd + 0
+        adc fst + 0
+        sta fst + 0
+        lda snd + 1
+        adc fst + 1
+        clc
+        bcc keeps
+
+;---------------------------------------------------------------------
+; ( a w -- ) ; [a] = w
+def_word "!", "store", hash_store
+storew:
+        jsr spull2
+        ldx #snd 
+        ldy #fst 
+        jsr copyinto
+        ; jmp next  ; uncomment if carry could be set
+        bcc jmpnext ; always taken
+
+;---------------------------------------------------------------------
+; ( a -- w ) ; w = [a]
+def_word "@", "fetch", hash_fetch
+fetchw:
+        jsr spull1
+        ldx #fst
+        ldy #snd
+        jsr pull
+        
+        ; fall throught
+
+;---------------------------------------------------------------------
+copys:
+        lda 0, y
+        sta fst + 0
+        lda 1, y
+
+keeps:
+        sta fst + 1
+
+this:
+        jsr spush1
+
+jmpnext:
+        jmp next
+
+;---------------------------------------------------------------------
+; ( 0 -- $0000) | ( n -- $FFFF) not zero at top ?
+def_word "0#", "zeroq", hash_zeroq
+        jsr spull1
+        lda fst + 1
+        ora fst + 0
+        beq isfalse  ; is \0 ?
+istrue:
+        lda #$FF
+isfalse:
+        sta fst + 0                                                         
+        jmp keeps  
+
+;---------------------------------------------------------------------
+; ( -- state ) a variable return an reference
+def_word "u@", "userq", hash_userq
+        lda #<sptr
+        sta fst + 0
+        lda #>sptr
+        beq keeps   ; always taken
+
+;---------------------------------------------------------------------
+def_word ":", "colon", hash_colon
+; save here, panic if semis not follow elsewhere
+        lda here + 0
+        sta peek + 0 
+        lda here + 1
+        sta peek + 1 
+
+; stat is 'compile'
+        lda #1
+        sta stat + 0
+
+@header:
+; copy last into (here)
+        ldy #last
+
+        jsr docomma
+
+; get a token and receive a hash :)
+        jsr token
+
+; lower word
+
+        ldy #<(hashp+0)
+
+        jsr docomma
+        
+; upper word
+
+        ldy #>(hashp+2)
+
+        jsr docomma
+
+@ends:
+        bcc next
+
+;---------------------------------------------------------------------
+def_word ";", "semis", hash_semis
+; update last, panic if colon not lead elsewhere 
+        lda peek + 0 
+        sta last + 0
+        lda peek + 1 
+        sta last + 1
+
+; stat is 'execute'
+        lda #0
+        sta stat + 0
+
+; compound words must ends with exit
+        lda #<is_exit
+        sta fst + 0
+        lda #>is_exit
+        sta fst + 1
+
+finish:
+        ldy #(fst)
+
+        jsr docomma
+
+.ifdef emote
+        lda #1
+        sta stat+1
+.endif
+
+        bcc next    ; always taken
+
+;---------------------------------------------------------------------
+; Thread Code Engine
+;
+;   ipt is IP, wrd is W
+;
+; for reference: 
+;
+;   nest aka enter or docol, 
+;   unnest aka exit or semis;
+;
+;---------------------------------------------------------------------
+; ( -- ) 
+def_word "exit", "exit", hash_exit
+unnest: ; exit
+; pull, ipt = (rpt), rpt += 2 
+        ldy #(ipt)
+        jsr rpull
+
+next:
+; wrd = (ipt) ; ipt += 2
+        ldx #(ipt)
+        ldy #(wrd)
+        jsr pull
+
+pick:
+; compare pages (MSBs)
+        lda wrd + 1
+        cmp #>it_ends + 1
+        bpl nest 
+jump: 
+        jmp (wrd)
+
+nest:   ; enter
+; push, *rp = ipt, rp -=2
+        ldy #(ipt)
+        jsr rpush
+
+move:
+        lda wrd + 0
+        sta ipt + 0
+        lda wrd + 1
+        sta ipt + 1
+
+        jmp next
+
+;-----------------------------------------------------------------------
+
+it_last = it_exit
+
+;-----------------------------------------------------------------------
+; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
+it_ends:
+
+;-----------------------------------------------------------------------
+; anything above is not a primitive
+;----------------------------------------------------------------------
+.end
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of data stack
@@ -1176,19 +1385,6 @@ seek:
         rts
 
 ;----------------------------------------------------------------------
-; ( u -- u ) print tos in hexadecimal, swaps order
-def_word ".", "dot", hash_dot
-        lda #' '
-        jsr putchar
-        jsr spull1
-        lda fst + 1
-        jsr puthex
-        lda fst + 0
-        jsr puthex
-        jsr spush1
-        jmp next
-
-;----------------------------------------------------------------------
 ; code a byte in ASCII hexadecimal 
 puthex:
         pha
@@ -1207,329 +1403,4 @@ puthex:
 @ends:
         clc  ; clean
         jmp putchar
-
-.endif
-
-
-.ifdef numbers
-;----------------------------------------------------------------------
-; code a ASCII $FFFF hexadecimal in a byte
-;  
-number:
-
-        ldy #0
-
-        jsr @very
-        asl
-        asl
-        asl
-        asl
-        sta fst + 1
-
-        iny 
-        jsr @very
-        ora fst + 1
-        sta fst + 1
-        
-        iny 
-        jsr @very
-        asl
-        asl
-        asl
-        asl
-        sta fst + 0
-
-        iny 
-        jsr @very
-        ora fst + 0
-        sta fst + 0
-
-        clc ; clean
-        rts
-
-@very:
-        lda (tout), y
-        sec
-        sbc #$30
-        bmi @erro
-        cmp #10
-        bcc @ends
-        sbc #$07
-        ; any valid digit, A-Z, do not care 
-@ends:
-        rts
-
-@erro:
-        pla
-        pla
-        rts
-
-.endif
-
-;---------------------------------------------------------------------
-;
-; extensions
-;
-;---------------------------------------------------------------------
-.ifdef use_extensions
-
-;---------------------------------------------------------------------
-; ( -- ) execute a jump to a reference at IP
-def_word ";$", "docode", hash_docode 
-        jsr (ipt)
-        jmp next
-
-.endif
-
-;----------------------------------------------------------------------
-; code a byte in ASCII hexadecimal 
-puthex:
-        pha
-        lsr
-        ror
-        ror
-        ror
-        jsr @conv
-        pla
-@conv:
-        and #$0F
-        ora #$30
-        cmp #$3A
-        bcc @ends
-        adc #$06
-@ends:
-        clc  ; clean
-        jmp putchar
-
-;---------------------------------------------------------------------
-; core primitives minimal 
-; start of dictionary
-;---------------------------------------------------------------------
-; ( -- u ) ; tos + 1 unchanged
-def_word "key", "key", hash_key
-        jsr getchar
-        sta fst + 0
-        ; jmp this  ; uncomment if char could be \0
-        bne this    ; always taken
-        
-;---------------------------------------------------------------------
-; ( u -- ) ; tos + 1 unchanged
-def_word "emit", "emit", hash_emit
-        jsr spull1
-        lda fst + 0
-        jsr putchar
-        ; jmp next  ; uncomment if carry could be set
-        bcc jmpnext ; always taken
-
-;---------------------------------------------------------------------
-; ( w1 w2 -- NOT(w1 AND w2) )
-def_word "nand", "nand", hash_nand
-        jsr spull2
-        lda snd + 0
-        and fst + 0
-        eor #$FF
-        sta fst + 0
-        lda snd + 1
-        and fst + 1
-        eor #$FF
-        ; jmp keeps  ; uncomment if carry could be set
-        bcc keeps ; always taken
-
-;---------------------------------------------------------------------
-; ( w1 w2 -- w1+w2 ) 
-def_word "+", "plus", hash_plus
-        jsr spull2
-        clc  ; better safe than sorry
-        lda snd + 0
-        adc fst + 0
-        sta fst + 0
-        lda snd + 1
-        adc fst + 1
-        jmp keeps
-
-;---------------------------------------------------------------------
-; ( a w -- ) ; [a] = w
-def_word "!", "store", hash_store
-storew:
-        jsr spull2
-        ldx #(snd) 
-        ldy #(fst) 
-        jsr copyinto
-        ; jmp next  ; uncomment if carry could be set
-        bcc jmpnext ; always taken
-
-;---------------------------------------------------------------------
-; ( a -- w ) ; w = [a]
-def_word "@", "fetch", hash_fetch
-fetchw:
-        jsr spull1
-        ldx #(fst)
-        ldy #(snd)
-        jsr pull
-        
-        ; fall throught
-
-;---------------------------------------------------------------------
-copys:
-        lda 0, y
-        sta fst + 0
-        lda 1, y
-
-keeps:
-        sta fst + 1
-
-this:
-        jsr spush1
-
-jmpnext:
-        jmp next
-
-;---------------------------------------------------------------------
-; ( 0 -- $0000) | ( n -- $FFFF) not zero at top ?
-def_word "0#", "zeroq", hash_zeroq
-        jsr spull1
-        lda fst + 1
-        ora fst + 0
-        beq isfalse  ; is \0 ?
-istrue:
-        lda #$FF
-isfalse:
-        sta fst + 0                                                         
-        jmp keeps  
-
-;---------------------------------------------------------------------
-; ( -- state ) a variable return an reference
-def_word "u@", "state", hash_userq
-        lda #<sptr
-        sta fst + 0
-        lda #>sptr
-        beq keeps   ; always taken
-
-;---------------------------------------------------------------------
-def_word ":", "colon", hash_colon
-; save here, panic if semis not follow elsewhere
-        
-        lda #'>'
-        jsr putchar
-
-        lda here + 0
-        sta peek + 0 
-        lda here + 1
-        sta peek + 1 
-
-; stat is 'compile'
-        lda #1
-        sta stat + 0
-
-@header:
-; copy last into (here)
-        ldy #(last)
-
-        jsr docomma
-
-; get a token and receive a hash :)
-        jsr token
-
-; lower word
-
-        ldy #<(hashp+0)
-
-        jsr docomma
-        
-; upper word
-
-        ldy #>(hashp+2)
-
-        jsr docomma
-
-@ends:
-        bcc next
-
-;---------------------------------------------------------------------
-def_word ";", "semis", hash_semis
-; update last, panic if colon not lead elsewhere 
-        
-        lda #'<'
-        jsr putchar
-
-        lda peek + 0 
-        sta last + 0
-        lda peek + 1 
-        sta last + 1
-
-; stat is 'execute'
-        lda #0
-        sta stat + 0
-
-; compound words must ends with exit
-        lda #<is_exit
-        sta fst + 0
-        lda #>is_exit
-        sta fst + 1
-
-        ldy #(fst)
-
-finish:
-        jsr docomma
-
-.ifdef emote
-        lda #1
-        sta stat+1
-.endif
-
-        bcc next    ; always taken
-
-;---------------------------------------------------------------------
-; Thread Code Engine
-;
-;   ipt is IP, wrd is W
-;
-; for reference: 
-;
-;   nest aka enter or docol, 
-;   unnest aka exit or semis;
-;
-;---------------------------------------------------------------------
-; ( -- ) 
-def_word "exit", "exit", hash_exit
-unnest: ; exit
-; pull, ipt = (rpt), rpt += 2 
-        ldy #(ipt)
-        jsr rpull
-
-next:
-; wrd = (ipt) ; ipt += 2
-        ldx #(ipt)
-        ldy #(wrd)
-        jsr pull
-
-pick:
-; compare pages (MSBs)
-        lda wrd + 1
-        cmp #>it_ends + 1
-        bmi jump
-
-nest:   ; enter
-; push, *rp = ipt, rp -=2
-        ldy #(ipt)
-        jsr rpush
-
-        lda wrd + 0
-        sta ipt + 0
-        lda wrd + 1
-        sta ipt + 1
-
-        jmp next
-
-jump: 
-
-        jmp (wrd)
-
-;-----------------------------------------------------------------------
-; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
-it_ends:
-
-;-----------------------------------------------------------------------
-; anything above is not a primitive
-;----------------------------------------------------------------------
 
