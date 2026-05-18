@@ -819,25 +819,6 @@ def_word ";$", "docode", hash_docode
         jmp next
 
 ;----------------------------------------------------------------------
-; ( u -- ) print tos in hexadecimal
-def_word ".", "dot", hash_dot
-        jsr spull1
-        lda fst + 1
-        jsr puthex
-        lda fst + 0
-        jsr puthex
-        jsr spush1
-        jmp next
-
-;----------------------------------------------------------------------
-; ( u -- ) next token is a hexadecimal number
-def_word "$", "hex", hash_hex
-        
-        jsr number
-
-        jmp spush1
-
-;----------------------------------------------------------------------
 ; ( w1 u2 -- w2 ) left shit n bits
 def_word "lshift", "lshift", hash_lshift
         
@@ -883,7 +864,23 @@ is_undes:
         sta fst + 1
         jmp this
 
+;----------------------------------------------------------------------
+; ( u -- ) print tos in hexadecimal
+def_word ".", "dot", hash_dot
+        jsr spull1
+        lda fst + 1
+        jsr puthex
+        lda fst + 0
+        jsr puthex
+        jmp next
 
+;----------------------------------------------------------------------
+; ( u -- ) next token is a hexadecimal number
+def_word "$", "hex", hash_hex
+        
+        jsr number
+
+        jmp spush1
 
 ;----------------------------------------------------------------------
 ; receive an ASCII hexadecimal value
@@ -1360,34 +1357,20 @@ def_word "words", "words", hash_words
         lda #2
         jsr addwx
 
-; put size + flag, name
-        ldy #0
-        jsr show_name
-
-; update
-        iny
-        tya
-        ldx #(fst)
-        jsr addwx
-
-; show CFA
-
-        lda #' '
-        jsr putchar
+; check if end of word
         
-        lda fst + 1
-        jsr puthex
         lda fst + 0
-        jsr puthex
+        cmp trd + 0
+        bne @ieach
+
+        lda fst + 1
+        cmp trd + 1
+        bne @each
 
 ; check if is a primitive
         lda fst + 1
         cmp #>ends + 1
-        bmi @continue
-
-; list references
-        ldy #0
-        jsr show_refer
+        bmi @ends
 
 @continue:
         
@@ -1403,8 +1386,8 @@ def_word "words", "words", hash_words
         lda (trd), y
         sta snd + 1
 
-        ldx #(trd)
         lda #2
+        ldx #(trd)
         jsr addwx
 
         jmp @loop 
