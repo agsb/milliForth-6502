@@ -204,7 +204,7 @@ H0000 = 0
 
 ;---------------------------------------------------------------------
 ; uncomment to include the extras (sic)
-; use_extras = 1 
+use_extras = 1 
 
 ; uncomment to include the extensions (sic)
 ; use_extensions = 1 
@@ -227,6 +227,7 @@ FLAG_IMM = $80
 ;
 ; BEWARE: a $00010203 constant is LSB 03020100 MSB in memory
 ;
+
 hash_key        = $0B876D32  
 hash_emit       = $7C6B87D0  
 hash_fetch      = $0002B5E5  
@@ -244,15 +245,21 @@ hash_exit       = $7C6BBE85
 ;
 hash_bye        = $0B874AFB  
 hash_abort      = $0A1DFF4F  
+hash_dot        = $0002B58B  
+hash_hex        = $0002B581 
+hash_docode     = $0059697A  
+hash_lshift     = $562BBE49
+hash_rshift     = $7D5F6717 
+hash_nan        = $0B8758E4 
+
+;--------------------------------------------------------------------
+; tools
+;
 hash_slist      = $005966B8  
 hash_rlist      = $005966B9  
 hash_dump       = $7C6B2FE9  
 hash_words      = $0B6953F8  
-hash_dot        = $0002B58B  
 hash_srl        = $00596858  
-hash_exec       = $7C6BC01E  
-hash_docode     = $0059697A  
-
 ;----------------------------------------------------------------------
 .segment "ZERO"
 
@@ -482,7 +489,6 @@ find:
         cpy #4
         bne @a100
 
-
 @done:
 ; update wrd to code, 4 bytes of hash
         lda #4
@@ -496,12 +502,15 @@ eval:
 
 ; immediate ? if < \0
         lda s_save
+        pha
+        jsr puthex
+        pla
         bmi immediate      
 
 compile:
         lda #'c'
         jsr putchar
-        jsr pword
+        jsr phash
         jsr cr
 
         jsr docomma
@@ -513,7 +522,7 @@ immediate:
 execute:
         lda #'e'
         jsr putchar
-        jsr pword
+        jsr phash
         jsr cr
 
         lda #<warpit
@@ -601,7 +610,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
         jsr cr
 
         rts
-
 
 ;---------------------------------------------------------------------
 cr:
@@ -804,11 +812,15 @@ def_word "bye", "bye", hash_bye
 def_word "abort", "abort_", hash_abort
         jmp abort
 
+;---------------------------------------------------------------------
+; ( -- ) execute a jump to a reference at IP
+def_word ";$", "docode", hash_docode 
+        jmp (ipt)
+        jmp next
+
 ;----------------------------------------------------------------------
-; ( u -- u ) print tos in hexadecimal, swaps order
+; ( u -- ) print tos in hexadecimal
 def_word ".", "dot", hash_dot
-        lda #' '
-        jsr putchar
         jsr spull1
         lda fst + 1
         jsr puthex
@@ -817,6 +829,129 @@ def_word ".", "dot", hash_dot
         jsr spush1
         jmp next
 
+;----------------------------------------------------------------------
+; ( u -- ) next token is a hexadecimal number
+def_word "$", "hex", hash_hex
+        
+        jsr number
+
+        jmp spush1
+
+;----------------------------------------------------------------------
+; ( w1 u2 -- w2 ) left shit n bits
+def_word "lshift", "lshift", hash_lshift
+        
+        jsr spull2
+
+        ldx fst + 0
+        clc
+@100:
+        rol snd + 0
+        rol snd + 1
+        dex
+        bne @100
+
+        jmp copys
+
+;----------------------------------------------------------------------
+; ( w1 u2  -- w2 ) right shift n bits
+def_word "rshift", "rshift", hash_rshift
+        
+        jsr spull2
+
+        ldx fst + 0
+        clc
+@100:
+        ror snd + 0
+        ror snd + 1
+        dex
+        bne @100
+
+        jmp copys
+
+;----------------------------------------------------------------------
+; ( -- NaN ) place NaN in data stack
+def_word "nan", "nan", hash_nan
+is_error:
+is_zeros:
+is_overs:
+is_undes:
+
+        lda #$0
+        sta fst + 0
+        lda #$80
+        sta fst + 1
+        jmp this
+
+
+
+;----------------------------------------------------------------------
+; receive an ASCII hexadecimal value
+number:
+        lda #0
+        sta fst + 0
+        sta fst + 1
+
+@skip:
+        jsr getchar
+        cmp #' '
+        bmi @skip
+        beq @skip
+
+@again:
+        jsr digit
+        cmp #$FF
+        beq is_error
+
+        pha
+
+        clc
+        ldx #4
+@100:
+        rol fst + 0
+        rol fst + 1
+        dex
+        bne @100
+
+        pla
+        
+        clc
+        adc fst + 0
+        sta fst + 0
+        adc #0
+        sta fst + 1
+        
+@scan:
+        jsr getchar
+        cmp #' '
+        bmi @scan
+        bne @again
+
+        rts
+
+; verify a valid hexadecimal digit
+digit:
+        sec
+        sbc #48
+        bmi @error
+        
+        cmp #10
+        bmi @100
+
+        sec
+        sbc #7
+@100:
+        cmp #17
+        bpl @error
+
+        rts
+
+; return a digit error
+@error:
+        lda #$FF
+        rts
+
+;----------------------------------------------------------------------
 .endif
 ;----------------------------------------------------------------------
 ; code a byte in ASCII hexadecimal 
@@ -838,18 +973,6 @@ puthex:
         clc  ; clean
         jmp putchar
 
-
-;---------------------------------------------------------------------
-
-.ifdef use_extensions
-
-;---------------------------------------------------------------------
-; ( -- ) execute a jump to a reference at IP
-def_word ";$", "docode", hash_docode 
-        jsr (ipt)
-        jmp next
-
-.endif
 
 ;---------------------------------------------------------------------
 ; core primitives minimal 
