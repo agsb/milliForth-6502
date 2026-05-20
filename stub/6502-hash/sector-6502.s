@@ -371,9 +371,9 @@ cold:
 
 ;----------------------------------------------------------------------
 
-h_last = it_last
+; h_last = it_last
 
-h_here = it_ends 
+; h_here = it_ends 
 
 ;----------------------------------------------------------------------
 warm:
@@ -384,8 +384,8 @@ warm:
         sta last + 1
 
 ; next heap free cell, take a page
-        ; lda #<h_here
-        ; sta here + 0
+        lda #<h_here
+        sta here + 0
         lda #>h_here
         sta here + 1
 
@@ -393,6 +393,11 @@ warm:
         lda #0
         sta here + 0
         inc here + 1
+
+        lda here + 1
+        jsr puthex
+        lda here + 0
+        jsr puthex
 
 ; supose never change
         ldy #$02
@@ -472,10 +477,10 @@ find:
         ldy #snd ; into
         jsr pull
 
-        lda #'!'
-        jsr putchar
-        jsr pword
-        jsr cr
+        ;lda #'!'
+        ;jsr putchar
+        ;jsr pword
+        ;jsr cr
 
 ; compare hashes, for 32 bits
 
@@ -497,10 +502,10 @@ find:
         cpy #4
         bne @a100
 
-        lda #'='
-        jsr putchar
-        jsr pword
-        jsr cr
+        ;lda #'='
+        ;jsr putchar
+        ;jsr pword
+        ;jsr cr
 
 @done:
 ; update wrd to code, 4 bytes of hash
@@ -519,8 +524,8 @@ eval:
         bne immediate      
 
 compile:
-        lda #'c'
-        jsr putchar
+        ;lda #'c'
+        ;jsr putchar
 
         jsr docomma
 
@@ -529,8 +534,8 @@ compile:
 
 immediate:
 execute:
-        lda #'e'
-        jsr putchar
+        ;lda #'e'
+        ;jsr putchar
 
         lda #<warpit
         sta ipt + 0
@@ -607,14 +612,20 @@ hash_DJB2 = 5381 ; 32bit $00001505
         lda #$7F
         and hashp + 3
         sta hashp + 3
+        
+        ; alternative
+        clc
+        rol hashp + 3
+        clc
+        ror hashp + 3
 
-        jsr cr
-        lda #'~'
-        jsr putchar
+        ;jsr cr
+        ;lda #'~'
+        ;jsr putchar
 
-        jsr bl
-        jsr phash
-        jsr cr
+        ;jsr bl
+        ;jsr phash
+        ;jsr cr
 
         rts
 
@@ -1303,8 +1314,8 @@ def_word "u@", "userq", hash_userq
 ;---------------------------------------------------------------------
 def_word ":", "colon", hash_colon
 
-        lda #'['
-        jsr putchar
+        ;lda #'['
+        ;jsr putchar
 
 ; save here, panic if semis not follow elsewhere
         lda here + 0
@@ -1327,13 +1338,13 @@ def_word ":", "colon", hash_colon
 
 ; lower word
 
-        ldy #<(hashp+0)
+        ldy #(hashp+0)
 
         jsr docomma
         
 ; upper word
 
-        ldy #>(hashp+2)
+        ldy #(hashp+2)
 
         jsr docomma
 
@@ -1343,8 +1354,8 @@ def_word ":", "colon", hash_colon
 ;---------------------------------------------------------------------
 def_word ";", "semis", hash_semis
         
-        lda #']'
-        jsr putchar
+        ;lda #']'
+        ;jsr putchar
 
 ; update last, panic if colon not lead elsewhere 
         lda peek + 0 
@@ -1388,51 +1399,31 @@ finish:
 ; ( -- ) 
 def_word "exit", "exit", hash_exit
 unnest: ; exit
-        lda #'u'
-        jsr putchar
-
 ; pull, ipt = (rpt), rpt += 2 
         ldy #ipt
         jsr rpull
 
 next:
 ; wrd = (ipt) ; ipt += 2
-        lda #'x'
-        jsr putchar
-
         ldx #ipt
         ldy #wrd
         jsr pull
 
 pick:
 ; compare pages (MSBs)
-        lda #'p'
-        jsr putchar
-
-        lda #>(it_ends + 1)
-        adc #'a'
-        jsr putchar
-
         lda wrd + 1
-        adc #'A'
-        jsr putchar
+        cmp #>(it_ends + 1) + 1
+        bpl nest 
 
-        lda wrd + 1
-        cmp #>(it_ends + 1)
-        bmi jump 
+jump: 
+        jmp (wrd)
 
 nest:   ; enter
 ; push, *rp = ipt, rp -=2
-        lda #'n'
-        jsr putchar
-
         ldy #ipt
         jsr rpush
 
 move:
-        lda #'m'
-        jsr putchar
-
         lda wrd + 0
         sta ipt + 0
         lda wrd + 1
@@ -1440,19 +1431,15 @@ move:
 
         jmp next
 
-jump: 
-        lda #'j'
-        jsr putchar
-
-        jmp (wrd)
-
 ;-----------------------------------------------------------------------
 
-it_last = it_exit
+h_last = it_exit
 
 ;-----------------------------------------------------------------------
 ; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
 it_ends:
+
+h_here = it_ends
 
 ;-----------------------------------------------------------------------
 ; anything above is not a primitive
