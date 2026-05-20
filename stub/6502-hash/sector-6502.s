@@ -193,6 +193,7 @@ makelabel "it_", label
 hcount .set hcount + 1
 .dword hashed
 makelabel "is_", label
+; it_last .set it_label
 .endmacro
 
 ;---------------------------------------------------------------------
@@ -203,11 +204,11 @@ hcount .set 0
 H0000 = 0
 
 ;---------------------------------------------------------------------
+; uncomment to include the tools (sic)
+use_tools = 1 
+
 ; uncomment to include the extras (sic)
 use_extras = 1 
-
-; uncomment to include the extensions (sic)
-; use_extensions = 1 
 
 ;----------------------------------------------------------------------
 ;
@@ -259,7 +260,7 @@ hash_slist      = $005966B8
 hash_rlist      = $005966B9  
 hash_dump       = $7C6B2FE9  
 hash_words      = $0B6953F8  
-hash_srl        = $00596858  
+
 ;----------------------------------------------------------------------
 .segment "ZERO"
 
@@ -372,7 +373,7 @@ cold:
 
 h_last = it_last
 
-h_here = it_ends
+h_here = it_ends 
 
 ;----------------------------------------------------------------------
 warm:
@@ -383,13 +384,18 @@ warm:
         sta last + 1
 
 ; next heap free cell, take a page
-        lda #<h_here
-        sta here + 0
+        ; lda #<h_here
+        ; sta here + 0
         lda #>h_here
         sta here + 1
 
+        ; round up
+        lda #0
+        sta here + 0
+        inc here + 1
+
 ; supose never change
-        ldy #02
+        ldy #$02
         sty sptr + 1
         sty rptr + 1
 
@@ -398,11 +404,11 @@ miss:
         ; emote ??
 
 abort:
-        ldy #<sp0
+        ldy #<(sp0)
         sty sptr + 0
 
 quit:
-        ldy #<rp0
+        ldy #<(rp0)
         sty rptr + 0
 
 ; stat is 'execute' == \0
@@ -466,10 +472,12 @@ find:
         ldy #snd ; into
         jsr pull
 
-;----------------------------------------------
+        lda #'!'
+        jsr putchar
+        jsr pword
+        jsr cr
 
 ; compare hashes, for 32 bits
-        
 
         ldy #0
 @a100:
@@ -477,10 +485,10 @@ find:
 
         cpy #3
         bne @a200
-        ; save immediate flag
+        ; save word immediate flag
         sta s_save
         ; mask high byte
-        and #127
+        and #$7F
 @a200:
         cmp hashp, y
         bne @loop
@@ -488,6 +496,11 @@ find:
         iny
         cpy #4
         bne @a100
+
+        lda #'='
+        jsr putchar
+        jsr pword
+        jsr cr
 
 @done:
 ; update wrd to code, 4 bytes of hash
@@ -502,16 +515,12 @@ eval:
 
 ; immediate ? if < \0
         lda s_save
-        pha
-        jsr puthex
-        pla
-        bmi immediate      
+        and #$80
+        bne immediate      
 
 compile:
         lda #'c'
         jsr putchar
-        jsr phash
-        jsr cr
 
         jsr docomma
 
@@ -522,8 +531,6 @@ immediate:
 execute:
         lda #'e'
         jsr putchar
-        jsr phash
-        jsr cr
 
         lda #<warpit
         sta ipt + 0
@@ -553,7 +560,6 @@ hash_DJB2 = 5381 ; 32bit $00001505
 
 @skip:
         jsr getchar
-        
         cmp #' '
         bmi @skip
         beq @skip
@@ -598,15 +604,16 @@ hash_DJB2 = 5381 ; 32bit $00001505
 
 ;mask:
 ; clear MSB bit
-        lda #127
+        lda #$7F
         and hashp + 3
         sta hashp + 3
 
-        lda #'\'
+        jsr cr
+        lda #'~'
         jsr putchar
-        
-        jsr phash
 
+        jsr bl
+        jsr phash
         jsr cr
 
         rts
@@ -617,6 +624,13 @@ cr:
         jsr putchar
         rts
 
+;---------------------------------------------------------------------
+bl:
+        lda #32
+        jsr putchar
+        rts
+
+;---------------------------------------------------------------------
 phash:
         lda hashp + 0
         jsr puthex
@@ -628,6 +642,7 @@ phash:
         jsr puthex
         rts
 
+;---------------------------------------------------------------------
 pword:
 
         ldy #0
@@ -680,17 +695,17 @@ decwx:
 ;---------------------------------------------------------------------
 ; increment a word in page zero. offset by X
 ;incwx:
-;    inc 0, x
-;    bne @ends
-;    inc 1, x
+;       inc 0, x
+;       bne @ends
+;       inc 1, x
 ;@ends:
-;    rts
+;       rts
 
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
 ;
 docomma: 
-        ldx #(here)
+        ldx #here
         ; fall throught
 
 ;---------------------------------------------------------------------
@@ -713,17 +728,17 @@ copyinto:
 ; from a page zero address indexed by Y
 ; into a page zero indirect address indexed by X
 spush1:
-        ldy #(fst)
+        ldy #fst
 
 ;---------------------------------------------------------------------
 spush:
-        ldx #(sptr)
+        ldx #sptr
         ; jmp push
         .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
 rpush:
-        ldx #(rptr)
+        ldx #rptr
 
 ;---------------------------------------------------------------------
 ; from a page zero indirect address indexed by Y
@@ -744,24 +759,24 @@ push:
 ; into a page zero address indexed by y
 ;---------------------------------------------------------------------
 spull2:
-        ldy #(snd)
+        ldy #snd
         jsr spull
         ; fall through
 
 ;---------------------------------------------------------------------
 spull1:
-        ldy #(fst)
+        ldy #fst
         ; fall through
 
 ;---------------------------------------------------------------------
 spull:
-        ldx #(sptr)
+        ldx #sptr
         ; jmp pull
         .byte $2c   ; mask next two bytes, nice trick !
 
 ;---------------------------------------------------------------------
 rpull:
-        ldx #(rptr)
+        ldx #rptr
 
 ;---------------------------------------------------------------------
 ; from a page zero indirect address indexed by X
@@ -794,10 +809,218 @@ addwx:
 ;---------------------------------------------------------------------
 ;
 ; the primitives, 
-; for stacks uses
-; a address, c byte ascii, w signed word, u unsigned word 
-; cs counted string < 256, sz string with nul ends
+;
+;---------------------------------------------------------------------
+; for stacks using
+;       a address 16-bit, c byte ascii, 
+;       w signed word, u unsigned word 
+;       cs counted string < 256 as c-ascii
+;       sz string with zero ends as asciiz
 ; 
+;----------------------------------------------------------------------
+
+;----------------------------------------------------------------------
+
+.ifdef use_tools
+
+;----------------------------------------------------------------------
+; ( -- ) ae list of data stack
+def_word ".S", "splist", hash_slist
+        lda sptr + 0
+        sta fst + 0
+        lda sptr + 1
+        sta fst + 1
+        lda #'S'
+        jsr putchar
+        lda #<(sp0)
+        jsr list
+        jmp next
+
+;----------------------------------------------------------------------
+; ( -- ) ae list of return stack
+def_word ".R", "rplist", hash_rlist
+        lda rptr + 0
+        sta fst + 0
+        lda rptr + 1
+        sta fst + 1
+        lda #'R'
+        jsr putchar
+        lda #<rp0
+        jsr list
+        jmp next
+
+;----------------------------------------------------------------------
+;  ae list a sequence of references
+list:
+
+        sec
+        sbc fst + 0
+        lsr
+
+        tax
+
+        lda fst + 1
+        jsr puthex
+        lda fst + 0
+        jsr puthex
+
+        lda #' '
+        jsr putchar
+
+        txa
+        jsr puthex
+
+        lda #' '
+        jsr putchar
+
+        txa
+        beq @ends
+
+        ldy #0
+@loop:
+        lda #' '
+        jsr putchar
+        iny
+        lda (fst),y 
+        jsr puthex
+        dey
+        lda (fst),y 
+        jsr puthex
+        iny 
+        iny
+        dex
+        bne @loop
+@ends:
+        rts
+        
+;----------------------------------------------------------------------
+; ( -- ) dumps the user dictionary
+def_word "dump", "dump", hash_dump
+
+        lda #$0
+        sta fst + 0
+        lda #>(it_ends + 1)
+        sta fst + 1
+
+        ldx #fst
+        ldy #0
+
+@loop:
+        
+        lda (fst),y
+        jsr putchar
+        jsr incwx
+
+        lda fst + 0
+        cmp here + 0
+        bne @loop
+
+        lda fst + 1
+        cmp here + 1
+        bne @loop
+
+        clc  ; clean
+        jmp next 
+
+;----------------------------------------------------------------------
+; ( -- ) words in dictionary, 
+def_word "words", "words", hash_words
+
+; load lastest
+        lda last + 1
+        sta snd + 1
+        lda last + 0
+        sta snd + 0
+
+; load here
+        lda here + 1
+        sta trd + 1
+        lda here + 0
+        sta trd + 0
+        
+@loop:
+; lsb linked list
+        lda snd + 0
+        sta fst + 0
+
+; verify \0x0
+        ora snd + 1
+        beq @ends
+
+; msb linked list
+        lda snd + 1
+        sta fst + 1
+
+@each:    
+
+        lda #10
+        jsr putchar
+
+; put address
+        lda #' '
+        jsr putchar
+
+        lda fst + 1
+        jsr puthex
+        lda fst + 0
+        jsr puthex
+
+; put value
+        lda #' '
+        jsr putchar
+
+        ldy #1
+        lda (fst), y
+        jsr puthex
+        dey 
+        lda (fst), y
+        jsr puthex
+
+; next cell
+        lda #2
+        ldx #fst
+        jsr addwx
+
+; check if end of word
+        lda fst + 0
+        cmp trd + 0
+        bne @each
+
+        lda fst + 1
+        cmp trd + 1
+        bne @each
+
+; check if is a primitive
+        lda fst + 1
+        cmp #>(it_ends + 1)
+        bmi @ends
+
+@continue:
+        
+        lda snd + 0
+        sta trd + 0
+        lda snd + 1
+        sta trd + 1
+
+        ldy #0
+        lda (trd), y
+        sta snd + 0
+        iny
+        lda (trd), y
+        sta snd + 1
+
+        lda #2
+        ldx #trd
+        jsr addwx
+
+        jmp @loop 
+
+@ends:
+        jmp next
+
+
+.endif
+
 ;----------------------------------------------------------------------
 
 .ifdef use_extras
@@ -819,14 +1042,14 @@ def_word ";$", "docode", hash_docode
         jmp next
 
 ;----------------------------------------------------------------------
-; ( w1 u2 -- w2 ) left shit n bits
+; ( w1 u2 -- w2 ) left shit 1 to 15 bits
 def_word "lshift", "lshift", hash_lshift
         
         jsr spull2
 
         ldx fst + 0
-        clc
 @100:
+        clc
         rol snd + 0
         rol snd + 1
         dex
@@ -835,14 +1058,14 @@ def_word "lshift", "lshift", hash_lshift
         jmp copys
 
 ;----------------------------------------------------------------------
-; ( w1 u2  -- w2 ) right shift n bits
+; ( w1 u2  -- w2 ) right shift 1 to 15 bits
 def_word "rshift", "rshift", hash_rshift
         
         jsr spull2
 
         ldx fst + 0
-        clc
 @100:
+        clc
         ror snd + 0
         ror snd + 1
         dex
@@ -863,16 +1086,6 @@ is_undes:
         lda #$80
         sta fst + 1
         jmp this
-
-;----------------------------------------------------------------------
-; ( u -- ) print tos in hexadecimal
-def_word ".", "dot", hash_dot
-        jsr spull1
-        lda fst + 1
-        jsr puthex
-        lda fst + 0
-        jsr puthex
-        jmp next
 
 ;----------------------------------------------------------------------
 ; ( u -- ) next token is a hexadecimal number
@@ -949,7 +1162,15 @@ digit:
         rts
 
 ;----------------------------------------------------------------------
-.endif
+; ( u -- ) print tos in hexadecimal
+def_word ".", "dot", hash_dot
+        jsr spull1
+        lda fst + 1
+        jsr puthex
+        lda fst + 0
+        jsr puthex
+        jmp next
+
 ;----------------------------------------------------------------------
 ; code a byte in ASCII hexadecimal 
 puthex:
@@ -970,9 +1191,12 @@ puthex:
         clc  ; clean
         jmp putchar
 
+;----------------------------------------------------------------------
+.endif
+
 
 ;---------------------------------------------------------------------
-; core primitives minimal 
+; minimal core primitives
 ; start of dictionary
 ;---------------------------------------------------------------------
 ; ( -- u ) ; tos + 1 unchanged
@@ -1009,7 +1233,7 @@ def_word "nand", "nand", hash_nand
 ; ( w1 w2 -- w1+w2 ) 
 def_word "+", "plus", hash_plus
         jsr spull2
-        clc  ; better safe than sorry
+        clc  
         lda snd + 0
         adc fst + 0
         sta fst + 0
@@ -1061,7 +1285,7 @@ def_word "0#", "zeroq", hash_zeroq
         jsr spull1
         lda fst + 1
         ora fst + 0
-        beq isfalse  ; is \0 ?
+        beq isfalse  
 istrue:
         lda #$FF
 isfalse:
@@ -1078,6 +1302,10 @@ def_word "u@", "userq", hash_userq
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", hash_colon
+
+        lda #'['
+        jsr putchar
+
 ; save here, panic if semis not follow elsewhere
         lda here + 0
         sta peek + 0 
@@ -1114,6 +1342,10 @@ def_word ":", "colon", hash_colon
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", hash_semis
+        
+        lda #']'
+        jsr putchar
+
 ; update last, panic if colon not lead elsewhere 
         lda peek + 0 
         sta last + 0
@@ -1131,7 +1363,7 @@ def_word ";", "semis", hash_semis
         sta fst + 1
 
 finish:
-        ldy #(fst)
+        ldy #fst
 
         jsr docomma
 
@@ -1156,36 +1388,63 @@ finish:
 ; ( -- ) 
 def_word "exit", "exit", hash_exit
 unnest: ; exit
+        lda #'u'
+        jsr putchar
+
 ; pull, ipt = (rpt), rpt += 2 
-        ldy #(ipt)
+        ldy #ipt
         jsr rpull
 
 next:
 ; wrd = (ipt) ; ipt += 2
-        ldx #(ipt)
-        ldy #(wrd)
+        lda #'x'
+        jsr putchar
+
+        ldx #ipt
+        ldy #wrd
         jsr pull
 
 pick:
 ; compare pages (MSBs)
+        lda #'p'
+        jsr putchar
+
+        lda #>(it_ends + 1)
+        adc #'a'
+        jsr putchar
+
         lda wrd + 1
-        cmp #>it_ends + 1
-        bpl nest 
-jump: 
-        jmp (wrd)
+        adc #'A'
+        jsr putchar
+
+        lda wrd + 1
+        cmp #>(it_ends + 1)
+        bmi jump 
 
 nest:   ; enter
 ; push, *rp = ipt, rp -=2
-        ldy #(ipt)
+        lda #'n'
+        jsr putchar
+
+        ldy #ipt
         jsr rpush
 
 move:
+        lda #'m'
+        jsr putchar
+
         lda wrd + 0
         sta ipt + 0
         lda wrd + 1
         sta ipt + 1
 
         jmp next
+
+jump: 
+        lda #'j'
+        jsr putchar
+
+        jmp (wrd)
 
 ;-----------------------------------------------------------------------
 
@@ -1199,314 +1458,4 @@ it_ends:
 ; anything above is not a primitive
 ;----------------------------------------------------------------------
 .end
-
-;----------------------------------------------------------------------
-; ( -- ) ae list of data stack
-def_word ".S", "splist", hash_slist
-        lda spt + 0
-        sta fst + 0
-        lda spt + 1
-        sta fst + 1
-        lda #'S'
-        jsr putchar
-        lda #<sp0
-        jsr list
-        jmp next
-
-;----------------------------------------------------------------------
-; ( -- ) ae list of return stack
-def_word ".R", "rplist", hash_rlist
-        lda rpt + 0
-        sta fst + 0
-        lda rpt + 1
-        sta fst + 1
-        lda #'R'
-        jsr putchar
-        lda #<rp0
-        jsr list
-        jmp next
-
-;----------------------------------------------------------------------
-;  ae list a sequence of references
-list:
-
-        sec
-        sbc fst + 0
-        lsr
-
-        tax
-
-        lda fst + 1
-        jsr puthex
-        lda fst + 0
-        jsr puthex
-
-        lda #' '
-        jsr putchar
-
-        txa
-        jsr puthex
-
-        lda #' '
-        jsr putchar
-
-        txa
-        beq @ends
-
-        ldy #0
-@loop:
-        lda #' '
-        jsr putchar
-        iny
-        lda (fst),y 
-        jsr puthex
-        dey
-        lda (fst),y 
-        jsr puthex
-        iny 
-        iny
-        dex
-        bne @loop
-@ends:
-        rts
-        
-;----------------------------------------------------------------------
-; ( -- ) dumps the user dictionary
-def_word "dump", "dump", hash_dump
-
-        lda #$0
-        sta fst + 0
-        lda #>ends + 1
-        sta fst + 1
-
-        ldx #(fst)
-        ldy #0
-
-@loop:
-        
-        lda (fst),y
-        jsr putchar
-        jsr incwx
-
-        lda fst + 0
-        cmp here + 0
-        bne @loop
-
-        lda fst + 1
-        cmp here + 1
-        bne @loop
-
-        clc  ; clean
-        jmp next 
-
-;----------------------------------------------------------------------
-; ( -- ) words in dictionary, 
-def_word "words", "words", hash_words
-
-; load lastest
-        lda last + 1
-        sta snd + 1
-        lda last + 0
-        sta snd + 0
-
-; load here
-        lda here + 1
-        sta trd + 1
-        lda here + 0
-        sta trd + 0
-        
-@loop:
-; lsb linked list
-        lda snd + 0
-        sta fst + 0
-
-; verify \0x0
-        ora snd + 1
-        beq @ends
-
-; msb linked list
-        lda snd + 1
-        sta fst + 1
-
-@each:    
-
-        lda #10
-        jsr putchar
-
-; put address
-        lda #' '
-        jsr putchar
-
-        lda fst + 1
-        jsr puthex
-        lda fst + 0
-        jsr puthex
-
-; put link
-        lda #' '
-        jsr putchar
-
-        ldy #1
-        lda (fst), y
-        jsr puthex
-        dey 
-        lda (fst), y
-        jsr puthex
-
-        ldx #(fst)
-        lda #2
-        jsr addwx
-
-; check if end of word
-        
-        lda fst + 0
-        cmp trd + 0
-        bne @ieach
-
-        lda fst + 1
-        cmp trd + 1
-        bne @each
-
-; check if is a primitive
-        lda fst + 1
-        cmp #>ends + 1
-        bmi @ends
-
-@continue:
-        
-        lda snd + 0
-        sta trd + 0
-        lda snd + 1
-        sta trd + 1
-
-        ldy #0
-        lda (trd), y
-        sta snd + 0
-        iny
-        lda (trd), y
-        sta snd + 1
-
-        lda #2
-        ldx #(trd)
-        jsr addwx
-
-        jmp @loop 
-
-@ends:
-        clc  ; clean
-        jmp next
-
-;----------------------------------------------------------------------
-; ae put size and name 
-show_name:
-        lda #' '
-        jsr putchar
-
-        lda (fst), y
-        jsr puthex
-        
-        lda #' '
-        jsr putchar
-
-        lda (fst), y
-        and #$7F
-        tax
-
- @loop:
-        iny
-        lda (fst), y
-        jsr putchar
-        dex
-        bne @loop
-
-@ends:
-        rts
-
-;----------------------------------------------------------------------
-show_refer:
-; ae put references PFA ... 
-
-        ldx #(fst)
-
-@loop:
-        lda #' '
-        jsr putchar
-
-        lda fst + 1
-        jsr puthex
-        lda fst + 0
-        jsr puthex
-
-        lda #':'
-        jsr putchar
-        
-        iny 
-        lda (fst), y
-        jsr puthex
-        dey
-        lda (fst), y
-        jsr puthex
-
-        lda #2
-        jsr addwx
-
-; check if ends
-
-        lda fst + 0
-        cmp trd + 0
-        bne @loop
-        lda fst + 1
-        cmp trd + 1
-        bne @loop
-
-@ends:
-        rts
-
-;----------------------------------------------------------------------
-;  ae seek for 'exit to ends a sequence of references
-;  max of 254 references in list
-;
-seek:
-        ldy #0
-@loop1:
-        iny
-        beq @ends
-
-        lda (fst), y
-        cmp #>exit
-        bne @loop1
-
-        dey 
-        lda (fst), y
-        cmp #<exit
-        beq @ends
-        
-        iny
-        bne @loop1
-
-@ends:
-        tya
-        lsr
-        clc  ; clean
-        rts
-
-;----------------------------------------------------------------------
-; code a byte in ASCII hexadecimal 
-puthex:
-        pha
-        lsr
-        ror
-        ror
-        ror
-        jsr @conv
-        pla
-@conv:
-        and #$0F
-        ora #$30
-        cmp #$3A
-        bcc @ends
-        adc #$06
-@ends:
-        clc  ; clean
-        jmp putchar
 
