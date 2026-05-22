@@ -1,0 +1,25 @@
+
+hash_nand       = 0075727C  
+hash_zeroq      = 16685900  
+hash_rshift     = 17675F7D 
+hash_key        = 326D870B  
+hash_lshift     = 49BE2B56
+hash_abort      = 4FFF1D0A  
+hash_docode     = 7A695900  
+hash_hex        = 81B50200 
+hash_store      = 84B50200  
+hash_exit       = 85BE6B7C  
+hash_dot        = 8BB50200  
+hash_plus       = 8EB50200  
+hash_userq      = 906F5900  
+hash_semis      = 9EB50280  
+hash_colon      = 9FB50200  
+hash_slist      = B8665900  
+hash_rlist      = B9665900  
+hash_emit       = D0876B7C  
+; hash djb2 little endian
+hash_nan        = E458870B 
+hash_fetch      = E5B50200  
+hash_dump       = E92F6B7C  
+hash_words      = F853690B  
+hash_bye        = FB4A870B  
