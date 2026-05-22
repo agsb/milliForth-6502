@@ -78,6 +78,9 @@
 ;
 ;       __Chuck Moore uses 64 columns, be wise, obey rule 72 CPL__
 ;
+;       the stat are used as dual byte, stat+0 is STATE and 
+;       stat+1 is the IMMEDIATE flag, both tested as bytes
+;
 ;----------------------------------------------------------------------
 ;   For 6502:
 ;
@@ -96,6 +99,8 @@
 ;       page two is forth reserved for stacks;
 ;
 ;       page three is forth reserved for user buffers;
+;
+;       page four and so on is forth code
 ;
 ;       hardware stack is not used for this Forth;
 ;
@@ -156,6 +161,11 @@
 ;       
 ;       S ; R, before -- after, top at right.
 ;
+;       a address 16-bit, c byte ascii, 
+;       w signed word, u unsigned word 
+;       cs counted string < 256 as c-ascii
+;       sz string with zero ends as asciiz
+; 
 ;----------------------------------------------------------------------
 ;
 ; Stuff for ca65 compiler
@@ -371,9 +381,7 @@ cold:
 
 ;----------------------------------------------------------------------
 
-; h_last = it_last
-
-; h_here = it_ends 
+; h_last and h_here defined elsewhere 
 
 ;----------------------------------------------------------------------
 warm:
@@ -384,8 +392,8 @@ warm:
         sta last + 1
 
 ; next heap free cell, take a page
-        lda #<h_here
-        sta here + 0
+        ; lda #<h_here
+        ; sta here + 0
         lda #>h_here
         sta here + 1
 
@@ -393,11 +401,6 @@ warm:
         lda #0
         sta here + 0
         inc here + 1
-
-        lda here + 1
-        jsr puthex
-        lda here + 0
-        jsr puthex
 
 ; supose never change
         ldy #$02
@@ -428,16 +431,15 @@ quit:
 warpit:
         .word warp
 
-; zzzz
 ;---------------------------------------------------------------------
 warp:
 
 .ifdef emote
         ; use high byte of stat for flag
-        lda stat + 1
+        lda s_save
         beq @100          
         lda #0
-        sta stat + 1
+        sta s_save
         lda #10
         jsr putchar
         lda #'O'
@@ -451,6 +453,11 @@ warp:
 
 ; get a token and receive a hash :)
         jsr token
+
+        lda #'?'
+        jsr putchar
+        jsr phash
+        jsr cr
 
 find:
 ; load last entry
@@ -477,10 +484,10 @@ find:
         ldy #snd ; into
         jsr pull
 
-        ;lda #'!'
-        ;jsr putchar
-        ;jsr pword
-        ;jsr cr
+        lda #'!'
+        jsr putchar
+        jsr pword
+        jsr cr
 
 ; compare hashes, for 32 bits
 
@@ -491,7 +498,7 @@ find:
         cpy #3
         bne @a200
         ; save word immediate flag
-        sta s_save
+        sta stat + 1
         ; mask high byte
         and #$7F
 @a200:
@@ -502,10 +509,10 @@ find:
         cpy #4
         bne @a100
 
-        ;lda #'='
-        ;jsr putchar
-        ;jsr pword
-        ;jsr cr
+        lda #'='
+        jsr putchar
+        jsr pword
+        jsr cr
 
 @done:
 ; update wrd to code, 4 bytes of hash
@@ -519,7 +526,7 @@ eval:
         beq execute
 
 ; immediate ? if < \0
-        lda s_save
+        lda stat + 1
         and #$80
         bne immediate      
 
@@ -576,8 +583,7 @@ hash_DJB2 = 5381 ; 32bit $00001505
 
         ldx #5
 @loopi:        
-        clc
-        rol hashp + 0
+        asl hashp + 0
         rol hashp + 1
         rol hashp + 2
         rol hashp + 3
@@ -619,13 +625,11 @@ hash_DJB2 = 5381 ; 32bit $00001505
         clc
         ror hashp + 3
 
-        ;jsr cr
-        ;lda #'~'
-        ;jsr putchar
-
-        ;jsr bl
-        ;jsr phash
-        ;jsr cr
+        jsr cr
+        lda #'~'
+        jsr putchar
+        jsr phash
+        jsr cr
 
         rts
 
@@ -821,14 +825,6 @@ addwx:
 ;
 ; the primitives, 
 ;
-;---------------------------------------------------------------------
-; for stacks using
-;       a address 16-bit, c byte ascii, 
-;       w signed word, u unsigned word 
-;       cs counted string < 256 as c-ascii
-;       sz string with zero ends as asciiz
-; 
-;----------------------------------------------------------------------
 
 ;----------------------------------------------------------------------
 
@@ -1043,7 +1039,7 @@ def_word "bye", "bye", hash_bye
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae abort
-def_word "abort", "abort_", hash_abort
+def_word "abort", "abort", hash_abort
         jmp abort
 
 ;---------------------------------------------------------------------
@@ -1380,7 +1376,7 @@ finish:
 
 .ifdef emote
         lda #1
-        sta stat+1
+        sta s_save
 .endif
 
         bcc next    ; always taken

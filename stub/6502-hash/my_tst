@@ -12,6 +12,8 @@
  : 8 4 4 + ; 
          
          words 
+
+         bye
          
  : sp u@ ; 
  : rp sp cell + ; 
@@ -21,7 +23,7 @@
          
  : dup sp @ @ ; 
  : invert dup nand ; 
- : and nand invert ; 
+ : and nand invert ;  
  : - invert 1 + + ; 
  : <> - 0# ; 
  : = <> invert ; 
