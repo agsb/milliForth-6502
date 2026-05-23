@@ -498,7 +498,7 @@ find:
 
         cpy #3
         bne @a200
-        ; save word immediate flag
+        ; save full word immediate flag
         sta stat + 1
         ; mask high byte
         and #$7F
@@ -531,20 +531,15 @@ eval:
         bmi immediate      
 
 compile:
-        ;lda #'c'
-        ;jsr putchar
         
-        ldy #wrd
+        ldy #wrd     
         jsr docomma
 
-        ; or branch bcc?
-        jmp warp
+        ; or jmp
+        bcc warp
 
 immediate:
 execute:
-        ;lda #'e'
-        ;jsr putchar
-
         lda #<warpit
         sta ipt + 0
         lda #>warpit
@@ -1305,10 +1300,6 @@ def_word "u@", "userq", hash_userq
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", hash_colon
-
-        ;lda #'['
-        ;jsr putchar
-
 ; save here, panic if semis not follow elsewhere
         lda here + 0
         sta peek + 0 
@@ -1319,36 +1310,25 @@ def_word ":", "colon", hash_colon
         lda #1
         sta stat + 0
 
-@header:
+header:
 ; copy last into (here)
         ldy #last
-
         jsr docomma
 
 ; get a token and receive a hash :)
         jsr token
 
-; lower word
-
         ldy #(hashp+0)
-
         jsr docomma
-        
-; upper word
 
         ldy #(hashp+2)
-
         jsr docomma
-
-@ends:
+        
+        ; or jmp ?
         bcc next
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", hash_semis
-        
-        ;lda #']'
-        ;jsr putchar
-
 ; update last, panic if colon not lead elsewhere 
         lda peek + 0 
         sta last + 0
@@ -1358,14 +1338,14 @@ def_word ";", "semis", hash_semis
 ; stat is 'execute'
         lda #0
         sta stat + 0
-
+        
+finish:
 ; compound words must ends with exit
         lda #<is_exit
         sta fst + 0
         lda #>is_exit
         sta fst + 1
 
-finish:
         ldy #fst
 
         jsr docomma
