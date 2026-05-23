@@ -404,8 +404,8 @@ warm:
 
 ; supose never change
         ldy #$02
-        spty sptr + 1
-        sy rptr + 1
+        sty sptr + 1
+        sty rptr + 1
 
 ; when not found in dictionary
 miss:
