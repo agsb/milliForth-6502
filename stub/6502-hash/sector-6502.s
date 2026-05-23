@@ -1404,7 +1404,7 @@ next:
 pick:
 ; compare pages (MSBs)
         lda wrd + 1
-        cmp #>(it_ends + 1) + 1
+        cmp #(>it_ends) + 1
         bpl nest 
 
 jump: 
