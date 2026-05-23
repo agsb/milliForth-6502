@@ -1,3 +1,4 @@
+; hash djb2 little endian
 
 hash_nand       = 0075727C  
 hash_zeroq      = 16685900  
@@ -17,7 +18,6 @@ hash_colon      = 9FB50200
 hash_slist      = B8665900  
 hash_rlist      = B9665900  
 hash_emit       = D0876B7C  
-; hash djb2 little endian
 hash_nan        = E458870B 
 hash_fetch      = E5B50200  
 hash_dump       = E92F6B7C  
