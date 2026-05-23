@@ -614,17 +614,11 @@ hash_DJB2 = 5381 ; 32bit $00001505
         bmi @scan
         bne @again
 
-;mask:
-; clear MSB bit
-        lda #$7F
-        and hashp + 3
+mask:
+; clear MSB bit?
+        lda hashp + 3
+        and #127
         sta hashp + 3
-        
-        ; alternative
-        clc
-        rol hashp + 3
-        clc
-        ror hashp + 3
 
         jsr cr
         lda #'~'
