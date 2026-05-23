@@ -533,7 +533,8 @@ eval:
 compile:
         ;lda #'c'
         ;jsr putchar
-
+        
+        ldy #wrd
         jsr docomma
 
         ; or branch bcc?
@@ -708,7 +709,7 @@ decwx:
 ;       inc 0, x
 ;       bne @ends
 ;       inc 1, x
-;@ends:
+;@ends: 
 ;       rts
 
 ;---------------------------------------------------------------------
