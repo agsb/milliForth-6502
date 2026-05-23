@@ -528,8 +528,7 @@ eval:
 
 ; immediate ? if < \0
         lda stat + 1
-        and #$80
-        bne immediate      
+        bmi immediate      
 
 compile:
         ;lda #'c'
