@@ -14,7 +14,7 @@
 ;
 ; You should have received a copy of the GNU General Public License
 ; along with this program. If not, see <http://www.gnu.org/licenses/>.
-;
+; não 
 ;----------------------------------------------------------------------
 ;
 ;   A MilliForth for 6502 
@@ -404,8 +404,8 @@ warm:
 
 ; supose never change
         ldy #$02
-        sty sptr + 1
-        sty rptr + 1
+        spty sptr + 1
+        sy rptr + 1
 
 ; when not found in dictionary
 miss:
@@ -436,10 +436,11 @@ warp:
 
 .ifdef emote
         ; use high byte of stat for flag
-        lda stat + 1
+        lda s_save
         beq @100          
         lda #0
-        sta stat + 1
+        sta s_save
+
         lda #10
         jsr putchar
         lda #'O'
@@ -1229,7 +1230,7 @@ def_word "nand", "nand", hash_nand
         jsr spull2
         lda snd + 0
         and fst + 0
-        eor #$FF
+        eor j#$FF
         sta fst + 0
         lda snd + 1
         and fst + 1
@@ -1377,7 +1378,7 @@ finish:
 
 .ifdef emote
         lda #1
-        sta stat + 1
+        sta s_save
 .endif
 
         bcc next    ; always taken
