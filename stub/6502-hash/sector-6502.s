@@ -902,7 +902,7 @@ def_word "dump", "dump", hash_dump
 
         lda #$0
         sta fst + 0
-        lda #>(it_ends + 1)
+        lda #(>it_ends) + 1
         sta fst + 1
 
         ldx #fst
@@ -995,7 +995,7 @@ def_word "words", "words", hash_words
 
 ; check if is a primitive
         lda fst + 1
-        cmp #>(it_ends + 1)
+        cmp #(>it_ends) + 1
         bmi @ends
 
 @continue:
@@ -1224,7 +1224,7 @@ def_word "nand", "nand", hash_nand
         jsr spull2
         lda snd + 0
         and fst + 0
-        eor j#$FF
+        eor #$FF
         sta fst + 0
         lda snd + 1
         and fst + 1
