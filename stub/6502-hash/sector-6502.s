@@ -641,6 +641,7 @@ bl:
  ponew:
         lda 1, y
         jsr puthex
+ poneb:
         lda 0, y
         jsr puthex
         rts
@@ -1165,7 +1166,8 @@ puthex:
 def_word "key", "key", hash_key
         jsr getchar
         sta fst + 0
-        jmp this 
+        lda #0 ; zzzz
+        jmp tokeep
         
 ;---------------------------------------------------------------------
 ; ( u -- ) ; tos + 1 unchanged
