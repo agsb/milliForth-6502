@@ -112,7 +112,7 @@
 ;   "when the heap moves forward, move the stack backward" 
 ;
 ;   as hardware stacks do: 
-;      push is 'store and decrease', pull is 'increase and fetch',
+;      push is 'decrease and store', pull is 'fetch and increase',
 ;
 ;   but see the notes for Devs.
 ;
@@ -217,10 +217,10 @@ H0000 = 0
 
 ;---------------------------------------------------------------------
 ; uncomment to include the tools (sic)
-use_tools = 1 
+; use_tools = 1 
 
 ; uncomment to include the extras (sic)
-use_extras = 1 
+; use_extras = 1 
 
 ;----------------------------------------------------------------------
 ;
@@ -343,7 +343,7 @@ s_save: .byte $0
 
 ;----------------------------------------------------------------------
 ; leave space for page zero, hard stack, forth stacks 
-
+; using 36 cells, could use up to 63 cells
 * = $200
 
 ; start of data stack
@@ -610,7 +610,7 @@ hash_DJB2 = 5381 ; 32bit $00001505
         bne @again
 
 mask:
-; clear MSB bit?
+; clear MSB bit
         lda hashp + 3
         and #127
         sta hashp + 3
