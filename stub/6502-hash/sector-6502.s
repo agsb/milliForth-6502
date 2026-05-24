@@ -1050,6 +1050,17 @@ is_undes:
         lda #$80
         jmp tokeep
 
+;---------------------------------------------------------------------
+; ( -- ipt ) push ipt and go to next cell
+def_word "lit", "lit", hash_lit
+        lda ipt + 0
+        sta fst + 0
+        lda ipt + 1
+        sta fst + 1
+        ldy #fst
+        jsr addtwo
+        jmp topush
+        
 ;----------------------------------------------------------------------
 ; ( u -- ) next token is a hexadecimal number
 def_word "$", "hex", hash_hex
