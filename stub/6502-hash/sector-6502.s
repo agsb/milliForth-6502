@@ -819,28 +819,23 @@ addwx:
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of data stack
-def_word ".S", "splist", hash_slist
-        lda sptr + 0
-        sta fst + 0
-        lda sptr + 1
-        sta fst + 1
+def_word ".S", "splist", hash_slist 
         lda #'S'
-        jsr putchar
-        lda #<sp0
- dolist:
+        ldy #sptr
+dolist:
+        putchar
+        lda 0, y
+        sta fst + 0
+        lda 1, y
+        sta fst + 1
         jsr list
         jmp next
 
 ;----------------------------------------------------------------------
 ; ( -- ) ae list of return stack
 def_word ".R", "rplist", hash_rlist
-        lda rptr + 0
-        sta fst + 0
-        lda rptr + 1
-        sta fst + 1
         lda #'R'
-        jsr putchar
-        lda #<rp0
+        ldy #rptr
         bne dolist
 
 ;----------------------------------------------------------------------
@@ -869,29 +864,35 @@ list:
         rts
         
 ;----------------------------------------------------------------------
-; ( -- ) dumps the user dictionary
+; ( -- ) dumps all 
 def_word "dump", "dump", hash_dump
 
-        lda #$0
+        ;lda #$0
+        ;sta fst + 0
+        ;lda #>it_ends + 1
+        ;sta fst +  1
+        
+        lda #00
         sta fst + 0
-        lda #>it_ends + 1
+        lda #04
         sta fst + 1
 
         ldx #fst
         ldy #0
 
 @loop:
-        lda (fst),y
-        jsr putchar
+        lda (fst), y
+        jsr puthex
+        
         jsr incwx
-
-        lda fst + 0
-        cmp here + 0
-        bne @loop
 
         lda fst + 1
         cmp here + 1
-        bne @loop
+        bmi @loop
+
+        lda fst + 0
+        cmp here + 0
+        bmi @loop
         
         jmp next 
 
@@ -906,9 +907,9 @@ def_word "words", "words", hash_words
         sta snd + 0
 
 ; load here
-        lda here + 1
+        lda heap + 1
         sta trd + 1
-        lda here + 0
+        lda heap + 0
         sta trd + 0
         
 @loop:
@@ -953,12 +954,12 @@ def_word "words", "words", hash_words
         jsr addtwo
 
 ; check if end of word
-        lda fst + 0
-        cmp trd + 0
-        bne @each
-
         lda fst + 1
         cmp trd + 1
+        bne @each
+
+        lda fst + 0
+        cmp trd + 0
         bne @each
 
 ; check if is a primitive
@@ -1012,13 +1013,10 @@ def_word ";$", "docode", hash_docode
 
 ;----------------------------------------------------------------------
 ; ( w1 u2 -- w2 ) left shit 1 to 15 bits
-def_word "lshift", "lshift", hash_lshift
-        
+def_word "lshift", "lshift", hash_lshift   
         jsr spull2
-
         ldx fst + 0
 @100:
- 
         asl snd + 0
         rol snd + 1
         dex
@@ -1029,10 +1027,8 @@ docopy:
 
 ;----------------------------------------------------------------------
 ; ( w1 u2  -- w2 ) right shift 1 to 15 bits
-def_word "rshift", "rshift", hash_rshift
-        
+def_word "rshift", "rshift", hash_rshift     
         jsr spull2
-
         ldx fst + 0
 @100:
         lsr snd + 0
@@ -1067,10 +1063,8 @@ def_word "lit", "lit", hash_lit
         
 ;----------------------------------------------------------------------
 ; ( u -- ) next token is a hexadecimal number
-def_word "$", "hex", hash_hex
-        
+def_word "$", "hex", hash_hex   
         jsr number
-
         jmp topush
 
 ;----------------------------------------------------------------------
