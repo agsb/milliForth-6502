@@ -1047,8 +1047,7 @@ is_undes:
         lda #$0
         sta fst + 0
         lda #$80
-        sta fst + 1
-        jmp this
+        jmp tokeep
 
 ;----------------------------------------------------------------------
 ; ( u -- ) next token is a hexadecimal number
