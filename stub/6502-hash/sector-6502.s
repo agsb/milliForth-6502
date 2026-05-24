@@ -51,7 +51,7 @@
 ;
 ;   No overflow or underflow checks;
 ;
-;   the header order is LINK, HASH, theh CODE;
+;   the header order is LINK, HASH, CODE;
 ;
 ;   only IMMEDIATE flag used as $80 on high byte;
 ;
@@ -62,11 +62,13 @@
 ;
 ;       this code uses Minimal Indirect Thread Code.
 ;
-;       use a classic cell with 16-bits. 
+;       uses DJB2 XOR hash with 31 bits
+;
+;       uses a classic cell with 16-bits. 
 ;
 ;       no TOS register, all values keeped at stacks;
 ;
-;       use of stream model for input and output;
+;       uses of stream model for input and output;
 ;
 ;       there is no lines;
 ;
@@ -100,7 +102,7 @@
 ;
 ;       page three is forth reserved for user buffers;
 ;
-;       page four and so on is forth code
+;       page four and so on is forth code;
 ;
 ;       hardware stack is not used for this Forth;
 ;
@@ -123,7 +125,7 @@
 ;   
 ;   Stacks at page2: 
 ;
-;   |$00  <spt..sp0 $48| <rpt..rp0 $90| free $FE..|$FF..|
+;   |$00  <spt..sp0 $48| <rpt..rp0 $90| free $FF|
 ;
 ;   From page 4 onwards:
 ;
@@ -135,7 +137,7 @@
 ;   For Devs:
 ;
 ;   the hello_world.forth file states that stacks works
-;       to allow : dup sp@ @ ; so sp must point to actual TOS.
+;       to allow : dup sp @ @ ; so sp must point to actual TOS.
 ;   
 ;   The movement will be:
 ;       push is 'decrease and store'
@@ -262,6 +264,7 @@ hash_docode     = $0059697A
 hash_lshift     = $562BBE49
 hash_rshift     = $7D5F6717 
 hash_nan        = $0B8758E4 
+hash_lit        = zzzzzz
 
 ;--------------------------------------------------------------------
 ; tools
@@ -615,7 +618,8 @@ mask:
         jsr cr
         lda #'~'
         jsr putchar
-        jsr phash
+        ldy hashp
+        jsr ptwow
         jsr cr
 
         rts
@@ -823,7 +827,8 @@ def_word ".S", "splist", hash_slist
         lda #'S'
         jsr putchar
         lda #<sp0
-        jsr listo
+ dolist:
+        jsr list
         jmp next
 
 ;----------------------------------------------------------------------
@@ -836,8 +841,7 @@ def_word ".R", "rplist", hash_rlist
         lda #'R'
         jsr putchar
         lda #<rp0
-        jsr list
-        jmp next
+        bne dolist
 
 ;----------------------------------------------------------------------
 ;  ae list cells in stack
@@ -1021,7 +1025,7 @@ def_word "lshift", "lshift", hash_lshift
         bne @100
 docopy:        
         ldy #snd
-        jmp copys
+        jmp tocopy
 
 ;----------------------------------------------------------------------
 ; ( w1 u2  -- w2 ) right shift 1 to 15 bits
@@ -1089,10 +1093,9 @@ number:
 
         pha
 
-        clc
         ldx #4
 @100:
-        rol fst + 0
+        asl fst + 0
         rol fst + 1
         dex
         bne @100
