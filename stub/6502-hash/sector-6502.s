@@ -1186,7 +1186,7 @@ def_word "nand", "nand", hash_nand
         lda snd + 1
         and fst + 1
         eor #$FF
-        jmp tokeep
+        jmp topush
 
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- w1+w2 ) 
@@ -1198,7 +1198,7 @@ def_word "+", "plus", hash_plus
         sta fst + 0
         lda snd + 1
         adc fst + 1
-        jmp tokeep
+        jmp topush
 
 ;---------------------------------------------------------------------
 ; ( a w -- ) ; [a] = w
