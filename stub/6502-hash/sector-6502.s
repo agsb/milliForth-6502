@@ -454,7 +454,8 @@ warp:
 
         lda #'!'
         jsr putchar
-        jsr phash
+        ldy hashp
+        jsr ptwow
         jsr cr
 
 find:
@@ -484,7 +485,8 @@ find:
 
         lda #'?'
         jsr putchar
-        jsr pword
+        ldy #wrd
+        jsr ptwow
         jsr cr
 
 ; compare hashes, for 32 bits
@@ -509,7 +511,8 @@ find:
 
         lda #'='
         jsr putchar
-        jsr pword
+        ldy #wrd
+        jsr ptwowl
         jsr cr
 
 @done:
@@ -530,7 +533,6 @@ compile:
         ldy #wrd     
         jsr docomma
 
-        ; or bcc
         jmp warp
 
 immediate:
@@ -630,31 +632,20 @@ bl:
         jsr putchar
         rts
 
-;---------------------------------------------------------------------
-phash:
-        lda hashp + 0
+;--------------------------------------------------------------------
+ ptwow:  
+        lda 3, y
         jsr puthex
-        lda hashp + 1
+        lda 2, y
         jsr puthex
-        lda hashp + 2
+ ponew:
+        lda 1, y
         jsr puthex
-        lda hashp + 3
+        lda 0, y
         jsr puthex
         rts
 
 ;---------------------------------------------------------------------
-pword:
-
-        ldy #0
-@10:
-        lda (wrd), y
-        jsr puthex
-
-        iny
-        cpy #4
-        bne @10
-
-        rts
 
 ;---------------------------------------------------------------------
 ;  this code depends on systems or emulators
@@ -809,7 +800,6 @@ addwx:
         sta 0, x
         bcc @ends
         inc 1, x
-        clc ; keep carry clean
 @ends:
         rts
 
@@ -851,6 +841,7 @@ def_word ".R", "rplist", hash_rlist
 ;----------------------------------------------------------------------
 ;  ae list cells in stack
 list:
+; list 6 cells
         ldx #6
 @loop:
         lda #' '
@@ -885,7 +876,6 @@ def_word "dump", "dump", hash_dump
         ldy #0
 
 @loop:
-        
         lda (fst),y
         jsr putchar
         jsr incwx
@@ -929,8 +919,7 @@ def_word "words", "words", hash_words
         lda snd + 1
         sta fst + 1
 
-@each:    
-
+@each:  
         lda #10
         jsr putchar
 
@@ -1015,7 +1004,6 @@ def_word "abort", "abort", hash_abort
 ; ( -- ) execute a jump to a reference at IP
 def_word ";$", "docode", hash_docode 
         jmp (ipt)
-        jmp next
 
 ;----------------------------------------------------------------------
 ; ( w1 u2 -- w2 ) left shit 1 to 15 bits
@@ -1030,7 +1018,8 @@ def_word "lshift", "lshift", hash_lshift
         rol snd + 1
         dex
         bne @100
-
+docopy:        
+        ldy #snd
         jmp copys
 
 ;----------------------------------------------------------------------
@@ -1045,8 +1034,7 @@ def_word "rshift", "rshift", hash_rshift
         ror snd + 1
         dex
         bne @100
-
-        jmp copys
+        beq docopy
 
 ;----------------------------------------------------------------------
 ; ( -- NaN ) place NaN in data stack
@@ -1068,7 +1056,7 @@ def_word "$", "hex", hash_hex
         
         jsr number
 
-        jmp spush1
+        jmp topush
 
 ;----------------------------------------------------------------------
 ; receive an ASCII hexadecimal value
@@ -1178,8 +1166,7 @@ puthex:
 def_word "key", "key", hash_key
         jsr getchar
         sta fst + 0
-        ; jmp this  ; uncomment if char could be \0
-        bne this    ; always taken
+        jmp this 
         
 ;---------------------------------------------------------------------
 ; ( u -- ) ; tos + 1 unchanged
@@ -1187,8 +1174,7 @@ def_word "emit", "emit", hash_emit
         jsr spull1
         lda fst + 0
         jsr putchar
-        ; jmp next  ; uncomment if carry could be set
-        bcc jmpnext ; always taken
+        jmp next 
 
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- NOT(w1 AND w2) )
@@ -1201,7 +1187,7 @@ def_word "nand", "nand", hash_nand
         lda snd + 1
         and fst + 1
         eor #$FF
-        jmp keeps
+        jmp tokeep
 
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- w1+w2 ) 
@@ -1213,7 +1199,7 @@ def_word "+", "plus", hash_plus
         sta fst + 0
         lda snd + 1
         adc fst + 1
-        jmp keeps
+        jmp tokeep
 
 ;---------------------------------------------------------------------
 ; ( a w -- ) ; [a] = w
@@ -1237,18 +1223,18 @@ fetchw:
         ; fall throught
 
 ;---------------------------------------------------------------------
-copys:
+tocopy:
         lda 0, y
         sta fst + 0
         lda 1, y
 
-keeps:
+tokeep:
         sta fst + 1
 
-this:
+topush:
         jsr spush1
 
-jmpnext:
+tonext:
         jmp next
 
 ;---------------------------------------------------------------------
@@ -1262,7 +1248,7 @@ istrue:
         lda #$FF
 isfalse:
         sta fst + 0                                                         
-        jmp keeps  
+        jmp tokeep
 
 ;---------------------------------------------------------------------
 ; ( -- state ) a variable return an reference
@@ -1270,7 +1256,7 @@ def_word "u@", "userq", hash_userq
         lda #<sptr
         sta fst + 0
         lda #>sptr
-        beq keeps
+        beq tokeep
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", hash_colon
@@ -1298,8 +1284,7 @@ header:
         ldy #(hashp+2)
         jsr docomma
         
-        ; or jmp ?
-        bcc next
+        jmp next
 
 ;---------------------------------------------------------------------
 def_word ";", "semis", hash_semis
@@ -1321,7 +1306,6 @@ finish:
         sta fst + 1
 
         ldy #fst
-
         jsr docomma
 
 .ifdef emote
@@ -1329,7 +1313,7 @@ finish:
         sta s_save
 .endif
 
-        bcc next    ; always taken
+        jmp next 
 
 ;---------------------------------------------------------------------
 ; Thread Code Engine
