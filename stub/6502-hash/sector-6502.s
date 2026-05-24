@@ -397,10 +397,10 @@ warm:
 
 ; next heap free cell, take a page
         ldy #0
-        sty here + 0
+        sty heap + 0
         ldy #>h_here
         iny
-        sty here + 1
+        sty heap + 1
 
 ; supose never change
         ldy #$02
