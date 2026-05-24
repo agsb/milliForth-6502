@@ -456,7 +456,7 @@ warp:
 ; get a token and receive a hash :)
         jsr token
 
-        lda #'?'
+        lda #'!'
         jsr putchar
         jsr phash
         jsr cr
@@ -486,7 +486,7 @@ find:
         ldy #snd ; into
         jsr pull
 
-        lda #'!'
+        lda #'?'
         jsr putchar
         jsr pword
         jsr cr
@@ -531,8 +531,7 @@ eval:
         lda stat + 1
         bmi immediate      
 
-compile:
-        
+compile:      
         ldy #wrd     
         jsr docomma
 
@@ -606,8 +605,7 @@ hash_DJB2 = 5381 ; 32bit $00001505
         
 @scan:
         jsr getchar
-        ; cmp #' '
-        eor #' '
+        cmp #' '
         bmi @scan
         bne @again
 
