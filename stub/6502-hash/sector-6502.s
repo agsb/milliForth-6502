@@ -531,8 +531,8 @@ compile:
         ldy #wrd     
         jsr docomma
 
-        ; or jmp
-        bcc warp
+        ; or bcc
+        jmp warp
 
 immediate:
 execute:
@@ -826,7 +826,7 @@ def_word ".S", "splist", hash_slist
         lda #'S'
         jsr putchar
         lda #<(sp0)
-        jsr list
+        jsr listo
         jmp next
 
 ;----------------------------------------------------------------------
@@ -843,47 +843,28 @@ def_word ".R", "rplist", hash_rlist
         jmp next
 
 ;----------------------------------------------------------------------
-;  ae list a sequence of references
+;  ae list cells in stack
 list:
-
-        sec
-        sbc fst + 0
-        lsr
-
-        tax
+        ldx #6
+@loop:
+        lda #' '
+        jsr putchar
 
         lda fst + 1
         jsr puthex
         lda fst + 0
-        jsr puthex
+        jsr puthex    
 
-        lda #' '
-        jsr putchar
-
-        txa
-        jsr puthex
-
-        lda #' '
-        jsr putchar
-
-        txa
-        beq @ends
-
-        ldy #0
-@loop:
-        lda #' '
-        jsr putchar
-        iny
-        lda (fst),y 
-        jsr puthex
-        dey
-        lda (fst),y 
-        jsr puthex
-        iny 
-        iny
+        ldx #fst
+        ldy #2
+        jsr addwx
+        
         dex
         bne @loop
-@ends:
+        
+        lda #10
+        jsr putchar
+
         rts
         
 ;----------------------------------------------------------------------
