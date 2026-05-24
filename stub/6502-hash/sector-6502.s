@@ -387,21 +387,17 @@ cold:
 ;----------------------------------------------------------------------
 warm:
 ; link list of headers
-        lda #<h_last
-        sta last + 0
-        lda #>h_last
-        sta last + 1
+        ldy #<h_last
+        sty last + 0
+        ldy #>h_last
+        sty last + 1
 
 ; next heap free cell, take a page
-        ; lda #<h_here
-        ; sta here + 0
-        lda #>h_here
-        sta here + 1
-
-        ; round up
-        lda #0
-        sta here + 0
-        inc here + 1
+        ldy #0
+        sty here + 0
+        ldy #>h_here
+        iny
+        sty here + 1
 
 ; supose never change
         ldy #$02
