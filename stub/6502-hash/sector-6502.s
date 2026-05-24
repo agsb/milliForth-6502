@@ -409,11 +409,11 @@ miss:
         ; emote ??
 
 abort:
-        ldy #<(sp0)
+        ldy #<sp0
         sty sptr + 0
 
 quit:
-        ldy #<(rp0)
+        ldy #<rp0
         sty rptr + 0
 
 ; stat is 'execute' == \0
@@ -514,9 +514,8 @@ find:
 
 @done:
 ; update wrd to code, 4 bytes of hash
-        lda #4
         ldx #wrd 
-        jsr addwx
+        jsr addfour
 
 eval:
 ; executing ? if == \0
@@ -794,7 +793,14 @@ pull:
 ;---------------------------------------------------------------------
 ; increment a word in page zero. offset by X
 incwx:
+addone:
         lda #01
+        .byte $2C
+addtwo:
+        lda #02
+        .byte $2C
+addfour:
+        lda #04
 ;---------------------------------------------------------------------
 ; add a byte to a word in page zero. offset by X
 addwx:
@@ -856,8 +862,7 @@ list:
         jsr puthex    
 
         ldx #fst
-        ldy #2
-        jsr addwx
+        jsr addtwo
         
         dex
         bne @loop
@@ -951,9 +956,8 @@ def_word "words", "words", hash_words
         jsr puthex
 
 ; next cell
-        lda #2
         ldx #fst
-        jsr addwx
+        jsr addtwo
 
 ; check if end of word
         lda fst + 0
@@ -983,9 +987,8 @@ def_word "words", "words", hash_words
         lda (trd), y
         sta snd + 1
 
-        lda #2
         ldx #trd
-        jsr addwx
+        jsr addtwo
 
         jmp @loop 
 
@@ -1023,8 +1026,8 @@ def_word "lshift", "lshift", hash_lshift
 
         ldx fst + 0
 @100:
-        clc
-        rol snd + 0
+ 
+        asl snd + 0
         rol snd + 1
         dex
         bne @100
@@ -1039,8 +1042,7 @@ def_word "rshift", "rshift", hash_rshift
 
         ldx fst + 0
 @100:
-        clc
-        ror snd + 0
+        lsr snd + 0
         ror snd + 1
         dex
         bne @100
