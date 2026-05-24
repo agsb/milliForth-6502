@@ -301,7 +301,7 @@ maths:
 sptr:   .word $0 ; data stack base,
 rptr:   .word $0 ; return stack base
 last:   .word $0 ; last link cell
-here:   .word $0 ; next unused cell, aka dpt
+heap:   .word $0 ; next unused cell, aka dpt
 
 stat:   .word $0 ; state at lsb, last size+flag at msb
 peek:   .word $0 ; last here before compiling
