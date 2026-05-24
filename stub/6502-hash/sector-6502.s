@@ -831,7 +831,7 @@ def_word ".S", "splist", hash_slist
         sta fst + 1
         lda #'S'
         jsr putchar
-        lda #<(sp0)
+        lda #<sp0
         jsr listo
         jmp next
 
@@ -878,7 +878,7 @@ def_word "dump", "dump", hash_dump
 
         lda #$0
         sta fst + 0
-        lda #(>it_ends) + 1
+        lda #>it_ends + 1
         sta fst + 1
 
         ldx #fst
@@ -897,8 +897,7 @@ def_word "dump", "dump", hash_dump
         lda fst + 1
         cmp here + 1
         bne @loop
-
-        clc  ; clean
+        
         jmp next 
 
 ;----------------------------------------------------------------------
@@ -1202,8 +1201,7 @@ def_word "nand", "nand", hash_nand
         lda snd + 1
         and fst + 1
         eor #$FF
-        ; jmp keeps  ; uncomment if carry could be set
-        bcc keeps ; always taken
+        jmp keeps
 
 ;---------------------------------------------------------------------
 ; ( w1 w2 -- w1+w2 ) 
@@ -1215,8 +1213,7 @@ def_word "+", "plus", hash_plus
         sta fst + 0
         lda snd + 1
         adc fst + 1
-        clc
-        bcc keeps
+        jmp keeps
 
 ;---------------------------------------------------------------------
 ; ( a w -- ) ; [a] = w
@@ -1226,9 +1223,8 @@ storew:
         ldx #snd 
         ldy #fst 
         jsr copyinto
-        ; jmp next  ; uncomment if carry could be set
-        bcc jmpnext ; always taken
-
+        jmp next
+        
 ;---------------------------------------------------------------------
 ; ( a -- w ) ; w = [a]
 def_word "@", "fetch", hash_fetch
@@ -1274,7 +1270,7 @@ def_word "u@", "userq", hash_userq
         lda #<sptr
         sta fst + 0
         lda #>sptr
-        beq keeps   ; always taken
+        beq keeps
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", hash_colon
