@@ -217,10 +217,10 @@ H0000 = 0
 
 ;---------------------------------------------------------------------
 ; uncomment to include the tools (sic)
-; use_tools = 1 
+use_tools = 1 
 
 ; uncomment to include the extras (sic)
-; use_extras = 1 
+use_extras = 1 
 
 ;----------------------------------------------------------------------
 ;
@@ -264,7 +264,7 @@ hash_docode     = $0059697A
 hash_lshift     = $562BBE49
 hash_rshift     = $7D5F6717 
 hash_nan        = $0B8758E4 
-hash_lit        = zzzzzz
+hash_lit        = $0B873EF4 
 
 ;--------------------------------------------------------------------
 ; tools
@@ -304,7 +304,7 @@ last:   .word $0 ; last link cell
 heap:   .word $0 ; next unused cell, aka dpt
 
 stat:   .word $0 ; state at lsb, last size+flag at msb
-peek:   .word $0 ; last here before compiling
+peek:   .word $0 ; last heap before compiling
 ceil:   .word $0 ; last unused cell 
 void:   .word $0 ; nothing
 
@@ -385,7 +385,7 @@ cold:
 
 ;----------------------------------------------------------------------
 
-; h_last and h_here defined elsewhere 
+; h_last and h_heap defined elsewhere 
 
 ;----------------------------------------------------------------------
 warm:
@@ -398,12 +398,12 @@ warm:
 ; next heap free cell, take a page
         ldy #0
         sty heap + 0
-        ldy #>h_here
+        ldy #>h_heap
         iny
         sty heap + 1
 
 ; supose never change
-        ldy #$02
+        ldy #2
         sty sptr + 1
         sty rptr + 1
 
@@ -455,11 +455,11 @@ warp:
 ; get a token and receive a hash :)
         jsr token
 
-        lda #'!'
-        jsr putchar
-        ldy hashp
-        jsr ptwow
-        jsr cr
+        ;lda #'!'
+        ;jsr putchar
+        ;ldy #hashp
+        ;jsr ptwow
+        ;jsr cr
 
 find:
 ; load last entry
@@ -486,11 +486,11 @@ find:
         ldy #snd ; into
         jsr pull
 
-        lda #'?'
-        jsr putchar
-        ldy #wrd
-        jsr ptwow
-        jsr cr
+        ;lda #'?'
+        ;jsr putchar
+        ;ldy #wrd
+        ;jsr ptwos
+        ;jsr cr
 
 ; compare hashes, for 32 bits
 
@@ -512,11 +512,11 @@ find:
         cpy #4
         bne @a100
 
-        lda #'='
-        jsr putchar
-        ldy #wrd
-        jsr ptwowl
-        jsr cr
+        ;lda #'='
+        ;jsr putchar
+        ;ldy #wrd
+        ;jsr ptwos
+        ;jsr cr
 
 @done:
 ; update wrd to code, 4 bytes of hash
@@ -615,12 +615,11 @@ mask:
         and #127
         sta hashp + 3
 
-        jsr cr
-        lda #'~'
-        jsr putchar
-        ldy hashp
-        jsr ptwow
-        jsr cr
+        ;lda #'~'
+        ;jsr putchar
+        ;ldy #hashp
+        ;jsr ptwow
+        ;jsr cr
 
         rts
 
@@ -647,6 +646,22 @@ bl:
         jsr puthex
  poneb:
         lda 0, y
+        jsr puthex
+        rts
+
+;--------------------------------------------------------------------
+ ptwos:  
+        ldy #3
+        lda (wrd), y
+        jsr puthex
+        dey
+        lda (wrd), y
+        jsr puthex
+        dey
+        lda (wrd), y
+        jsr puthex
+        dey
+        lda (wrd), y
         jsr puthex
         rts
 
@@ -701,12 +716,13 @@ decwx:
 ; classic heap moves always forward
 ;
 docomma: 
-        ldx #here
+        ldx #heap
         ; fall throught
 
 ;---------------------------------------------------------------------
 ; from a page zero address indexed by Y
 ; into a page zero indirect address indexed by X
+; also increases address at x
 copyinto:
         lda 0, y
         sta (0, x)
@@ -823,7 +839,7 @@ def_word ".S", "splist", hash_slist
         lda #'S'
         ldy #sptr
 dolist:
-        putchar
+        jsr putchar
         lda 0, y
         sta fst + 0
         lda 1, y
@@ -887,11 +903,11 @@ def_word "dump", "dump", hash_dump
         jsr incwx
 
         lda fst + 1
-        cmp here + 1
+        cmp heap + 1
         bmi @loop
 
         lda fst + 0
-        cmp here + 0
+        cmp heap + 0
         bmi @loop
         
         jmp next 
@@ -906,7 +922,7 @@ def_word "words", "words", hash_words
         lda last + 0
         sta snd + 0
 
-; load here
+; load heap
         lda heap + 1
         sta trd + 1
         lda heap + 0
@@ -989,7 +1005,6 @@ def_word "words", "words", hash_words
 @ends:
         jmp next
 
-
 .endif
 
 ;----------------------------------------------------------------------
@@ -1057,7 +1072,7 @@ def_word "lit", "lit", hash_lit
         sta fst + 0
         lda ipt + 1
         sta fst + 1
-        ldy #fst
+        ldy #ipt
         jsr addtwo
         jmp topush
         
@@ -1269,10 +1284,10 @@ def_word "u@", "userq", hash_userq
 
 ;---------------------------------------------------------------------
 def_word ":", "colon", hash_colon
-; save here, panic if semis not follow elsewhere
-        lda here + 0
+; save heap, panic if semis not follow elsewhere
+        lda heap + 0
         sta peek + 0 
-        lda here + 1
+        lda heap + 1
         sta peek + 1 
 
 ; stat is 'compile'
@@ -1280,7 +1295,7 @@ def_word ":", "colon", hash_colon
         sta stat + 0
 
 header:
-; copy last into (here)
+; copy last into (heap)
         ldy #last
         jsr docomma
 
@@ -1378,7 +1393,7 @@ h_last = it_exit
 ; BEWARE, MUST BE AT END! MINIMAL THREAD CODE DEPENDS ON IT!
 it_ends:
 
-h_here = it_ends
+h_heap = it_ends
 
 ;-----------------------------------------------------------------------
 ; anything above is not a primitive
