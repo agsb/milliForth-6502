@@ -11,9 +11,8 @@
  : 4 2 2 + ; 
  : 8 4 4 + ; 
          
-         words  
-
-         bye 
+ words 
+ bye  
          
  : sp u@ ; 
  : rp sp cell + ; 
@@ -40,7 +39,7 @@
          
  : 2* dup + ; 
  : 80h 1 2* 2* 2* 2* 2* 2* 2* ; 
- : immediate latest @ 4 + dup @ 80h or swap ! ; 
+ : immediate latest @ 5 + dup @ 80h or swap ! ; 
          
  : >r rp @ @ swap rp @ ! rp @ 2 - rp ! rp @ ! ; 
  : r> rp @ @ rp @ 2 + rp ! rp @ @ swap rp @ ! ; 

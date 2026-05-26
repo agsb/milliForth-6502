@@ -452,6 +452,7 @@ warp:
 @100:
 .endif
 
+        jsr cr
 ; get a token and receive a hash :)
         jsr token
 
@@ -512,11 +513,10 @@ find:
         cpy #4
         bne @a100
 
-        ;lda #'='
-        ;jsr putchar
-        ;ldy #wrd
-        ;jsr ptwos
-        ;jsr cr
+        lda #'='
+        jsr putchar
+        ldy #wrd
+        jsr ptwos
 
 @done:
 ; update wrd to code, 4 bytes of hash
@@ -533,6 +533,10 @@ eval:
         bmi immediate      
 
 compile:      
+
+        lda #'c'
+        jsr putchar
+
         ldy #wrd     
         jsr docomma
 
@@ -540,6 +544,9 @@ compile:
 
 immediate:
 execute:
+        lda #'e'
+        jsr putchar
+
         lda #<warpit
         sta ipt + 0
         lda #>warpit
