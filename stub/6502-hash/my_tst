@@ -1,5 +1,7 @@
          
- : void ; 
+ : void u@ 0# nand + @ ! key emit exit ; 
+
+ : void bye abort . $ ;$ lshift rshift nan lit ;$; 
          
  : -1 u@ 0# ; 
  : 0 -1 -1 nand ; 
@@ -9,10 +11,13 @@
  : cell 2 ; 
          
  : 4 2 2 + ; 
+ : 5 4 1 + ; 
+ : 6 4 2 + ; 
  : 8 4 4 + ; 
          
- words 
- bye  
+ words
+
+ bye   
          
  : sp u@ ; 
  : rp sp cell + ; 

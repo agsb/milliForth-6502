@@ -395,7 +395,7 @@ warm:
         ldy #>h_last
         sty last + 1
 
-; next heap free cell, take a page
+; next heap free cell, take next page
         ldy #0
         sty heap + 0
         ldy #>h_heap
@@ -451,16 +451,8 @@ warp:
         jsr putchar
 @100:
 .endif
-
-        jsr cr
 ; get a token and receive a hash :)
         jsr token
-
-        ;lda #'!'
-        ;jsr putchar
-        ;ldy #hashp
-        ;jsr ptwow
-        ;jsr cr
 
 find:
 ; load last entry
@@ -482,18 +474,12 @@ find:
         lda snd + 1
         sta wrd + 1
 
-; update next link in snd, wrd + cell, point to hash  
+; update next link in snd, wrd + cell, points to hash  
         ldx #wrd ; from 
         ldy #snd ; into
         jsr pull
 
-        ;lda #'?'
-        ;jsr putchar
-        ;ldy #wrd
-        ;jsr ptwos
-        ;jsr cr
-
-; compare hashes, for 32 bits
+; compare hashes, for 31 bits
 
         ldy #0
 @a100:
@@ -513,13 +499,8 @@ find:
         cpy #4
         bne @a100
 
-        lda #'='
-        jsr putchar
-        ldy #wrd
-        jsr ptwos
-
 @done:
-; update wrd to code, 4 bytes of hash
+; update wrd to code, wrd + cell + cell (4 bytes of hash)
         ldx #wrd 
         jsr addfour
 
@@ -533,10 +514,6 @@ eval:
         bmi immediate      
 
 compile:      
-
-        lda #'c'
-        jsr putchar
-
         ldy #wrd     
         jsr docomma
 
@@ -544,9 +521,6 @@ compile:
 
 immediate:
 execute:
-        lda #'e'
-        jsr putchar
-
         lda #<warpit
         sta ipt + 0
         lda #>warpit
@@ -597,13 +571,13 @@ hash_DJB2 = 5381 ; 32bit $00001505
         
         ldx #0
         clc
-@loopk:
+@loopj:
         lda hashp, x
         adc hashq, x
         sta hashp, x
         inx
         cpx #4
-        bne @loopk
+        bne @loopj
 
 ; xor with character
         pla
@@ -622,11 +596,14 @@ mask:
         and #127
         sta hashp + 3
 
-        ;lda #'~'
-        ;jsr putchar
-        ;ldy #hashp
-        ;jsr ptwow
-        ;jsr cr
+        lda #'?'
+        jsr putchar
+
+        ldy #hashp
+        jsr ptwow
+        
+        lda #10
+        jsr putchar
 
         rts
 
@@ -700,6 +677,17 @@ byes:
 ;
 ;---------------------------------------------------------------------
 
+/*
+;---------------------------------------------------------------------
+; increment a word in page zero. offset by X
+incwx:
+       inc 0, x
+       bne @ends
+       inc 1, x
+@ends: 
+       rts
+*/
+
 ;---------------------------------------------------------------------
 ; decrement a word in page zero. offset by X
 decwx:
@@ -709,15 +697,6 @@ decwx:
 @ends:
         dec 0, x
         rts
-
-;---------------------------------------------------------------------
-; increment a word in page zero. offset by X
-;incwx:
-;       inc 0, x
-;       bne @ends
-;       inc 1, x
-;@ends: 
-;       rts
 
 ;---------------------------------------------------------------------
 ; classic heap moves always forward
@@ -1034,7 +1013,7 @@ def_word ";$", "docode", hash_docode
         jmp (ipt)
 
 ;----------------------------------------------------------------------
-; ( w1 u2 -- w2 ) left shit 1 to 15 bits
+; ( w1 u2 -- w2 ) left shift 1 to 15 bits
 def_word "lshift", "lshift", hash_lshift   
         jsr spull2
         ldx fst + 0
@@ -1196,7 +1175,7 @@ puthex:
 def_word "key", "key", hash_key
         jsr getchar
         sta fst + 0
-        lda #0 ; zzzz
+        lda #0 ; zzzz not need zzzz
         jmp tokeep
         
 ;---------------------------------------------------------------------
@@ -1329,7 +1308,7 @@ def_word ";", "semis", hash_semis
         lda #0
         sta stat + 0
         
-finish:
+footer:
 ; compound words must ends with exit
         lda #<is_exit
         sta fst + 0
@@ -1365,6 +1344,7 @@ unnest: ; exit
         jsr rpull
 
 next:
+
 ; wrd = (ipt) ; ipt += 2
         ldx #ipt
         ldy #wrd
