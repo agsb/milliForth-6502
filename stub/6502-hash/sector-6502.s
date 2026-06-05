@@ -535,49 +535,55 @@ hash_DJB2 = 5381 ; 32bit $00001505
 @hash:
         lda #<hash_DJB2
         sta hashp + 0
-        sta hashq + 0
         
         lda #>hash_DJB2
         sta hashp + 1
-        sta hashq + 1
         
         lda #0
         sta hashp + 2
-        sta hashq + 2
         sta hashp + 3
-        sta hashq + 3
 
 @skip:
-        jsr getchar
-        cmp #' '
-        bmi @skip
+        jsr noctl
         beq @skip
 
 @again:
+
         pha
+        
+        ldy #0
+@copy:
+        lda hashp, y 
+        sta hashq, y 
+        iny
+        cpy #4
+        bne @copy
 
 ; multiply by 32
 
-        ldx #5
+        ldy #5
 @loopi:        
         asl hashp + 0
         rol hashp + 1
         rol hashp + 2
         rol hashp + 3
-        dex
+        dey
         bne @loopi
 
 ; then add, total 33
         
-        ldx #0
+        ; do not use cmp, cpy, cpx or carry will blow 
+        ; and must use php and plp for save status etc
+        ldy #0 ; index
+        ldx #3 ; counter
         clc
 @loopj:
-        lda hashp, x
-        adc hashq, x
-        sta hashp, x
-        inx
-        cpx #4
-        bne @loopj
+        lda hashp, y
+        adc hashq, y
+        sta hashp, y
+        iny
+        dex
+        bpl @loopj
 
 ; xor with character
         pla
@@ -585,9 +591,7 @@ hash_DJB2 = 5381 ; 32bit $00001505
         sta hashp + 0
         
 @scan:
-        jsr getchar
-        cmp #' '
-        bmi @scan
+        jsr noctl
         bne @again
 
 mask:
@@ -605,6 +609,12 @@ mask:
         lda #10
         jsr putchar
 
+        rts
+
+noctl:
+        jsr getchar
+        cmp #' '
+        bmi noctl
         rts
 
 ;---------------------------------------------------------------------

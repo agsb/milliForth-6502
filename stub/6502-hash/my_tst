@@ -1,8 +1,6 @@
          
- : void u@ 0# nand + @ ! key emit exit ; 
+ : void key emit @ ! nand + 0# u@ exit ; 
 
- : void bye abort . $ ;$ lshift rshift nan lit ;$; 
-         
  : -1 u@ 0# ; 
  : 0 -1 -1 nand ; 
  : 1 -1 -1 + -1 nand ; 
