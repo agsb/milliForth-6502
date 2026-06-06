@@ -217,10 +217,10 @@ H0000 = 0
 
 ;---------------------------------------------------------------------
 ; uncomment to include the tools (sic)
- use_tools = 1 
+; use_tools = 1 
 
 ; uncomment to include the extras (sic)
- use_extras = 1 
+; use_extras = 1 
 
 ;----------------------------------------------------------------------
 ;
@@ -608,7 +608,7 @@ mask:
         and #MASK_IMM
         sta hashp + 3
 
-        jsr phashp
+        ; jsr phashp
 
         rts
 
@@ -1002,11 +1002,6 @@ def_word "words", "words", hash_words
         lda #10
         jsr putchar 
 
-; check for primitive
-        lda fst + 1
-        cmp #(>it_ends) + 1
-        bmi @ends
-
 @continue:
         
         lda snd + 0
@@ -1021,10 +1016,11 @@ def_word "words", "words", hash_words
         lda (trd), y
         sta snd + 1
 
-;        ldx #trd
-;        jsr addtwo
+; check for primitive
 
-        jmp @loop 
+        lda snd + 1
+        cmp #(>it_ends) + 1
+        bpl @loop
 
 @ends:
         jmp next
