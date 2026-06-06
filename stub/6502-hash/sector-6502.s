@@ -217,10 +217,10 @@ H0000 = 0
 
 ;---------------------------------------------------------------------
 ; uncomment to include the tools (sic)
-use_tools = 1 
+ use_tools = 1 
 
 ; uncomment to include the extras (sic)
-use_extras = 1 
+ use_extras = 1 
 
 ;----------------------------------------------------------------------
 ;
@@ -230,7 +230,10 @@ use_extras = 1
 CELL = 2    
 
 ; highlander, immediate flag. just compare high byte.
+
 FLAG_IMM = $80
+
+MASK_IMM = $7F
 
 ;---------------------------------------------------------------------
 ; primitives djb2 hash cleared of bit 32
@@ -410,6 +413,11 @@ warm:
 ; when not found in dictionary
 miss:
         ; emote ??
+        lda #'?'
+        jsr putchar
+        jsr putchar
+        lda #10
+        jsr putchar
 
 abort:
         ldy #<sp0
@@ -434,8 +442,8 @@ warpit:
 ;---------------------------------------------------------------------
 warp:
 
-.ifdef emote
-        ; use high byte of stat for flag
+.ifdef use_extras
+        ; use s_save for flag
         lda s_save
         beq @100          
         lda #0
@@ -451,6 +459,7 @@ warp:
         jsr putchar
 @100:
 .endif
+
 ; get a token and receive a hash :)
         jsr token
 
@@ -487,10 +496,10 @@ find:
 
         cpy #3
         bne @a200
-        ; save full word immediate flag
+        ; save MSB byte with immediate flag
         sta stat + 1
-        ; mask high byte
-        and #$7F
+        ; mask MSB byte 
+        and #MASK_IMM
 @a200:
         cmp hashp, y
         bne @loop
@@ -572,8 +581,7 @@ hash_DJB2 = 5381 ; 32bit $00001505
 
 ; then add, total 33
         
-        ; do not use cmp, cpy, cpx or carry will blow 
-        ; and must use php and plp for save status etc
+        ; do not use cmp, cpy, cpx 
         ldy #0 ; index
         ldx #3 ; counter
         clc
@@ -597,17 +605,10 @@ hash_DJB2 = 5381 ; 32bit $00001505
 mask:
 ; clear MSB bit
         lda hashp + 3
-        and #127
+        and #MASK_IMM
         sta hashp + 3
 
-        lda #'?'
-        jsr putchar
-
-        ldy #hashp
-        jsr ptwow
-        
-        lda #10
-        jsr putchar
+        jsr phashp
 
         rts
 
@@ -616,6 +617,9 @@ noctl:
         cmp #' '
         bmi noctl
         rts
+
+
+.ifdef use_extras 
 
 ;---------------------------------------------------------------------
 cr:
@@ -659,7 +663,21 @@ bl:
         jsr puthex
         rts
 
-;---------------------------------------------------------------------
+;--------------------------------------------------------------------
+phashp:
+
+        lda #'?'
+        jsr putchar
+
+        ldy #hashp
+        jsr ptwow
+
+        lda #10
+        jsr putchar
+
+        rts
+
+.endif
 
 ;---------------------------------------------------------------------
 ;  this code depends on systems or emulators
@@ -670,8 +688,9 @@ getchar:
         lda $E000
 
 eofs:
-; EOF ?
-        cmp #$FF ; also clean carry :)
+; EOF ? As emulator stands
+
+        cmp #255 
         beq byes
 
 putchar:
@@ -824,7 +843,6 @@ addwx:
 ;
 ; the primitives, 
 ;
-
 ;----------------------------------------------------------------------
 
 .ifdef use_tools
@@ -884,6 +902,9 @@ def_word "dump", "dump", hash_dump
         ;lda #>it_ends + 1
         ;sta fst +  1
         
+        ; from start of code
+        ; .text .rodata .data .bss 
+
         lda #00
         sta fst + 0
         lda #04
@@ -909,7 +930,7 @@ def_word "dump", "dump", hash_dump
         jmp next 
 
 ;----------------------------------------------------------------------
-; ( -- ) words in dictionary, 
+; ( -- ) list compiled words in dictionary, from last one
 def_word "words", "words", hash_words
 
 ; load lastest
@@ -923,7 +944,8 @@ def_word "words", "words", hash_words
         sta trd + 1
         lda heap + 0
         sta trd + 0
-        
+
+; -----------------------------------------------------------        
 @loop:
 ; lsb linked list
         lda snd + 0
@@ -937,6 +959,7 @@ def_word "words", "words", hash_words
         lda snd + 1
         sta fst + 1
 
+;-----------------------------------------------------------
 @each:  
         lda #10
         jsr putchar
@@ -974,7 +997,12 @@ def_word "words", "words", hash_words
         cmp trd + 0
         bne @each
 
-; check if is a primitive
+; end of word
+
+        lda #10
+        jsr putchar 
+
+; check for primitive
         lda fst + 1
         cmp #(>it_ends) + 1
         bmi @ends
@@ -993,8 +1021,8 @@ def_word "words", "words", hash_words
         lda (trd), y
         sta snd + 1
 
-        ldx #trd
-        jsr addtwo
+;        ldx #trd
+;        jsr addtwo
 
         jmp @loop 
 
@@ -1328,7 +1356,7 @@ footer:
         ldy #fst
         jsr docomma
 
-.ifdef emote
+.ifdef use_extras
         lda #1
         sta s_save
 .endif

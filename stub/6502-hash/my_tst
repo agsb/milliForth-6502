@@ -76,7 +76,7 @@
          ['] 2dup , ['] = , ['] ?branch , 
          here @ - , ['] 2drop , ; immediate 
          
- : 10 lit [ 8 2 + , ] ; 
+ : 10 lit [ 8 2 + , ] ;  
          
  : cr 10 emit ; 
          
